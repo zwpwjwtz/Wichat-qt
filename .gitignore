@@ -1,0 +1,6 @@
+*.bak
+Wichat-qt
+*.o
+moc*
+ui*.h
+*.pro.user
