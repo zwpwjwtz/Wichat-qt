@@ -26,13 +26,16 @@ DEFINES += QT_DEPRECATED_WARNINGS
 SOURCES += main.cpp\
         mainwindow.cpp \
     loginwindow.cpp \
-    serverconnection.cpp
+    serverconnection.cpp \
+    encryptor.cpp
 
 HEADERS  += mainwindow.h \
     loginwindow.h \
     serverconnection.h \
     serverconnection_p.h \
-    common.h
+    common.h \
+    encryptor.h \
+    encryptorprivate.h
 
 FORMS    += mainwindow.ui \
     loginwindow.ui
