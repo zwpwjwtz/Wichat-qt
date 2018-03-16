@@ -31,7 +31,8 @@ SOURCES += main.cpp\
     wichatconfig.cpp \
     usersession.cpp \
     peersession.cpp \
-    abstractsession.cpp
+    abstractsession.cpp \
+    notification.cpp
 
 HEADERS  += mainwindow.h \
     loginwindow.h \
@@ -47,7 +48,9 @@ HEADERS  += mainwindow.h \
     peersessionprivate.h \
     usersessionprivate.h \
     abstractsessionprivate.h \
-    abstractsession.h
+    abstractsession.h \
+    notification.h \
+    notificationprivate.h
 
 FORMS    += mainwindow.ui \
     loginwindow.ui
