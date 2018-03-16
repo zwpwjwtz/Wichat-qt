@@ -35,8 +35,8 @@ QString Encryptor::getSHA1(QByteArray& source, bool toDec)
 }
 
 bool Encryptor::encrypt(Algorithm algo,
-                        QByteArray& source,
-                        QByteArray& key,
+                        const QByteArray& source,
+                        const QByteArray& key,
                         QByteArray& result)
 {
     Q_D(Encryptor);
@@ -52,8 +52,8 @@ bool Encryptor::encrypt(Algorithm algo,
             break;
         case Blowfish:
             resultByte = new char[sourceLen];
-            ret = d->BlowFish(source.data(), sourceLen,
-                              key.data(),
+            ret = d->BlowFish(source.constData(), sourceLen,
+                              key.constData(),
                               resultByte, sourceLen,
                               1);
             if (ret)
@@ -69,8 +69,8 @@ bool Encryptor::encrypt(Algorithm algo,
     return ret;
 }
 bool Encryptor::decrypt(Algorithm algo,
-                        QByteArray& source,
-                        QByteArray& key,
+                        const QByteArray& source,
+                        const QByteArray& key,
                         QByteArray& result)
 {
     Q_D(Encryptor);
@@ -86,8 +86,8 @@ bool Encryptor::decrypt(Algorithm algo,
             break;
         case Blowfish:
             resultByte = new char[sourceLen];
-            ret = d->BlowFish(source.data(), sourceLen,
-                              key.data(),
+            ret = d->BlowFish(source.constData(), sourceLen,
+                              key.constData(),
                               resultByte, sourceLen,
                               2);
             if (ret)
@@ -473,10 +473,11 @@ unsigned int EncryptorPrivate::Blowfish_F(unsigned int auiS[][BLOWFISH_MAX_SBLOC
     return ((auiS[0][Blowfish_Byte(ui>>24)] + auiS[1][Blowfish_Byte(ui>>16)]) ^ auiS[2][Blowfish_Byte(ui>>8)]) + auiS[3][Blowfish_Byte(ui)];
 }
 /*Semi-Portable Byte Shuffling*/
-void EncryptorPrivate::Blowfish_BytesToBlock(unsigned char *buf, Blowfish_SBlock *b)
+void EncryptorPrivate::Blowfish_BytesToBlock(unsigned const char *buf,
+                                             Blowfish_SBlock *b)
 {
     unsigned int y;
-    unsigned char *p = buf;
+    unsigned const char *p = buf;
     /*Left*/
     b->m_uil = 0;
     y = *p++;
@@ -564,7 +565,7 @@ void EncryptorPrivate::Blowfish_DecryptBlock(Blowfish *blowfish, Blowfish_SBlock
     block->m_uil = uiRight;
     block->m_uir = uiLeft;
 }
-int EncryptorPrivate::Blowfish_Init(Blowfish *blowfish, unsigned char *ucKey, int keysize)
+int EncryptorPrivate::Blowfish_Init(Blowfish *blowfish, unsigned const char *ucKey, int keysize)
 {
     unsigned int i, j, k, n;
     unsigned char aucLocalKey[BLOWFISH_MAX_KEY_SIZE];
@@ -609,9 +610,9 @@ int EncryptorPrivate::Blowfish_Init(Blowfish *blowfish, unsigned char *ucKey, in
     return 1;
 }
 
-bool EncryptorPrivate::BlowFish(char* bufferIn,
+bool EncryptorPrivate::BlowFish(const char* bufferIn,
                                 long inLength,
-                                char* key,
+                                const char* key,
                                 char* bufferOut,
                                 long outLength,
                                 int mode)
@@ -621,12 +622,12 @@ bool EncryptorPrivate::BlowFish(char* bufferIn,
     if (inLength % 8>0 || outLength<inLength) return false;
     if (mode<1 || mode>2) return true;
     Blowfish data;
-    if (Blowfish_Init(&data,(unsigned char*)key,16)!=1) return false;
+    if (Blowfish_Init(&data,(unsigned const char*)key,16)!=1) return false;
     long i=0;
     Blowfish_SBlock work;
     do
     {
-        Blowfish_BytesToBlock((unsigned char*)bufferIn+i, &work);
+        Blowfish_BytesToBlock((unsigned const char*)bufferIn+i, &work);
         if (mode==1)
             Blowfish_EncryptBlock(&data, &work);
         else

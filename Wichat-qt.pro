@@ -28,7 +28,10 @@ SOURCES += main.cpp\
     loginwindow.cpp \
     serverconnection.cpp \
     encryptor.cpp \
-    wichatconfig.cpp
+    wichatconfig.cpp \
+    usersession.cpp \
+    peersession.cpp \
+    abstractsession.cpp
 
 HEADERS  += mainwindow.h \
     loginwindow.h \
@@ -38,7 +41,13 @@ HEADERS  += mainwindow.h \
     encryptor.h \
     encryptorprivate.h \
     wichatconfig.h \
-    wichatconfigprivate.h
+    wichatconfigprivate.h \
+    usersession.h \
+    peersession.h \
+    peersessionprivate.h \
+    usersessionprivate.h \
+    abstractsessionprivate.h \
+    abstractsession.h
 
 FORMS    += mainwindow.ui \
     loginwindow.ui

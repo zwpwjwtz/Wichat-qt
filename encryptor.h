@@ -25,12 +25,12 @@ public:
     QString getSHA1(QByteArray &source, bool toDec = false);
 
     bool encrypt(Algorithm algo,
-                 QByteArray& source,
-                 QByteArray& key,
+                 const QByteArray& source,
+                 const QByteArray& key,
                  QByteArray& result);
     bool decrypt(Algorithm algo,
-                 QByteArray& source,
-                 QByteArray& key,
+                 const QByteArray& source,
+                 const QByteArray& key,
                  QByteArray& result);
 
 protected:

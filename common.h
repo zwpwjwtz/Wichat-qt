@@ -9,4 +9,6 @@
 #define WICHAT_CLIENT_DEVICE 10
 #endif
 
+#define WICHAT_ACCOUNT_ID_MAXLEN 8
+
 #endif // COMMON_H
