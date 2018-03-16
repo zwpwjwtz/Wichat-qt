@@ -1,5 +1,5 @@
 #include "notification.h"
-#include "notificationprivate.h"
+#include "Private/notification_p.h"
 
 Notification::Notification()
 {

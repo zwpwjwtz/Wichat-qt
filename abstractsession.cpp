@@ -1,7 +1,7 @@
 #include <QDir>
 
 #include "abstractsession.h"
-#include "abstractsessionprivate.h"
+#include "Private/abstractsession_p.h"
 
 #define WICHAT_SESSION_CACHE_READ_PROBELEN 64
 

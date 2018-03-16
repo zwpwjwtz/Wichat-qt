@@ -2,7 +2,7 @@
 #include <QDir>
 
 #include "wichatconfig.h"
-#include "wichatconfigprivate.h"
+#include "Private/wichatconfig_p.h"
 
 #define WICHAT_CONFIG_FILENAME_USER "preference.ini"
 

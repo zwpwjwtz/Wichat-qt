@@ -40,17 +40,18 @@ HEADERS  += mainwindow.h \
     serverconnection_p.h \
     common.h \
     encryptor.h \
-    encryptorprivate.h \
     wichatconfig.h \
-    wichatconfigprivate.h \
     usersession.h \
     peersession.h \
-    peersessionprivate.h \
-    usersessionprivate.h \
-    abstractsessionprivate.h \
     abstractsession.h \
     notification.h \
-    notificationprivate.h
+    Private/abstractsession_p.h \
+    Private/encryptor_p.h \
+    Private/notification_p.h \
+    Private/peersession_p.h \
+    Private/serverconnection_p.h \
+    Private/usersession_p.h \
+    Private/wichatconfig_p.h
 
 FORMS    += mainwindow.ui \
     loginwindow.ui

@@ -1,5 +1,5 @@
 #include "encryptor.h"
-#include "encryptorprivate.h"
+#include "Private/encryptor_p.h"
 
 Encryptor::Encryptor()
 {

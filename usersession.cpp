@@ -1,7 +1,7 @@
 #include <QDir>
 
 #include "usersession.h"
-#include "usersessionprivate.h"
+#include "Private/usersession_p.h"
 #include "common.h"
 
 #define WICHAT_SESSION_CACHE_FILENAME "session.dat"

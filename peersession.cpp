@@ -1,7 +1,7 @@
 #include <QDir>
 
 #include "peersession.h"
-#include "peersessionprivate.h"
+#include "Private/peersession_p.h"
 #include "common.h"
 
 #define WICHAT_SESSION_KEY_FILENAME "session2.dat"

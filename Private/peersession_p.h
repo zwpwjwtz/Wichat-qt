@@ -1,7 +1,7 @@
 #ifndef PEERSESSIONPRIVATE_H
 #define PEERSESSIONPRIVATE_H
 
-#include "abstractsessionprivate.h"
+#include "abstractsession_p.h"
 #include "peersession.h"
 #include "encryptor.h"
 

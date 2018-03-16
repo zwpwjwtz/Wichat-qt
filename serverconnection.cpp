@@ -1,7 +1,7 @@
 #include <QtNetwork>
 #include "common.h"
 #include "serverconnection.h"
-#include "serverconnection_p.h"
+#include "Private/serverconnection_p.h"
 
 ServerConnection::ServerConnection()
 {

@@ -4,7 +4,7 @@
 #include <QObject>
 #include <QFile>
 
-#include "abstractsessionprivate.h"
+#include "abstractsession_p.h"
 #include "usersession.h"
 
 class UserSessionPrivate : public AbstractSessionPrivate
