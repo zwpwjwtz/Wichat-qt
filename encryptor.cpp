@@ -1,5 +1,6 @@
 #include "encryptor.h"
 #include "Private/encryptor_p.h"
+#include "opensslpp/include/opensslpp/aes_cbc.h"
 
 Encryptor::Encryptor()
 {
@@ -60,7 +61,17 @@ bool Encryptor::encrypt(Algorithm algo,
                 result.fromRawData(resultByte, sourceLen);
             break;
         case AES:
+        {
+            using namespace opensslpp;
+            auto aes = Aes256Cbc::createWithKey(key.toBase64().toStdString());
+            std::vector<uint8_t> cipher;
+            Aes256Cbc::Iv iv;
+            aes->encrypt(source.toStdString(),
+                         cipher,
+                         iv);
+            result = d->charVectorToQByteArray(cipher);
             break;
+        }
         default:;
     }
 
@@ -94,7 +105,17 @@ bool Encryptor::decrypt(Algorithm algo,
                 result.fromRawData(resultByte, sourceLen);
             break;
         case AES:
+        {
+            using namespace opensslpp;
+            auto aes = Aes256Cbc::createWithKey(key.toBase64().toStdString());
+            std::vector<uint8_t> plain;
+            Aes256Cbc::Iv iv;
+            aes->encrypt(source.toStdString(),
+                         plain,
+                         iv);
+            result = d->charVectorToQByteArray(plain);
             break;
+        }
         default:;
     }
 
@@ -637,4 +658,13 @@ bool EncryptorPrivate::BlowFish(const char* bufferIn,
     }while(i<inLength);
 
     return true;
+}
+
+QByteArray EncryptorPrivate::charVectorToQByteArray(
+                                                std::vector<unsigned char> var)
+{
+    QByteArray temp;
+    for (int i=0; i<var.size(); i++)
+        temp.push_back(var[i]);
+    return temp;
 }

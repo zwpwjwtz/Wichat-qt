@@ -50,6 +50,8 @@ private:
     void Blowfish_DecryptBlock(Blowfish *blowfish, Blowfish_SBlock *block);
     int Blowfish_Init(Blowfish *blowfish, const unsigned char *ucKey, int keysize);
 
+    QByteArray charVectorToQByteArray(std::vector<unsigned char> var);
+
 protected:
     Encryptor* q_ptr;
 };

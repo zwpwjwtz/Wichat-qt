@@ -8,6 +8,9 @@ QT       += core gui network
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
+CONFIG += link_pkgconfig
+PKGCONFIG += openssl
+
 TARGET = Wichat-qt
 TEMPLATE = app
 
@@ -32,7 +35,7 @@ SOURCES += main.cpp\
     usersession.cpp \
     peersession.cpp \
     abstractsession.cpp \
-    notification.cpp
+    notification.cpp \
 
 HEADERS  += mainwindow.h \
     loginwindow.h \
@@ -51,7 +54,14 @@ HEADERS  += mainwindow.h \
     Private/peersession_p.h \
     Private/serverconnection_p.h \
     Private/usersession_p.h \
-    Private/wichatconfig_p.h
+    Private/wichatconfig_p.h \
+    opensslpp/include/opensslpp/details/common.h \
+    opensslpp/include/opensslpp/aes_cbc.h \
+    opensslpp/include/opensslpp/aes_gcm.h \
+    opensslpp/include/opensslpp/base64.h \
+    opensslpp/include/opensslpp/random.h \
+    opensslpp/include/opensslpp/rsa.h \
+    opensslpp/include/opensslpp/sha.h
 
 FORMS    += mainwindow.ui \
     loginwindow.ui
