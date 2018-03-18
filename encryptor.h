@@ -19,10 +19,17 @@ public:
         AES = 3
     };
 
+    static const int MinSeedLength = 8;
+    static const int MinKeyLength = 16;
+    static const int MaxKeyLength = 128;
+
     explicit Encryptor();
 
-    QByteArray getCRC32(QByteArray& source);
-    QString getSHA1(QByteArray &source, bool toDec = false);
+    QByteArray getCRC32(const QByteArray &source);
+    QByteArray getSHA1(const QByteArray& source, bool toDec = false);
+    QByteArray getHMAC(const QByteArray& source,
+                       QByteArray key,
+                       bool toDec = false);
 
     bool encrypt(Algorithm algo,
                  const QByteArray& source,
@@ -32,6 +39,10 @@ public:
                  const QByteArray& source,
                  const QByteArray& key,
                  QByteArray& result);
+    QByteArray genKey(QString seed, bool hex = false);
+    QByteArray fuse(const QString& str, QString delta, int base = 128);
+    QByteArray fuse_R(const QString &str, QString delta, int base = 128);
+    QByteArray byteXOR(const QByteArray& array1, const QByteArray& array2);
 
 protected:
     EncryptorPrivate* d_ptr;

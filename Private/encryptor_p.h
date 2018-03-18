@@ -3,6 +3,7 @@
 
 #include <QObject>
 #include <QCryptographicHash>
+#include "opensslpp/include/opensslpp/random.h"
 
 #define BLOWFISH_MAX_PBLOCK_SIZE 18
 #define BLOWFISH_MAX_SBLOCK_XSIZE 4
@@ -20,6 +21,9 @@ class EncryptorPrivate : QObject
 public:
     QCryptographicHash hasher{QCryptographicHash::Sha1};
     QByteArray result;
+    static std::unique_ptr<opensslpp::Random> randGenerator;
+    static constexpr const char* DefaultDelta =
+                                "`-jvDj34hjG]vb 0-r 32-ug11`JWaepoj 1#@f12?#";
 
     unsigned int crc32_string(const char * text,long length);
     bool BlowFish(const char* bufferIn,
@@ -50,6 +54,7 @@ private:
     void Blowfish_DecryptBlock(Blowfish *blowfish, Blowfish_SBlock *block);
     int Blowfish_Init(Blowfish *blowfish, const unsigned char *ucKey, int keysize);
 
+    int factorNumber(int number);
     QByteArray charVectorToQByteArray(std::vector<unsigned char> var);
 
 protected:

@@ -36,6 +36,7 @@ SOURCES += main.cpp\
     peersession.cpp \
     abstractsession.cpp \
     notification.cpp \
+    account.cpp
 
 HEADERS  += mainwindow.h \
     loginwindow.h \
@@ -48,6 +49,8 @@ HEADERS  += mainwindow.h \
     peersession.h \
     abstractsession.h \
     notification.h \
+    account.h \
+    Private/account_p.h \
     Private/abstractsession_p.h \
     Private/encryptor_p.h \
     Private/notification_p.h \

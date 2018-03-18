@@ -7,7 +7,7 @@ Encryptor::Encryptor()
     this->d_ptr = new EncryptorPrivate;
 }
 
-QByteArray Encryptor::getCRC32(QByteArray& source)
+QByteArray Encryptor::getCRC32(const QByteArray& source)
 {
     Q_D(Encryptor);
 
@@ -19,16 +19,60 @@ QByteArray Encryptor::getCRC32(QByteArray& source)
             .append((ret >> 6) & 0xFF);
 }
 
-QString Encryptor::getSHA1(QByteArray& source, bool toDec)
+QByteArray Encryptor::getSHA1(const QByteArray& source, bool toDec)
 {
     Q_D(Encryptor);
 
-    QString result;
+    QByteArray result;
     d->result = d->hasher.hash(source, QCryptographicHash::Sha1);
     if (toDec)
     {
         for (int i=0; i<d->result.size(); i++)
-            result.append(char(int(d->result[i]) + 48));
+            result[i] = char(int(d->result[i]) + 48);
+    }
+    else
+        result = d->result;
+    return result;
+}
+
+QByteArray Encryptor::getHMAC(const QByteArray& source,
+                              QByteArray key,
+                              bool toDec)
+{
+    // This function is adapted from Qt Wiki page
+    // Link: http://wiki.qt.io/HMAC-SHA1
+
+    Q_D(Encryptor);
+    QByteArray result;
+
+    const int blockSize = 512; // HMAC-SHA-256 block size, defined in standard
+    if (key.length() > blockSize)
+    {
+        // reduce key length with SHA-256 compression
+        key = d->hasher.hash(key, QCryptographicHash::Sha256);
+    }
+
+    QByteArray innerPadding(blockSize, char(0x36));
+    QByteArray outerPadding(blockSize, char(0x5c));
+    // ascii characters 0x36 ("6") and 0x5c ("quot;) are selected because they have large
+    // Hamming distance (http://en.wikipedia.org/wiki/Hamming_distance)
+
+    for (int i = 0; i < key.length(); i++)
+    {
+        innerPadding[i] = innerPadding[i] ^ key.at(i);
+        outerPadding[i] = outerPadding[i] ^ key.at(i);
+    }
+
+   // result = hash (outerPadding CONCAT hash (innerPadding CONCAT baseString))
+    QByteArray total = outerPadding;
+    QByteArray part = innerPadding.append(source);
+    total.append(d->hasher.hash(part, QCryptographicHash::Sha256));
+    d->hasher.hash(total, QCryptographicHash::Sha256);
+
+    if (toDec)
+    {
+        for (int i=0; i<d->result.size(); i++)
+            result[i] = char(int(d->result[i]) + 48);
     }
     else
         result = d->result;
@@ -58,7 +102,7 @@ bool Encryptor::encrypt(Algorithm algo,
                               resultByte, sourceLen,
                               1);
             if (ret)
-                result.fromRawData(resultByte, sourceLen);
+                result = QByteArray::fromRawData(resultByte, sourceLen);
             break;
         case AES:
         {
@@ -122,6 +166,114 @@ bool Encryptor::decrypt(Algorithm algo,
     if (resultByte != nullptr)
         delete resultByte;
     return ret;
+}
+
+QByteArray Encryptor::fuse(const QString& str, QString delta, int base)
+{
+    Q_D(Encryptor);
+    if (delta.length() < 8)
+        delta = d->DefaultDelta;
+    int j = 0;
+    QByteArray temp;
+    for (int i=0; i< str.length(); i++)
+    {
+        temp.append(char((str[i].toLatin1()
+                          + delta[i].toLatin1() * 3
+                          + base) % 256));
+        j = (j + 1) % delta.length();
+    }
+    return temp;
+}
+
+QByteArray Encryptor::fuse_R(const QString& str, QString delta, int base)
+{
+    Q_D(Encryptor);
+    if (delta.length() < 8)
+        delta = d->DefaultDelta;
+    int j = 0;
+    QByteArray temp;
+    for (int i=0; i< str.length(); i++)
+    {
+        temp.append(char((256 + (str[i].toLatin1()
+                                 - delta[i].toLatin1() * 3
+                                 - base) % 256) % 256));
+        j = (j + 1) % delta.length();
+    }
+    return temp;
+}
+
+QByteArray Encryptor::byteXOR(const QByteArray& array1, const QByteArray& array2)
+{
+    QByteArray temp;
+    int length = array1.length();
+    if (length == array2.length())
+    {
+        for (int i=0; i<length; i++)
+            temp.append(array1[i] ^ array2[i]);
+    }
+    return temp;
+}
+
+QByteArray Encryptor::genKey(QString seed, bool hex)
+{
+    Q_D(Encryptor);
+    if (seed.length() > 0 && seed.length() < MinKeyLength)
+        seed.append(d->charVectorToQByteArray(
+                            d->randGenerator->getRandomBytes(MinKeyLength)));
+
+    int keyLength = 0;
+    while (keyLength < MinKeyLength || d->factorNumber(keyLength) > 4)
+        keyLength = qrand() * MaxKeyLength + 1;
+
+    int p = 0;
+    QByteArray key;
+    if (hex)
+    {
+        for (int i=1; i<=keyLength; i++)
+        {
+            switch (int(qrand() * 4))
+            {
+                case 0:
+                    key.append(char(int(seed[p].toLatin1()) + qrand() * 10));
+                    break;
+                case 1:
+                    key.append(char(int(seed[p].toLatin1()) - qrand() * 10));
+                    break;
+                case 2:
+                    key.append(char(int(seed[p].toLatin1()) * qrand() * 10));
+                    break;
+                case 3:
+                    key.append(char(int(seed[p].toLatin1()) % qrand() * 10));
+                    break;
+                default:;
+            }
+            p = qrand() * seed.length();
+        }
+    }
+    else
+    {
+        for (int i=1; i<=keyLength; i++)
+        {
+            switch (int(qrand() * 4))
+            {
+                case 0:
+                    key.append(char((int(seed[p].toLatin1()) + qrand() * 10 + 1) % 10 + 40));
+                    break;
+                case 1:
+                    key.append(char((int(seed[p].toLatin1()) - qrand() * 10 + 1) % 10 + 40));
+                    break;
+                case 2:
+                    key.append(char((int(seed[p].toLatin1()) * qrand() * 10 + 1) % 10 + 40));
+                    break;
+                case 3:
+                    key.append(char((int(seed[p].toLatin1()) % qrand() * 10 + 1) % 10 + 40));
+                    break;
+                default:;
+            }
+            p = qrand() * seed.length();
+        }
+    }
+    return key;
 }
 
 //unsigned int __crc32_table[255];
@@ -483,6 +635,9 @@ unsigned int EncryptorPrivate::crc32_string(const char * text, long length)
         return crc ^ 0xffffffff;
 }
 
+std::unique_ptr<opensslpp::Random> EncryptorPrivate::randGenerator =
+                                                    opensslpp::Random::create();
+
 /*Extract low order byte*/
 unsigned char EncryptorPrivate::Blowfish_Byte(unsigned int ui)
 {
@@ -658,6 +813,21 @@ bool EncryptorPrivate::BlowFish(const char* bufferIn,
     }while(i<inLength);
 
     return true;
+}
+
+int EncryptorPrivate::factorNumber(int number)
+{
+    if (number == 0)
+        return 0;
+    else if (number < 0)
+        number = - number;
+    int count;
+    for (int i=0; i<number; i++)
+    {
+        if ((float(number) / i) == float(int(number / i)))
+            count++;
+    }
+    return count;
 }
 
 QByteArray EncryptorPrivate::charVectorToQByteArray(
