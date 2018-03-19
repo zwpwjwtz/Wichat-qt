@@ -4,3 +4,7 @@ Wichat-qt
 moc*
 ui*.h
 *.pro.user
+Makefile
+Test/Test
+Test/*.o
+Test/*.moc

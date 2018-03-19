@@ -40,8 +40,8 @@ public:
                  const QByteArray& key,
                  QByteArray& result);
     QByteArray genKey(QString seed, bool hex = false);
-    QByteArray fuse(const QString& str, QString delta, int base = 128);
-    QByteArray fuse_R(const QString &str, QString delta, int base = 128);
+    QByteArray fuse(const QByteArray& str, QByteArray delta, int base = 128);
+    QByteArray fuse_R(const QByteArray &str, QByteArray delta, int base = 128);
     QByteArray byteXOR(const QByteArray& array1, const QByteArray& array2);
 
 protected:

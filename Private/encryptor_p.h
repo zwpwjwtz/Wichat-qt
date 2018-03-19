@@ -56,6 +56,8 @@ private:
 
     int factorNumber(int number);
     QByteArray charVectorToQByteArray(std::vector<unsigned char> var);
+    std::vector<unsigned char> qByteArrayToCharVector(const QByteArray& var);
+
 
 protected:
     Encryptor* q_ptr;

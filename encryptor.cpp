@@ -14,9 +14,9 @@ QByteArray Encryptor::getCRC32(const QByteArray& source)
     unsigned int ret = d->crc32_string(source.data(), source.size());
     return QByteArray()
             .append(ret & 0xFF)
-            .append((ret >> 2) & 0xFF)
-            .append((ret >> 4) & 0xFF)
-            .append((ret >> 6) & 0xFF);
+            .append((ret >> 8) & 0xFF)
+            .append((ret >> 16) & 0xFF)
+            .append((ret >> 24) & 0xFF);
 }
 
 QByteArray Encryptor::getSHA1(const QByteArray& source, bool toDec)
@@ -45,7 +45,7 @@ QByteArray Encryptor::getHMAC(const QByteArray& source,
     Q_D(Encryptor);
     QByteArray result;
 
-    const int blockSize = 512; // HMAC-SHA-256 block size, defined in standard
+    const int blockSize = 64; // HMAC-SHA-256 block size, defined in standard
     if (key.length() > blockSize)
     {
         // reduce key length with SHA-256 compression
@@ -67,7 +67,7 @@ QByteArray Encryptor::getHMAC(const QByteArray& source,
     QByteArray total = outerPadding;
     QByteArray part = innerPadding.append(source);
     total.append(d->hasher.hash(part, QCryptographicHash::Sha256));
-    d->hasher.hash(total, QCryptographicHash::Sha256);
+    d->result = d->hasher.hash(total, QCryptographicHash::Sha256);
 
     if (toDec)
     {
@@ -113,7 +113,10 @@ bool Encryptor::encrypt(Algorithm algo,
             aes->encrypt(source.toStdString(),
                          cipher,
                          iv);
-            result = d->charVectorToQByteArray(cipher);
+            result.clear();
+            for (int i=0; i<iv.size(); i++)
+                result.append(iv[i]);
+            result.append(d->charVectorToQByteArray(cipher));
             break;
         }
         default:;
@@ -154,9 +157,11 @@ bool Encryptor::decrypt(Algorithm algo,
             auto aes = Aes256Cbc::createWithKey(key.toBase64().toStdString());
             std::vector<uint8_t> plain;
             Aes256Cbc::Iv iv;
-            aes->encrypt(source.toStdString(),
-                         plain,
-                         iv);
+            for (int i=0; i<iv.size(); i++)
+                iv[i] = source[i];
+            aes->decrypt(d->qByteArrayToCharVector(source.mid(iv.size())),
+                         iv,
+                         plain);
             result = d->charVectorToQByteArray(plain);
             break;
         }
@@ -168,7 +173,7 @@ bool Encryptor::decrypt(Algorithm algo,
     return ret;
 }
 
-QByteArray Encryptor::fuse(const QString& str, QString delta, int base)
+QByteArray Encryptor::fuse(const QByteArray& str, QByteArray delta, int base)
 {
     Q_D(Encryptor);
     if (delta.length() < 8)
@@ -177,15 +182,15 @@ QByteArray Encryptor::fuse(const QString& str, QString delta, int base)
     QByteArray temp;
     for (int i=0; i< str.length(); i++)
     {
-        temp.append(char((str[i].toLatin1()
-                          + delta[i].toLatin1() * 3
+        temp.append(char((str[i]
+                          + delta[i] * 3
                           + base) % 256));
         j = (j + 1) % delta.length();
     }
     return temp;
 }
 
-QByteArray Encryptor::fuse_R(const QString& str, QString delta, int base)
+QByteArray Encryptor::fuse_R(const QByteArray& str, QByteArray delta, int base)
 {
     Q_D(Encryptor);
     if (delta.length() < 8)
@@ -194,8 +199,8 @@ QByteArray Encryptor::fuse_R(const QString& str, QString delta, int base)
     QByteArray temp;
     for (int i=0; i< str.length(); i++)
     {
-        temp.append(char((256 + (str[i].toLatin1()
-                                 - delta[i].toLatin1() * 3
+        temp.append(char((256 + (str[i]
+                                 - delta[i] * 3
                                  - base) % 256) % 256));
         j = (j + 1) % delta.length();
     }
@@ -834,6 +839,15 @@ QByteArray EncryptorPrivate::charVectorToQByteArray(
                                                 std::vector<unsigned char> var)
 {
     QByteArray temp;
+    for (int i=0; i<var.size(); i++)
+        temp.push_back(var[i]);
+    return temp;
+}
+
+std::vector<unsigned char> EncryptorPrivate::qByteArrayToCharVector(
+                                                        const QByteArray &var)
+{
+    std::vector<unsigned char> temp;
     for (int i=0; i<var.size(); i++)
         temp.push_back(var[i]);
     return temp;
