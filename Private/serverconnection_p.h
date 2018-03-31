@@ -19,9 +19,9 @@ public:
     const int MaxRequestCount = 2;
 
 #ifdef IS_LOCAL_SERVER
-    const char* RootServer = "127.0.0.1.";
+    const char* DefaultRootServer = "127.0.0.1.";
 #else
-    const char* RootServer = "dns.wichat.org";
+    const char* DefaultRootServer = "dns.wichat.org";
 #endif
 
     const char* QueryHeader = "WiChatCQ";
@@ -31,12 +31,15 @@ public:
     const char* ResponseHeader = "WiChatSR";
     const int ResponseHeaderLen = 8;
 
+    QString rootServer;
+    int rootServerPort;
     QList<QString> AccServerList;
     QList<QString> RecServerList;
     QByteArray iBuffer, oBuffer;
 
     bool hasInited = false;
 
+    ServerConnectionPrivate();
     int httpRequest(QString strHostName,
                     int intPort,
                     QString strUrl,

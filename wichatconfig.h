@@ -20,6 +20,8 @@ public:
     bool saveConfigFile(QString path);
     QString httpProxy();
     void setHttpProxy(QString proxyServer);
+    QString rootServer();
+    void setRootServer(QString server);
     QString lastID();
     void setLastID(QString userID);
     QString recordPath();

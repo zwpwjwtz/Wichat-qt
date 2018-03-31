@@ -9,6 +9,7 @@
 #define WICHAT_CONFIG_KEY_CONF_VER "Wichat_config_version"
 #define WICHAT_CONFIG_VALUE_CONF_VER "1"
 #define WICHAT_CONFIG_KEY_PROXY_HTTP "http_proxy"
+#define WICHAT_CONFIG_KEY_SERV_ROOT "root_server"
 #define WICHAT_CONFIG_KEY_LAST_USER "last_user"
 #define WICHAT_CONFIG_KEY_RECORD_PATH "record_path"
 
@@ -72,6 +73,18 @@ void WichatConfig::setHttpProxy(QString proxyServer)
 {
     Q_D(WichatConfig);
     d->appConfig.setValue(WICHAT_CONFIG_KEY_PROXY_HTTP, proxyServer);
+}
+
+QString WichatConfig::rootServer()
+{
+    Q_D(WichatConfig);
+    d->appConfig.value(WICHAT_CONFIG_KEY_SERV_ROOT).toString();
+}
+
+void WichatConfig::setRootServer(QString server)
+{
+    Q_D(WichatConfig);
+    d->appConfig.setValue(WICHAT_CONFIG_KEY_SERV_ROOT, server);
 }
 
 QString WichatConfig::lastID()

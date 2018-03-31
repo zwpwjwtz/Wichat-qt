@@ -32,6 +32,7 @@ public:
 
     explicit ServerConnection();
     ~ServerConnection();
+    bool setRootServer(QString serverName, int port);
     ConnectionStatus init(bool refresh = false);
     int getServerList();
     bool sendRequest(int serverID,

@@ -36,7 +36,8 @@ SOURCES += main.cpp\
     peersession.cpp \
     abstractsession.cpp \
     notification.cpp \
-    account.cpp
+    account.cpp \
+    serverconfigdialog.cpp
 
 HEADERS  += mainwindow.h \
     loginwindow.h \
@@ -64,10 +65,12 @@ HEADERS  += mainwindow.h \
     opensslpp/include/opensslpp/base64.h \
     opensslpp/include/opensslpp/random.h \
     opensslpp/include/opensslpp/rsa.h \
-    opensslpp/include/opensslpp/sha.h
+    opensslpp/include/opensslpp/sha.h \
+    serverconfigdialog.h
 
 FORMS    += mainwindow.ui \
-    loginwindow.ui
+    loginwindow.ui \
+    serverconfigdialog.ui
 
 RESOURCES += \
     icon.qrc

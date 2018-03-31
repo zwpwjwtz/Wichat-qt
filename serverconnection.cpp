@@ -13,6 +13,15 @@ ServerConnection::~ServerConnection()
     delete this->d_ptr;
 }
 
+bool ServerConnection::setRootServer(QString serverName, int port)
+{
+    Q_D(ServerConnection);
+    if (serverName.isEmpty() || port < 0)
+        return false;
+    d->rootServer = serverName;
+    d->rootServerPort = port;
+}
+
 ServerConnection::ConnectionStatus ServerConnection::init(bool refresh)
 {
     Q_D(ServerConnection);
@@ -62,7 +71,7 @@ int ServerConnection::getServerList()
     d->iBuffer = d->QueryHeader;
     d->iBuffer.append(WICHAT_CLIENT_DEVICE).append(d->QueryGetAcc);
 
-    received = d->httpRequest(d->RootServer, 80,
+    received = d->httpRequest(d->rootServer, d->rootServerPort,
                               "/Root/query/index.php", "POST",
                               d->iBuffer, d->iBuffer.length(),
                               d->oBuffer);
@@ -100,7 +109,7 @@ int ServerConnection::getServerList()
         return result;
 
     d->iBuffer[d->QueryHeaderLen + 1] = d->QueryGetRec;
-    received = d->httpRequest(d->RootServer, 80,
+    received = d->httpRequest(d->rootServer, d->rootServerPort,
                               "/Root/query/index.php", d->MethodPost,
                               d->iBuffer, d->iBuffer.length(),
                               d->oBuffer);
@@ -185,6 +194,12 @@ bool ServerConnection::sendRequest(int serverID,
         }
     }
     return false;
+}
+
+ServerConnectionPrivate::ServerConnectionPrivate()
+{
+    rootServer = DefaultRootServer;
+    rootServerPort = 80;
 }
 
 int ServerConnectionPrivate::httpRequest(QString strHostName,
