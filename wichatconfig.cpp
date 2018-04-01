@@ -78,7 +78,7 @@ void WichatConfig::setHttpProxy(QString proxyServer)
 QString WichatConfig::rootServer()
 {
     Q_D(WichatConfig);
-    d->appConfig.value(WICHAT_CONFIG_KEY_SERV_ROOT).toString();
+    return d->appConfig.value(WICHAT_CONFIG_KEY_SERV_ROOT).toString();
 }
 
 void WichatConfig::setRootServer(QString server)

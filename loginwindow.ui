@@ -31,7 +31,7 @@
     <string>Wichat !</string>
    </property>
   </widget>
-  <widget class="QLabel" name="label_2">
+  <widget class="QLabel" name="labelAccount">
    <property name="geometry">
     <rect>
      <x>30</x>
@@ -67,7 +67,7 @@
     <enum>QLineEdit::Password</enum>
    </property>
   </widget>
-  <widget class="QLabel" name="textPassword_2">
+  <widget class="QLabel" name="labelPassword">
    <property name="geometry">
     <rect>
      <x>30</x>

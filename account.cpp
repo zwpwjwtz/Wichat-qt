@@ -66,7 +66,7 @@ Account::VerifyError Account::verify(QString ID, QString password)
 
     // Build pre-login request
     QByteArray bufferIn, bufferOut;
-    QByteArray hashedPassword = d->encoder.getSHA1(password.toLatin1())
+    QByteArray hashedPassword = d->encoder.getSHA256(password.toLatin1())
                                           .left(KeyLen);
     QByteArray tempKey = d->encoder.genKey("", true).left(KeyLen);
     QByteArray tempKey2;
@@ -97,10 +97,14 @@ Account::VerifyError Account::verify(QString ID, QString password)
 
 
     // Build login request
-    d->encoder.encrypt(Encryptor::AES, hashedPassword, tempKey, bufferOut);
+    bufferIn.clear();
+    bufferIn.append(hashedPassword);
+    bufferIn.append(char(OnlineState::Online));
+    d->encoder.encrypt(Encryptor::AES, bufferIn, tempKey, bufferOut);
     bufferIn.clear();
     bufferIn.append(char(WICHAT_CLIENT_DEVICE)).append(char(2));
-    bufferIn.append(d->encoder.getHMAC(ID.toLatin1(), tempKey));
+    bufferIn.append(d->encoder.getHMAC(d->formatID(ID), tempKey)
+                              .left(MaxIDLen));
     bufferIn.append(bufferOut);
 
     // Send login request
@@ -133,8 +137,8 @@ bool Account::setPassword(QString oldPassword, QString newPassword)
         return false;
     QByteArray bufferIn, bufferOut;
     bufferIn.append(char(9)).append(char(qrand() * 256));
-    bufferIn.append(d->encoder.getSHA1(oldPassword.toLatin1()).left(KeyLen));
-    bufferIn.append(d->encoder.getSHA1(newPassword.toLatin1()).left(KeyLen));
+    bufferIn.append(d->encoder.getSHA256(oldPassword.toLatin1()).left(KeyLen));
+    bufferIn.append(d->encoder.getSHA256(newPassword.toLatin1()).left(KeyLen));
     if (!d->exchangeData(bufferIn, bufferOut, d->Action_Acc_Change))
         return false;
     if (bufferOut[0] != char(WICHAT_SERVER_RESPONSE_SUCCESS))

@@ -20,6 +20,7 @@ bool ServerConnection::setRootServer(QString serverName, int port)
         return false;
     d->rootServer = serverName;
     d->rootServerPort = port;
+    return true;
 }
 
 ServerConnection::ConnectionStatus ServerConnection::init(bool refresh)
@@ -89,8 +90,7 @@ int ServerConnection::getServerList()
                 result = 3;
                 break;
             }
-
-            strList = d->oBuffer.split('\0');
+            strList = d->oBuffer.mid(d->ResponseHeaderLen + 2).split('\0');
             if (strList.count() > 0)
             {
                 for (int i=0; i<strList.count(); i++)
@@ -123,9 +123,11 @@ int ServerConnection::getServerList()
             break;
         case WICHAT_SERVER_RESPONSE_SUCCESS:
             if (int(d->oBuffer[d->ResponseHeaderLen + 1]) < 1)
+            {
                 result = 3;
-            break;
-            strList = d->oBuffer.split('\0');
+                break;
+            }
+            strList = d->oBuffer.mid(d->ResponseHeaderLen + 2).split('\0');
             if (strList.count() > 0)
             {
                 for (int i=0; i<strList.count(); i++)
@@ -133,6 +135,7 @@ int ServerConnection::getServerList()
             }
             else
                 result = 3;
+            break;
         case WICHAT_SERVER_RESPONSE_BUSY:
         case WICHAT_SERVER_RESPONSE_IN_MAINTANANCE:
             result = 3;
@@ -151,7 +154,7 @@ bool ServerConnection::sendRequest(int serverID,
 {
     Q_D(ServerConnection);
 
-    if (!init())
+    if (init() != ConnectionStatus::Ok)
         return false;
 
     QString server;
@@ -215,27 +218,51 @@ int ServerConnectionPrivate::httpRequest(QString strHostName,
         return -1;
 
     QUrl url;
+    url.setScheme("http");
     url.setHost(strHostName);
     url.setPort(intPort);
     url.setPath(strUrl);
 
     QNetworkRequest request;
     QNetworkReply* reply;
+    QEventLoop loop;
     request.setUrl(url);
+    request.setRawHeader("User-agent", BrowserAgent);
     if (strMethod == MethodPost)
         reply = network.post(request, bytePostData.left(lngPostDataLen));
     else
         reply = network.get(request);
-    while (!reply->isFinished());
+    connect(reply, SIGNAL(finished()), &loop, SLOT(quit()));
+    loop.exec();
+
+    if (reply->error() != QNetworkReply::NoError)
+        return 0;
+
+    // Deal with redirect (when scheme is changed)
+    QUrl redirectedURL(reply->attribute(
+                           QNetworkRequest::RedirectionTargetAttribute).toUrl());
+    if (redirectedURL.host() == url.host() &&
+        redirectedURL.path() == url.path() &&
+        redirectedURL.scheme() != url.scheme())
+    {
+        request.setUrl(redirectedURL);
+        if (strMethod == MethodPost)
+            reply = network.post(request, bytePostData.left(lngPostDataLen));
+        else
+            reply = network.get(request);
+        connect(reply, SIGNAL(finished()), &loop, SLOT(quit()));
+        loop.exec();
+    }
 
     if (reply->error() != QNetworkReply::NoError)
         return 0;
 
     int p = 0;
     QByteArray buffer;
+    byteReceive.clear();
     while(true)
     {
-        buffer = reply->read(reply->readBufferSize());
+        buffer = reply->readAll();
         if (buffer.size() < 1) break;
         byteReceive.append(buffer);
         p += buffer.size();

@@ -26,7 +26,7 @@ public:
     explicit Encryptor();
 
     QByteArray getCRC32(const QByteArray &source);
-    QByteArray getSHA1(const QByteArray& source, bool toDec = false);
+    QByteArray getSHA256(const QByteArray& source, bool toDec = false);
     QByteArray getHMAC(const QByteArray& source,
                        QByteArray key,
                        bool toDec = false);

@@ -17,9 +17,11 @@ public:
     explicit LoginWindow(QWidget *parent = 0);
     ~LoginWindow();
 
+protected:
+    void keyPressEvent(QKeyEvent * event);
+
 private slots:
     void on_buttonLogin_clicked();
-
     void on_buttonSettings_clicked();
 
 private:

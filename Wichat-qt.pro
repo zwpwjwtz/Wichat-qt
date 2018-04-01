@@ -37,7 +37,8 @@ SOURCES += main.cpp\
     abstractsession.cpp \
     notification.cpp \
     account.cpp \
-    serverconfigdialog.cpp
+    serverconfigdialog.cpp \
+    global_objects.cpp
 
 HEADERS  += mainwindow.h \
     loginwindow.h \
@@ -66,7 +67,8 @@ HEADERS  += mainwindow.h \
     opensslpp/include/opensslpp/random.h \
     opensslpp/include/opensslpp/rsa.h \
     opensslpp/include/opensslpp/sha.h \
-    serverconfigdialog.h
+    serverconfigdialog.h \
+    global_objects.h
 
 FORMS    += mainwindow.ui \
     loginwindow.ui \

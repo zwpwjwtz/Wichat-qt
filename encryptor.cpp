@@ -1,3 +1,4 @@
+#include <QDateTime>
 #include "encryptor.h"
 #include "Private/encryptor_p.h"
 #include "opensslpp/include/opensslpp/aes_cbc.h"
@@ -19,12 +20,12 @@ QByteArray Encryptor::getCRC32(const QByteArray& source)
             .append((ret >> 24) & 0xFF);
 }
 
-QByteArray Encryptor::getSHA1(const QByteArray& source, bool toDec)
+QByteArray Encryptor::getSHA256(const QByteArray& source, bool toDec)
 {
     Q_D(Encryptor);
 
     QByteArray result;
-    d->result = d->hasher.hash(source, QCryptographicHash::Sha1);
+    d->result = d->hasher.hash(source, QCryptographicHash::Sha256);
     if (toDec)
     {
         for (int i=0; i<d->result.size(); i++)
@@ -106,15 +107,21 @@ bool Encryptor::encrypt(Algorithm algo,
             break;
         case AES:
         {
+            QByteArray tempKey;
+            if (key.length() < 32)
+                tempKey = getSHA256(key).toBase64();
+            else
+                tempKey = key.toBase64();
+
             using namespace opensslpp;
-            auto aes = Aes256Cbc::createWithKey(key.toBase64().toStdString());
+            auto aes = Aes256Cbc::createWithKey(tempKey.toStdString());
             std::vector<uint8_t> cipher;
             Aes256Cbc::Iv iv;
             aes->encrypt(source.toStdString(),
                          cipher,
                          iv);
             result.clear();
-            for (int i=0; i<iv.size(); i++)
+            for (unsigned int i=0; i<iv.size(); i++)
                 result.append(iv[i]);
             result.append(d->charVectorToQByteArray(cipher));
             break;
@@ -153,11 +160,17 @@ bool Encryptor::decrypt(Algorithm algo,
             break;
         case AES:
         {
+            QByteArray tempKey;
+            if (key.length() < 32)
+                tempKey = getSHA256(key).toBase64();
+            else
+                tempKey = key.toBase64();
+
             using namespace opensslpp;
-            auto aes = Aes256Cbc::createWithKey(key.toBase64().toStdString());
+            auto aes = Aes256Cbc::createWithKey(tempKey.toStdString());
             std::vector<uint8_t> plain;
             Aes256Cbc::Iv iv;
-            for (int i=0; i<iv.size(); i++)
+            for (unsigned int i=0; i<iv.size(); i++)
                 iv[i] = source[i];
             aes->decrypt(d->qByteArrayToCharVector(source.mid(iv.size())),
                          iv,
@@ -222,13 +235,14 @@ QByteArray Encryptor::byteXOR(const QByteArray& array1, const QByteArray& array2
 QByteArray Encryptor::genKey(QString seed, bool hex)
 {
     Q_D(Encryptor);
-    if (seed.length() > 0 && seed.length() < MinKeyLength)
+    if (seed.length() < MinKeyLength)
         seed.append(d->charVectorToQByteArray(
                             d->randGenerator->getRandomBytes(MinKeyLength)));
 
     int keyLength = 0;
+    qsrand(QDateTime::currentDateTime().toTime_t());
     while (keyLength < MinKeyLength || d->factorNumber(keyLength) > 4)
-        keyLength = qrand() * MaxKeyLength + 1;
+        keyLength = qrand() % MaxKeyLength + 1;
 
     int p = 0;
     QByteArray key;
@@ -236,46 +250,46 @@ QByteArray Encryptor::genKey(QString seed, bool hex)
     {
         for (int i=1; i<=keyLength; i++)
         {
-            switch (int(qrand() * 4))
+            switch (int(qrand() % 4))
             {
                 case 0:
-                    key.append(char(int(seed[p].toLatin1()) + qrand() * 10));
+                    key.append(char(int(seed[p].toLatin1()) + qrand() % 10));
                     break;
                 case 1:
-                    key.append(char(int(seed[p].toLatin1()) - qrand() * 10));
+                    key.append(char(int(seed[p].toLatin1()) - qrand() % 10));
                     break;
                 case 2:
-                    key.append(char(int(seed[p].toLatin1()) * qrand() * 10));
+                    key.append(char(int(seed[p].toLatin1()) * qrand() % 10));
                     break;
                 case 3:
-                    key.append(char(int(seed[p].toLatin1()) % qrand() * 10));
+                    key.append(char(int(seed[p].toLatin1()) % qrand() % 10));
                     break;
                 default:;
             }
-            p = qrand() * seed.length();
+            p = qrand() % seed.length();
         }
     }
     else
     {
         for (int i=1; i<=keyLength; i++)
         {
-            switch (int(qrand() * 4))
+            switch (int(qrand() % 4))
             {
                 case 0:
-                    key.append(char((int(seed[p].toLatin1()) + qrand() * 10 + 1) % 10 + 40));
+                    key.append(char((int(seed[p].toLatin1()) + qrand() % 10 + 1) % 10 + 40));
                     break;
                 case 1:
-                    key.append(char((int(seed[p].toLatin1()) - qrand() * 10 + 1) % 10 + 40));
+                    key.append(char((int(seed[p].toLatin1()) - qrand() % 10 + 1) % 10 + 40));
                     break;
                 case 2:
-                    key.append(char((int(seed[p].toLatin1()) * qrand() * 10 + 1) % 10 + 40));
+                    key.append(char((int(seed[p].toLatin1()) * qrand() % 10 + 1) % 10 + 40));
                     break;
                 case 3:
-                    key.append(char((int(seed[p].toLatin1()) % qrand() * 10 + 1) % 10 + 40));
+                    key.append(char((int(seed[p].toLatin1()) % qrand() % 10 + 1) % 10 + 40));
                     break;
                 default:;
             }
-            p = qrand() * seed.length();
+            p = qrand() % seed.length();
         }
     }
     return key;
@@ -826,8 +840,8 @@ int EncryptorPrivate::factorNumber(int number)
         return 0;
     else if (number < 0)
         number = - number;
-    int count;
-    for (int i=0; i<number; i++)
+    int count = 0;
+    for (int i=1; i<number; i++)
     {
         if ((float(number) / i) == float(int(number / i)))
             count++;
@@ -839,7 +853,7 @@ QByteArray EncryptorPrivate::charVectorToQByteArray(
                                                 std::vector<unsigned char> var)
 {
     QByteArray temp;
-    for (int i=0; i<var.size(); i++)
+    for (unsigned int i=0; i<var.size(); i++)
         temp.push_back(var[i]);
     return temp;
 }

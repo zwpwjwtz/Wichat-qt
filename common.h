@@ -1,6 +1,8 @@
 #ifndef COMMON_H
 #define COMMON_H
 
+#include <QtGlobal>
+
 #ifdef QT_DEBUG
 #define WICHAT_CLIENT_VER "2.00 - Test Version"
 #define WICHAT_CLIENT_DEVICE 255
