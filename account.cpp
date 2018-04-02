@@ -130,6 +130,12 @@ Account::VerifyError Account::verify(QString ID, QString password)
     return VerifyError::Ok;
 }
 
+QString Account::ID()
+{
+    Q_D(Account);
+    return d->currentID;
+}
+
 bool Account::setPassword(QString oldPassword, QString newPassword)
 {
     Q_D(Account);

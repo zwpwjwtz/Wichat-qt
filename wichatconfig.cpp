@@ -17,10 +17,10 @@
 #define WICHAT_CONFIG_KEY_LOGIN_REM "remember_password"
 #define WICHAT_CONFIG_KEY_SESSION_LAST "last_session"
 #define WICHAT_CONFIG_KEY_PREF_FONT_FAMILY "font_family"
-#define WICHAT_CONFIG_KEY_PREF_FONT_SIZE "font_family"
-#define WICHAT_CONFIG_KEY_PREF_FONT_COLOR "font_family"
-#define WICHAT_CONFIG_KEY_PREF_FONT_STYLE "font_family"
-#define WICHAT_CONFIG_KEY_PREF_FONT_ALIGN "font_family"
+#define WICHAT_CONFIG_KEY_PREF_FONT_SIZE "font_size"
+#define WICHAT_CONFIG_KEY_PREF_FONT_COLOR "font_color"
+#define WICHAT_CONFIG_KEY_PREF_FONT_STYLE "font_style"
+#define WICHAT_CONFIG_KEY_PREF_TEXT_ALIGN "text_align"
 #define WICHAT_CONFIG_KEY_PREF_KEY_SEND "shortcut_send"
 #define WICHAT_CONFIG_KEY_PREF_SCNSHOT "screen_shot_behavior"
 #define WICHAT_CONFIG_KEY_PREF_NOTIFY "msg_notify_behavior"
@@ -111,9 +111,11 @@ void WichatConfig::setRecordPath(QString path)
     d->appConfig.setValue(WICHAT_CONFIG_KEY_RECORD_PATH, path);
 }
 
-QString WichatConfig::userDirectory()
+QString WichatConfig::userDirectory(QString userID)
 {
     Q_D(WichatConfig);
+    if (!d->switchUser(userID))
+        return "";
     return d->currentUserDir;
 }
 
@@ -236,20 +238,20 @@ void WichatConfig::setPrefFontStyle(QString userID, QString style)
     d->userConfig.setValue(WICHAT_CONFIG_KEY_PREF_FONT_STYLE, style);
 }
 
-QString WichatConfig::prefFontAlign(QString userID)
+QString WichatConfig::prefTextAlign(QString userID)
 {
     Q_D(WichatConfig);
     if (!d->switchUser(userID))
         return "";
-    return d->userConfig.value(WICHAT_CONFIG_KEY_PREF_FONT_ALIGN).toString();
+    return d->userConfig.value(WICHAT_CONFIG_KEY_PREF_TEXT_ALIGN).toString();
 }
 
-void WichatConfig::setPrefFontAlign(QString userID, QString alignMode)
+void WichatConfig::setPrefTextAlign(QString userID, QString alignMode)
 {
     Q_D(WichatConfig);
     if (!d->switchUser(userID))
         return;
-    d->userConfig.setValue(WICHAT_CONFIG_KEY_PREF_FONT_ALIGN, alignMode);
+    d->userConfig.setValue(WICHAT_CONFIG_KEY_PREF_TEXT_ALIGN, alignMode);
 }
 
 int WichatConfig::prefSendKey(QString userID)
@@ -325,11 +327,12 @@ bool WichatConfigPrivate::switchUser(QString userID)
     }
 
     // Enter user record directory
-    userDir.cd(userID);
-    if (!userDir.exists())
+    if (!userDir.cd(userID))
     {
-        if (!userDir.mkpath("."))
+        if (!userDir.mkdir(userID))
             return false;
+        else
+            userDir.cd(userID);
     }
 
     currentUserDir = userDir.path();

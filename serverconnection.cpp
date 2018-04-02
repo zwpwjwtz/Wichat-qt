@@ -214,8 +214,10 @@ int ServerConnectionPrivate::httpRequest(QString strHostName,
                                          QByteArray& byteReceive)
 {
     QNetworkAccessManager network;
+#ifndef IS_LOCAL_SERVER
     if (network.networkAccessible() != QNetworkAccessManager::Accessible)
         return -1;
+#endif
 
     QUrl url;
     url.setScheme("http");
@@ -235,7 +237,8 @@ int ServerConnectionPrivate::httpRequest(QString strHostName,
     connect(reply, SIGNAL(finished()), &loop, SLOT(quit()));
     loop.exec();
 
-    if (reply->error() != QNetworkReply::NoError)
+    QNetworkReply::NetworkError errorCode = reply->error();
+    if (errorCode != QNetworkReply::NoError)
         return 0;
 
     // Deal with redirect (when scheme is changed)
@@ -254,7 +257,8 @@ int ServerConnectionPrivate::httpRequest(QString strHostName,
         loop.exec();
     }
 
-    if (reply->error() != QNetworkReply::NoError)
+    errorCode = reply->error();
+    if (errorCode != QNetworkReply::NoError)
         return 0;
 
     int p = 0;

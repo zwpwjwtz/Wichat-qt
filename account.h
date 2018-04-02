@@ -71,6 +71,7 @@ public:
     bool checkID(QString ID);
     bool checkPassword(QString password);
     VerifyError verify(QString ID, QString password);
+    QString ID();
     bool setPassword(QString oldPassword, QString newPassword);
     bool resetSession();
 

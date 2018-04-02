@@ -28,7 +28,7 @@ public:
     void setRecordPath(QString path);
 
     // User configuration
-    QString userDirectory();
+    QString userDirectory(QString userID);
     int lastLoginState(QString userID);
     void setLastLoginState(QString userID, int state);
     bool rememberPassword(QString userID);
@@ -43,8 +43,8 @@ public:
     void setPrefFontColor(QString userID, QString color);
     QString prefFontStyle(QString userID);
     void setPrefFontStyle(QString userID, QString style);
-    QString prefFontAlign(QString userID);
-    void setPrefFontAlign(QString userID, QString alignMode);
+    QString prefTextAlign(QString userID);
+    void setPrefTextAlign(QString userID, QString alignMode);
     int prefSendKey(QString userID);
     void setPrefSendKey(QString userID, int keyCode);
     int prefScreenShot(QString userID);
