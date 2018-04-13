@@ -116,14 +116,14 @@ Account::VerifyError Account::verify(QString ID, QString password)
 
     // Extract session and account information
     d->currentSession = bufferOut.mid(1, SessionLen);
-    d->sessionValidTime = *((qint16*)(bufferOut.mid(KeyLen + 1, 2).data()));
-    d->currentState = d->intToOnlineState(bufferOut.mid(KeyLen + 3, 1)[1]);
+    d->sessionValidTime = *((qint16*)(bufferOut.mid(SessionLen + 1, 2).data()));
+    d->currentState = d->intToOnlineState(bufferOut.mid(SessionLen + 3, 1)[0]);
     bufferOut.remove(0, SessionLen + 4);
     d->encoder.decrypt(Encryptor::AES,
                        bufferOut,
                        tempKey,
                        bufferIn);
-    d->sessionKey = bufferIn.mid(0, KeyLen);
+    d->sessionKey = bufferIn.mid(4, KeyLen);
     d->currentOfflineMsg = bufferIn.mid(KeyLen);
     d->currentID = ID;
 

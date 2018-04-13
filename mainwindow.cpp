@@ -7,6 +7,7 @@
 #include <QScrollBar>
 #include <QColorDialog>
 #include <QMenu>
+#include <QSystemTrayIcon>
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include "global_objects.h"
@@ -29,6 +30,13 @@
 #define WICHAT_MAIN_EDITOR_SENDKEY_ENTER 0x01000004
 #define WICHAT_MAIN_EDITOR_SENDKEY_CTRLENTER 0x01000004 + 0x04000000
 
+
+Account::OnlineState Wichat_stateList[4] = {
+        Account::OnlineState::Online,
+        Account::OnlineState::Busy,
+        Account::OnlineState::Hide,
+        Account::OnlineState::Offline
+};
 
 QString Wichat_stateToString(Account::OnlineState state)
 {
@@ -92,13 +100,25 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->tabSession->removeTab(0);
     ui->frameFont->hide();
     ui->frameTextGroup->setLayout(new QStackedLayout);
+
+    menuSysTray = new QMenu();
+    sysTrayIcon = new QSystemTrayIcon(this);
+    sysTrayIcon->setContextMenu(menuSysTray);
     buttonTabClose = new QPushButton(QIcon(":/Icons/remove.ico"),
                                      "");
     buttonTabClose->setGeometry(0, 0, 10, 10);
     connect(buttonTabClose,
             SIGNAL(clicked(bool)),
             this,
-            SLOT(onSessionTabClose()));
+            SLOT(onSessionTabClose(bool)));
+    connect(sysTrayIcon,
+            SIGNAL(activated(QSystemTrayIcon::ActivationReason)),
+            this,
+            SLOT(onSysTrayIconClicked(int reason)));
+    connect(menuSysTray,
+            SIGNAL(triggered(QAction*)),
+            this,
+            SLOT(onSysTrayMenuClicked(QAction*)));
 
     installEventFilter(this);
     ui->listFriend->installEventFilter(this);
@@ -136,6 +156,9 @@ void MainWindow::init()
     }
     applyUserSettings();
 
+    sysTrayIcon->show();
+    updateSysTrayMenu();
+
     hasInited = true;
 }
 
@@ -161,8 +184,12 @@ void MainWindow::closeEvent(QCloseEvent* event)
                                  "Sure to exit WiChat?",
                                  QMessageBox::Yes | QMessageBox::No)
             != QMessageBox::Yes)
+        {
             event->ignore();
+            return;
+        }
     }
+    sysTrayIcon->hide();
 }
 
 bool MainWindow::eventFilter(QObject *watched, QEvent *event)
@@ -454,9 +481,22 @@ void MainWindow::changeSession()
         addTask(taskLogOut);
 }
 
-void MainWindow::updateState()
+void MainWindow::changeState(int state)
 {
 
+    if (!globalAccount.setState(Account::OnlineState(state)))
+    {
+        QMessageBox::critical(this, "Wichat error",
+                              "Cannot set online state.");
+    }
+    updateState();
+}
+
+void MainWindow::updateState()
+{
+    ui->tabSession->setTabIcon(getSessionTabIndex(userID),
+                               QIcon(stateToImagePath(
+                                            int(globalAccount.state()), true)));
 }
 
 void MainWindow::updateCaption()
@@ -469,6 +509,36 @@ void MainWindow::updateCaption()
     if (!globalAccount.offlineMsg().isEmpty())
         title.append('-').append(globalAccount.offlineMsg());
     setWindowTitle(title);
+}
+
+void MainWindow::updateSysTrayMenu()
+{
+    if (menuSysTray->actions().isEmpty())
+    {
+        // Add a title in the tray menu
+        QAction* action = new QAction(userID, menuSysTray);
+        action->setData(0);
+        menuSysTray->addAction(action);
+        menuSysTray->addSeparator();
+
+        // Add other options for switching online state
+        for (int i=0; i<4; i++)
+        {
+            action = new QAction(menuSysTray);
+            action->installEventFilter(this);
+            action->setIcon(QIcon(stateToImagePath(int(Wichat_stateList[i]),
+                                                   true)));
+            action->setText(Wichat_stateToString(Wichat_stateList[i]));
+            action->setData(int(Wichat_stateList[i]));
+            menuSysTray->addAction(action);
+        }
+
+        // Add an entry for quitting program
+        menuSysTray->addSeparator();
+        action = new QAction("Quit", menuSysTray);
+        action->setData(-1);
+        menuSysTray->addAction(action);
+    }
 }
 
 void MainWindow::updateFriendList()
@@ -600,6 +670,20 @@ void MainWindow::onSessionTabClose(bool checked)
                                            QTabBar::RightSide,
                                            nullptr);
     removeTab(ui->tabSession->widget(index)->property("ID").toString());
+}
+
+void MainWindow::onSysTrayIconClicked(int reason)
+{
+    updateSysTrayMenu();
+}
+
+void MainWindow::onSysTrayMenuClicked(QAction* action)
+{
+    int state = action->data().toInt();
+    if (state == -1)
+        close();
+    else if (state > 0)
+        changeState(action->data().toInt());
 }
 
 void MainWindow::on_buttonFont_clicked()

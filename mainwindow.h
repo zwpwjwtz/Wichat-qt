@@ -14,6 +14,7 @@ class QColorDialog;
 class QTextBrowser;
 class QTextEdit;
 class QActionGroup;
+class QSystemTrayIcon;
 
 namespace Ui {
 class MainWindow;
@@ -35,18 +36,6 @@ protected:
     bool eventFilter(QObject *watched, QEvent *event);
     void resizeEvent(QResizeEvent* event);
     void showEvent(QShowEvent* event);
-
-private slots:
-    void on_buttonFont_clicked();
-    void on_buttonTextColor_clicked();
-    void on_buttonTextStyle_clicked();
-    void on_buttonTextAlign_clicked();
-    void on_comboFontFamily_currentTextChanged(const QString &arg1);
-    void on_comboTextSize_currentTextChanged(const QString &arg1);
-    void on_buttonSend_clicked();
-    void on_buttonSendOpt_clicked();
-
-    void on_tabSession_tabBarClicked(int index);
 
 private:
     enum TaskType
@@ -70,6 +59,8 @@ private:
     QMenu* menuFontStyle;
     QMenu* menuTextAlign;
     QMenu* menuSendOption;
+    QMenu* menuSysTray;
+    QSystemTrayIcon* sysTrayIcon;
     QActionGroup* groupTextAlign;
     QActionGroup* groupSendOption;
     QList<QTextBrowser*> browserList;
@@ -97,8 +88,10 @@ private:
     void refreshTab();
     void removeTab(QString ID);
     void changeSession();
+    void changeState(int state);
     void updateState();
     void updateCaption();
+    void updateSysTrayMenu();
     void updateFriendList();
     QString getStateImagePath(QString ID);
     void getMessageList();
@@ -106,11 +99,24 @@ private:
     void fixBrokenConnection();
     static QString stateToImagePath(int stateNumber, bool displayHide = false);
 
+private slots:
     void onMouseButtonRelease();
     void onMouseHoverEnter(QObject* watched, QHoverEvent* event);
     void onMouseHoverLeave(QObject* watched, QHoverEvent* event);
     void onKeyRelease(QObject* watched, QKeyEvent* event);
     void onSessionTabClose(bool checked);
+    void onSysTrayIconClicked(int reason);
+    void onSysTrayMenuClicked(QAction* action);
+
+    void on_buttonFont_clicked();
+    void on_buttonTextColor_clicked();
+    void on_buttonTextStyle_clicked();
+    void on_buttonTextAlign_clicked();
+    void on_comboFontFamily_currentTextChanged(const QString &arg1);
+    void on_comboTextSize_currentTextChanged(const QString &arg1);
+    void on_buttonSend_clicked();
+    void on_buttonSendOpt_clicked();
+    void on_tabSession_tabBarClicked(int index);
 };
 
 #endif // MAINWINDOW_H
