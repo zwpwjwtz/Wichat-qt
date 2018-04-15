@@ -18,6 +18,8 @@ class ServerConnection : public QObject
 {
     Q_OBJECT
     Q_DECLARE_PRIVATE(ServerConnection)
+protected:
+    ServerConnectionPrivate* d_ptr;
 
 public:
     enum ConnectionStatus
@@ -35,13 +37,22 @@ public:
     bool setRootServer(QString serverName, int port);
     ConnectionStatus init(bool refresh = false);
     int getServerList();
-    bool sendRequest(int serverID,
-                     QString URL,
-                     QByteArray& content,
-                     QByteArray& buffer);
+    ConnectionStatus sendRequest(int serverID,
+                                 QString URL,
+                                 QByteArray& content,
+                                 QByteArray& buffer);
+    bool sendAsyncRequest(int serverID,
+                          QString URL,
+                          QByteArray& content,
+                          int& requestID);
+    ConnectionStatus getAsyncResponse(int requestID,
+                                      QByteArray& buffer);
 
-protected:
-    ServerConnectionPrivate* d_ptr;
+signals:
+    void onRequestFinished(int requestID);
+
+private slots:
+    void onPrivateEvent(int eventType, void* data);
 };
 
 #endif // SERVERCONNECTION_H

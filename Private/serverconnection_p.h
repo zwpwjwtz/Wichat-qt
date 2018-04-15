@@ -2,14 +2,19 @@
 #define SERVERCONNECTION_P_H
 
 #include <QObject>
-#include <QList>
+#include <QNetworkAccessManager>
+
+class QNetworkRequest;
+class QNetworkReply;
 
 class ServerConnection;
 
-class ServerConnectionPrivate: QObject
+class ServerConnectionPrivate: public QObject
 {
     Q_OBJECT
     Q_DECLARE_PUBLIC(ServerConnection)
+protected:
+    ServerConnection* q_ptr;
 
 public:
     const char* AcceptAll = "*/*\0";
@@ -31,25 +36,43 @@ public:
     const char* ResponseHeader = "WiChatSR";
     const int ResponseHeaderLen = 8;
 
+    enum PrviateEventType
+    {
+        httpRequestFinished = 1,
+    };
+
+    QNetworkAccessManager network;
     QString rootServer;
     int rootServerPort;
     QList<QString> AccServerList;
     QList<QString> RecServerList;
     QByteArray iBuffer, oBuffer;
-
+    QList<int> requestIdList;
+    QList<QNetworkReply*> reponseList;
     bool hasInited = false;
 
-    ServerConnectionPrivate();
+    ServerConnectionPrivate(ServerConnection* parent);
+    QString selectServer(int serverID);
     int httpRequest(QString strHostName,
                     int intPort,
                     QString strUrl,
                     QString strMethod,
                     QByteArray& bytePostData,
-                    int lngPostDataLen,
-                    QByteArray& byteReceive);
+                    QByteArray& byteReceive,
+                    bool boolSync = true);
+
+signals:
+    void privateEvent(PrviateEventType eventType, void* data);
 
 protected:
-    ServerConnection* q_ptr;
+    int waitHttpRequest(QNetworkReply* reply, bool synchronous = true);
+    QNetworkReply* dealHttpRedirect(QNetworkReply* reply,
+                                    QString method,
+                                    QByteArray& data,
+                                    bool synchronous = true);
+
+protected slots:
+    void onHttpRequestFinished(QNetworkReply* reply);
 };
 
 #endif // SERVERCONNECTION_P_H

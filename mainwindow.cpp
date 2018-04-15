@@ -107,14 +107,23 @@ MainWindow::MainWindow(QWidget *parent) :
     buttonTabClose = new QPushButton(QIcon(":/Icons/remove.ico"),
                                      "");
     buttonTabClose->setGeometry(0, 0, 10, 10);
+
+    connect(&globalAccount,
+            &Account::resetSessionFinished,
+            this,
+            &MainWindow::onChangeSessionFinished);
+    connect(&globalAccount,
+            &Account::setStateFinished,
+            this,
+            &MainWindow::onChangeStateFinished);
     connect(buttonTabClose,
             SIGNAL(clicked(bool)),
             this,
             SLOT(onSessionTabClose(bool)));
     connect(sysTrayIcon,
-            SIGNAL(activated(QSystemTrayIcon::ActivationReason)),
+            &QSystemTrayIcon::activated,
             this,
-            SLOT(onSysTrayIconClicked(int reason)));
+            &MainWindow::onSysTrayIconClicked);
     connect(menuSysTray,
             SIGNAL(triggered(QAction*)),
             this,
@@ -432,7 +441,7 @@ void MainWindow::addTab(QString ID)
                            QIcon(getStateImagePath(ID)),
                            ID);
     ui->frameTextGroup->layout()->addWidget(newEditor);
-
+    ui->frameMsg->show();
 }
 
 void MainWindow::loadTab()
@@ -473,23 +482,22 @@ void MainWindow::removeTab(QString ID)
     // Actually close the tab
     index = getSessionTabIndex(ID);
     ui->tabSession->removeTab(index);
+    delete editorList[index];
+    editorList.removeAt(index);
+    if (editorList.count() < 1)
+        ui->frameMsg->hide();
 }
 
 void MainWindow::changeSession()
 {
-    if (!globalAccount.resetSession())
-        addTask(taskLogOut);
+    int queryID;
+    globalAccount.resetSession(queryID);
 }
 
-void MainWindow::changeState(int state)
+void MainWindow::changeState(Account::OnlineState state)
 {
-
-    if (!globalAccount.setState(Account::OnlineState(state)))
-    {
-        QMessageBox::critical(this, "Wichat error",
-                              "Cannot set online state.");
-    }
-    updateState();
+    int queryID;
+    globalAccount.setState(state, queryID);
 }
 
 void MainWindow::updateState()
@@ -608,6 +616,23 @@ QString MainWindow::stateToImagePath(int stateNumber, bool displayHide)
     return path;
 }
 
+void MainWindow::onChangeSessionFinished(int queryID, bool successful)
+{
+    if (!successful)
+        addTask(taskLogOut);
+}
+
+void MainWindow::onChangeStateFinished(int queryID,
+                                       bool successful,
+                                       Account::OnlineState newState)
+{
+    if (!successful)
+        QMessageBox::critical(this, "Wichat error",
+                              "Cannot set online state.");
+    else
+        updateState();
+}
+
 void MainWindow::onMouseButtonRelease()
 {
     if (!ui->frameFont->hasFocus())
@@ -665,7 +690,9 @@ void MainWindow::onKeyRelease(QObject* watched, QKeyEvent* event)
 
 void MainWindow::onSessionTabClose(bool checked)
 {
-    int index = ui->tabSession->tabBar()->tabAt(QCursor::pos() - pos());
+    int index = ui->tabSession->tabBar()->tabAt(QCursor::pos()
+                                                - pos()
+                                                - QPoint(0, 50));
     ui->tabSession->tabBar()->setTabButton(index,
                                            QTabBar::RightSide,
                                            nullptr);
@@ -683,7 +710,7 @@ void MainWindow::onSysTrayMenuClicked(QAction* action)
     if (state == -1)
         close();
     else if (state > 0)
-        changeState(action->data().toInt());
+        changeState(Account::OnlineState(action->data().toInt()));
 }
 
 void MainWindow::on_buttonFont_clicked()

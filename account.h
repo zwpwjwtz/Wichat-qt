@@ -24,14 +24,6 @@ public:
         VerificationFailed = 5,
         UnknownError = 255
     };
-    enum class QueryType
-    {
-        None = 0,
-        FriendListGet = 1,
-        FriendRemarksGet = 2,
-        FriendRemarksSet = 3,
-        FriendInfoGet = 4
-    };
     enum class QueryError
     {
         Ok = 0,
@@ -47,15 +39,14 @@ public:
         Busy = 4,
         Hide = 5,
     };
-    struct FriendListEntry
+    struct AccountListEntry
     {
         QString ID;
         OnlineState state;
     };
-    struct FriendInfoEntry
+    struct AccountInfoEntry
     {
         QString ID;
-        QString remarks;
         QString offlineMsg;
     };
 
@@ -70,26 +61,42 @@ public:
 
     bool checkID(QString ID);
     bool checkPassword(QString password);
+
     VerifyError verify(QString ID, QString password);
+    bool resetSession(int& queryID);
+
     QString ID();
     bool setPassword(QString oldPassword, QString newPassword);
-    bool resetSession();
-
     OnlineState state();
-    bool setState(OnlineState newState);
+    bool setState(OnlineState newState, int& queryID);
     QString offlineMsg();
-    bool setOfflineMsg(QString newMessage);
+    bool setOfflineMsg(QString newMessage, int& queryID);
 
-    bool queryFriendList();
-    bool addFriend(QString ID);
-    bool removeFriend(QString ID);
-    bool queryFriendRemarks(QList<QString> IDs);
-    bool setFriendRemarks(QString ID, QString remarks);
-    bool queryFriendInfo(QString ID);
+    bool queryFriendList(int& queryID);
+    bool addFriend(QString ID, int& queryID);
+    bool removeFriend(QString ID, int& queryID);
+    bool queryFriendRemarks(QList<QString> IDs, int& queryID);
+    bool setFriendRemarks(QString ID, QString remarks, int& queryID);
+    bool queryFriendInfo(QString ID, int& queryID);
 
 signals:
-    bool queryFinished(int queryID, void* data);
-    bool queryError(QueryError errorCode, int queryID);
+    void queryError(int queryID, QueryError errorCode);
+    void resetSessionFinished(int queryID, bool successful);
+    void setPasswordFinished(int queryID, bool successful);
+    void setStateFinished(int queryID, bool successful, OnlineState newState);
+    void setOfflineMsgFinished(int queryID, bool successful);
+    void queryFriendListFinished(int queryID, QList<AccountListEntry> friends);
+    void addFriendFinished(int queryID, bool successful);
+    void removeFriendFinished(int queryID, bool successful);
+    void queryFriendRemarksFinished(int queryID, QList<QString> remarks);
+    void setFriendRemarksFinished(int queryID, bool successful);
+    void queryFriendInfoFinished(int queryID, QList<AccountInfoEntry> infos);
+
+private:
+    void dispatchQueryRespone(int queryID);
+
+private slots:
+    void onPrivateEvent(int eventType, int data);
 };
 
 #endif // ACCOUNT_H

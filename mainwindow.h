@@ -4,6 +4,7 @@
 #include <QMainWindow>
 #include <QStandardItemModel>
 #include <QQueue>
+#include "account.h"
 #include "usersession.h"
 #include "peersession.h"
 #include "notification.h"
@@ -88,7 +89,7 @@ private:
     void refreshTab();
     void removeTab(QString ID);
     void changeSession();
-    void changeState(int state);
+    void changeState(Account::OnlineState state);
     void updateState();
     void updateCaption();
     void updateSysTrayMenu();
@@ -100,6 +101,13 @@ private:
     static QString stateToImagePath(int stateNumber, bool displayHide = false);
 
 private slots:
+    // Slots for asynchronous request
+    void onChangeSessionFinished(int queryID, bool successful);
+    void onChangeStateFinished(int queryID,
+                               bool successful,
+                               Account::OnlineState newState);
+
+    // Customized slots for UI events
     void onMouseButtonRelease();
     void onMouseHoverEnter(QObject* watched, QHoverEvent* event);
     void onMouseHoverLeave(QObject* watched, QHoverEvent* event);
@@ -108,6 +116,7 @@ private slots:
     void onSysTrayIconClicked(int reason);
     void onSysTrayMenuClicked(QAction* action);
 
+    // Auto-connected slots for UI events
     void on_buttonFont_clicked();
     void on_buttonTextColor_clicked();
     void on_buttonTextStyle_clicked();

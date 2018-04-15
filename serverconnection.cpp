@@ -3,9 +3,20 @@
 #include "serverconnection.h"
 #include "Private/serverconnection_p.h"
 
+#define WICHAT_CONNECTION_REQUEST_PROP_ID "request_id"
+#define WICHAT_CONNECTION_REQUEST_PROP_METHOD "request_method"
+#define WICHAT_CONNECTION_REQUEST_PROP_DATA "request_data"
+#define WICHAT_CONNECTION_REQUEST_PROP_REDIRECT "request_redirected"
+
+
 ServerConnection::ServerConnection()
 {
-    this->d_ptr = new ServerConnectionPrivate;
+    this->d_ptr = new ServerConnectionPrivate(this);
+
+    connect(d_ptr,
+            &ServerConnectionPrivate::privateEvent,
+            this,
+            &ServerConnection::onPrivateEvent);
 }
 
 ServerConnection::~ServerConnection()
@@ -74,7 +85,7 @@ int ServerConnection::getServerList()
 
     received = d->httpRequest(d->rootServer, d->rootServerPort,
                               "/Root/query/index.php", "POST",
-                              d->iBuffer, d->iBuffer.length(),
+                              d->iBuffer,
                               d->oBuffer);
     if (received < 1)
         return 1;
@@ -111,7 +122,7 @@ int ServerConnection::getServerList()
     d->iBuffer[d->QueryHeaderLen + 1] = d->QueryGetRec;
     received = d->httpRequest(d->rootServer, d->rootServerPort,
                               "/Root/query/index.php", d->MethodPost,
-                              d->iBuffer, d->iBuffer.length(),
+                              d->iBuffer,
                               d->oBuffer);
     if (received < 1)
         return 1;
@@ -147,27 +158,17 @@ int ServerConnection::getServerList()
     return result;
 }
 
-bool ServerConnection::sendRequest(int serverID,
-                                   QString URL,
-                                   QByteArray& content,
-                                   QByteArray& buffer)
+ServerConnection::ConnectionStatus
+ServerConnection::sendRequest(int serverID,
+                              QString URL,
+                              QByteArray& content,
+                              QByteArray& buffer)
 {
     Q_D(ServerConnection);
 
-    if (init() != ConnectionStatus::Ok)
-        return false;
-
-    QString server;
-    if (serverID == 1)
-    {
-        if (d->AccServerList.isEmpty()) return false;
-        server = d->AccServerList[0].trimmed();
-    }
-    else
-    {
-        if (d->RecServerList.isEmpty()) return false;
-        server = d->RecServerList[0].trimmed();
-    }
+    QString server = d->selectServer(serverID);
+    if (server.isEmpty())
+        return CannotConnect;
 
     d->iBuffer = d->QueryHeader;
     d->iBuffer.append(content);
@@ -176,14 +177,14 @@ bool ServerConnection::sendRequest(int serverID,
 #ifdef QT_DEBUG
     received = d->httpRequest(server, 80,
                               URL, d->MethodPost,
-                              d->iBuffer, d->iBuffer.length(),
+                              d->iBuffer,
                               buffer);
 #else
     for (int i = 1; i < d->MaxRequestCount; i++)
     {
         received = d->httpRequest(server, 80,
                                   URL, d->MethodPost,
-                                  d->iBuffer, d->iBuffer.length(),
+                                  d->iBuffer,
                                   buffer);
         if (received > 0) break;
     }
@@ -193,16 +194,117 @@ bool ServerConnection::sendRequest(int serverID,
         if (buffer.indexOf(d->ResponseHeader) == 0)
         {
             buffer.remove(0, d->ResponseHeaderLen);
-            return true;
+            return Ok;
         }
     }
-    return false;
+    return CannotConnect;
 }
 
-ServerConnectionPrivate::ServerConnectionPrivate()
+bool ServerConnection::sendAsyncRequest(int serverID,
+                                        QString URL,
+                                        QByteArray& content,
+                                        int& requestID)
 {
+    Q_D(ServerConnection);
+
+    QString server = d->selectServer(serverID);
+    if (server.isEmpty())
+        return false;
+
+    d->iBuffer = d->QueryHeader;
+    d->iBuffer.append(content);
+
+    requestID = d->httpRequest(server, 80,
+                               URL, d->MethodPost,
+                               d->iBuffer,
+                               d->oBuffer,
+                               false);
+    if (requestID != 0)
+    {
+        d->requestIdList.push_back(requestID);
+        return true;
+    }
+    else
+        return false;
+}
+
+ServerConnection::ConnectionStatus
+ServerConnection::getAsyncResponse(int requestID, QByteArray& buffer)
+{
+    Q_D(ServerConnection);
+
+    ServerConnection::ConnectionStatus errCode = Ok;
+    int requestIndex = d->requestIdList.indexOf(requestID);
+    if (requestIndex >= 0)
+    {
+        QNetworkReply* reply = d->reponseList[requestIndex];
+        d->reponseList.removeAt(requestIndex);
+        d->requestIdList.removeAt(requestIndex);
+        if (reply->error() != QNetworkReply::NetworkError::NoError)
+            errCode = CannotConnect;
+        else
+        {
+            buffer = reply->readAll();
+            if (buffer.length() > d->ResponseHeaderLen)
+            {
+                if (buffer.indexOf(d->ResponseHeader) == 0)
+                    buffer.remove(0, d->ResponseHeaderLen);
+            }
+            else
+                errCode = ServerError;
+        }
+        reply->deleteLater();
+    }
+    else
+        errCode = UnknownError;
+
+    return errCode;
+}
+
+void ServerConnection::onPrivateEvent(int eventType, void* data)
+{
+    switch (ServerConnectionPrivate::PrviateEventType(eventType))
+    {
+        case ServerConnectionPrivate::httpRequestFinished:
+        {
+            int* requestID = (int*)(data);
+            emit onRequestFinished(*requestID);
+            delete requestID;
+            break;
+        }
+        default:;
+    }
+}
+
+ServerConnectionPrivate::ServerConnectionPrivate(ServerConnection* parent)
+{
+    this->q_ptr = parent;
     rootServer = DefaultRootServer;
     rootServerPort = 80;
+    connect(&network,
+            SIGNAL(finished(QNetworkReply*)),
+            this,
+            SLOT(onHttpRequestFinished(QNetworkReply*)));
+}
+
+QString ServerConnectionPrivate::selectServer(int serverID)
+{
+    Q_Q(ServerConnection);
+
+    QString server;
+    if (q->init() != ServerConnection::ConnectionStatus::Ok)
+        return server;
+    if (serverID == 1)
+    {
+        if (AccServerList.isEmpty()) return "";
+        server = AccServerList[0].trimmed();
+    }
+    else
+    {
+        if (RecServerList.isEmpty()) return "";
+        server = RecServerList[0].trimmed();
+    }
+    return server;
 }
 
 int ServerConnectionPrivate::httpRequest(QString strHostName,
@@ -210,10 +312,9 @@ int ServerConnectionPrivate::httpRequest(QString strHostName,
                                          QString strUrl,
                                          QString strMethod,
                                          QByteArray& bytePostData,
-                                         int lngPostDataLen,
-                                         QByteArray& byteReceive)
+                                         QByteArray& byteReceive,
+                                         bool boolSync)
 {
-    QNetworkAccessManager network;
 #ifndef IS_LOCAL_SERVER
     if (network.networkAccessible() != QNetworkAccessManager::Accessible)
         return -1;
@@ -227,40 +328,44 @@ int ServerConnectionPrivate::httpRequest(QString strHostName,
 
     QNetworkRequest request;
     QNetworkReply* reply;
-    QEventLoop loop;
     request.setUrl(url);
     request.setRawHeader("User-agent", BrowserAgent);
     if (strMethod == MethodPost)
-        reply = network.post(request, bytePostData.left(lngPostDataLen));
+        reply = network.post(request, bytePostData);
     else
         reply = network.get(request);
-    connect(reply, SIGNAL(finished()), &loop, SLOT(quit()));
-    loop.exec();
+
+    if (!boolSync)
+    {
+        reply->setProperty(WICHAT_CONNECTION_REQUEST_PROP_METHOD, strMethod);
+        reply->setProperty(WICHAT_CONNECTION_REQUEST_PROP_DATA, bytePostData);
+        return waitHttpRequest(reply, false);
+    }
+    else
+        waitHttpRequest(reply);
 
     QNetworkReply::NetworkError errorCode = reply->error();
     if (errorCode != QNetworkReply::NoError)
-        return 0;
-
-    // Deal with redirect (when scheme is changed)
-    QUrl redirectedURL(reply->attribute(
-                           QNetworkRequest::RedirectionTargetAttribute).toUrl());
-    if (redirectedURL.host() == url.host() &&
-        redirectedURL.path() == url.path() &&
-        redirectedURL.scheme() != url.scheme())
     {
-        request.setUrl(redirectedURL);
-        if (strMethod == MethodPost)
-            reply = network.post(request, bytePostData.left(lngPostDataLen));
-        else
-            reply = network.get(request);
-        connect(reply, SIGNAL(finished()), &loop, SLOT(quit()));
-        loop.exec();
+        reply->deleteLater();
+        return 0;
     }
 
-    errorCode = reply->error();
-    if (errorCode != QNetworkReply::NoError)
-        return 0;
+    // Deal with redirect (when scheme is changed)
+    QNetworkReply* newReply = dealHttpRedirect(reply, strMethod, bytePostData);
+    if (newReply != reply)
+    {
+        reply->deleteLater();
+        reply = newReply;
+    }
 
+    if (reply->error() != QNetworkReply::NoError)
+    {
+        reply->deleteLater();
+        return 0;
+    }
+
+    // Read reply content
     int p = 0;
     QByteArray buffer;
     byteReceive.clear();
@@ -272,5 +377,83 @@ int ServerConnectionPrivate::httpRequest(QString strHostName,
         p += buffer.size();
     }
 
+    reply->deleteLater();
     return p;
+}
+
+int ServerConnectionPrivate::waitHttpRequest(QNetworkReply* reply,
+                                              bool synchronous)
+{
+    if (!synchronous)
+    {
+        int requestID = 1;
+        while (requestIdList.contains(requestID) && requestID == 0)
+        {
+            requestID = qrand();
+        }
+        reply->setProperty(WICHAT_CONNECTION_REQUEST_PROP_ID, requestID);
+        reponseList.push_back(reply);
+        requestIdList.push_back(requestID);
+        return requestID;
+    }
+    else
+    {
+        QEventLoop loop;
+        connect(reply, SIGNAL(finished()), &loop, SLOT(quit()));
+        loop.exec();
+        return 0;
+    }
+}
+
+QNetworkReply* ServerConnectionPrivate::dealHttpRedirect(QNetworkReply* reply,
+                                                         QString method,
+                                                         QByteArray& data,
+                                                         bool synchronous)
+{
+    // Check if redirection has been performed
+    if (!reply->property(WICHAT_CONNECTION_REQUEST_PROP_REDIRECT).isNull())
+        return reply;
+
+    QNetworkRequest request = reply->request();
+    QUrl originalURL = request.url();
+    QUrl redirectedURL(reply->attribute(
+                       QNetworkRequest::RedirectionTargetAttribute).toUrl());
+    if (redirectedURL.host() == originalURL.host() &&
+        redirectedURL.path() == originalURL.path() &&
+        redirectedURL.scheme() != originalURL.scheme())
+    {
+        QNetworkReply* newReply;
+        request.setUrl(redirectedURL);
+        if (method == MethodPost)
+            newReply = network.post(request, data);
+        else
+            newReply = network.get(request);
+        reply->setProperty(WICHAT_CONNECTION_REQUEST_PROP_REDIRECT, true);
+        waitHttpRequest(reply, synchronous);
+        return newReply;
+    }
+    return reply;
+}
+
+void ServerConnectionPrivate::onHttpRequestFinished(QNetworkReply* reply)
+{
+    // Use property "ID" to check if the reply is a synchronous one
+    int requestID = reply->property(WICHAT_CONNECTION_REQUEST_PROP_ID).toInt();
+    if (requestID > 0)
+    {
+        QString method = reply->property(
+                            WICHAT_CONNECTION_REQUEST_PROP_ID).toString();
+        QByteArray postData = reply->property(
+                            WICHAT_CONNECTION_REQUEST_PROP_DATA).toByteArray();
+
+        if (dealHttpRedirect(reply, method, postData, false) != reply)
+        {
+            // Wait until the next call
+            return;
+        }
+
+        int* data = new int;
+        *data = requestID;
+        emit privateEvent(httpRequestFinished, data);
+    }
 }
