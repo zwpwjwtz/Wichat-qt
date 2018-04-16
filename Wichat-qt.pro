@@ -38,7 +38,8 @@ SOURCES += main.cpp\
     notification.cpp \
     account.cpp \
     serverconfigdialog.cpp \
-    global_objects.cpp
+    global_objects.cpp \
+    accountinfodialog.cpp
 
 HEADERS  += mainwindow.h \
     loginwindow.h \
@@ -68,11 +69,13 @@ HEADERS  += mainwindow.h \
     opensslpp/include/opensslpp/rsa.h \
     opensslpp/include/opensslpp/sha.h \
     serverconfigdialog.h \
-    global_objects.h
+    global_objects.h \
+    accountinfodialog.h
 
 FORMS    += mainwindow.ui \
     loginwindow.ui \
-    serverconfigdialog.ui
+    serverconfigdialog.ui \
+    accountinfodialog.ui
 
 RESOURCES += \
     icon.qrc

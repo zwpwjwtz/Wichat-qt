@@ -131,7 +131,7 @@ Account::VerifyError Account::verify(QString ID, QString password)
                        tempKey,
                        bufferIn);
     d->sessionKey = bufferIn.mid(4, KeyLen);
-    d->currentOfflineMsg = bufferIn.mid(KeyLen);
+    d->currentOfflineMsg = QString(bufferIn.mid(4 + KeyLen)).trimmed();
     d->currentID = ID;
 
     return VerifyError::Ok;
@@ -170,6 +170,8 @@ bool Account::resetSession(int& queryID)
                          false,
                          &queryID))
         return false;
+
+    d->addRequestRecord(AccountPrivate::RequestType::ResetSession, queryID);
     return true;
 }
 
@@ -214,7 +216,11 @@ bool Account::setOfflineMsg(QString newMessage, int &queryID)
     bufferIn.append("<MSG>")
             .append(newMessage.toLatin1())
             .append("</MSG>");
-    if (!d->exchangeData(bufferIn, bufferOut, d->Action_Acc_Action))
+    if (!d->exchangeData(bufferIn,
+                         bufferOut,
+                         d->Action_Acc_Action,
+                         false,
+                         &queryID))
         return false;
 
     d->currentOfflineMsg = newMessage;
@@ -226,16 +232,13 @@ bool Account::queryFriendList(int& queryID)
 {
     Q_D(Account);
 
-    AccountPrivate::RequestRecord record;
-    record.type = AccountPrivate::RequestType::GetFriendList;
-
     QByteArray bufferIn, bufferOut;
     bufferIn.append(char(1)).append(char(2));
     if (!d->exchangeData(bufferIn,
                          bufferOut,
                          d->Action_Fri_Action,
                          false,
-                         &record.requestID))
+                         &queryID))
         return false;
 
     d->addRequestRecord(AccountPrivate::RequestType::GetFriendList, queryID);
@@ -251,7 +254,11 @@ bool Account::addFriend(QString ID, int &queryID)
     bufferIn.append("<IDList><ID>")
             .append(d->formatID(ID))
             .append("</ID></IDList>");
-    if (!d->exchangeData(bufferIn, bufferOut, d->Action_Fri_Action))
+    if (!d->exchangeData(bufferIn,
+                         bufferOut,
+                         d->Action_Fri_Action,
+                         false,
+                         &queryID))
         return false;
 
     d->addRequestRecord(AccountPrivate::RequestType::AddFriend, queryID);
@@ -267,7 +274,11 @@ bool Account::removeFriend(QString ID, int& queryID)
     bufferIn.append("<IDList><ID>>")
             .append(d->formatID(ID))
             .append("</ID></IDList>");
-    if (!d->exchangeData(bufferIn, bufferOut, d->Action_Fri_Action))
+    if (!d->exchangeData(bufferIn,
+                         bufferOut,
+                         d->Action_Fri_Action,
+                         false,
+                         &queryID))
         return false;
 
     d->addRequestRecord(AccountPrivate::RequestType::RemoveFriend, queryID);
@@ -295,7 +306,7 @@ bool Account::queryFriendRemarks(QList<QString> IDs, int &queryID)
                          bufferOut,
                          d->Action_Fri_Action,
                          false,
-                         &record.requestID))
+                         &queryID))
         return false;
 
     d->addRequestRecord(AccountPrivate::RequestType::GetFriendRemarks, queryID);
@@ -311,7 +322,11 @@ bool Account::setFriendRemarks(QString ID, QString remarks, int &queryID)
     bufferIn.append(char(12)).append(char(qrand() * 256));
     bufferIn.append((char*)(&remarksLength))
             .append(d->formatID(ID));
-    if (!d->exchangeData(bufferIn, bufferOut, d->Action_Fri_Action))
+    if (!d->exchangeData(bufferIn,
+                         bufferOut,
+                         d->Action_Fri_Action,
+                         false,
+                         &queryID))
         return false;
 
     d->addRequestRecord(AccountPrivate::RequestType::SetFriendRemarks, queryID);
@@ -610,15 +625,18 @@ void AccountPrivate::parseAccountList(QByteArray& data,
     if (p1 >= 0 && pE > 16)
     {
         p3 = p2 = p1;
-        while (p1 >= 1 && p2 >= 1 && p3 >= 1 && p1 <= pE)
+        while (true)
         {
             p1 = data.indexOf("<ID", p1 + 1);
             p2 = data.indexOf(">", p1 + 1);
             p3 = data.indexOf("</ID>", p2 + 1);
+            if (p1 < 0 || p1 < 0 || p1 < 0 || p1 > pE)
+                break;
+
             account.ID = QString(data.mid(p2 + 1, p3 - p2 - 1)).trimmed();
             pS = data.indexOf("s=", p1);
             if (pS + 2 < p2)
-                accountState = data.at(pS + 2);
+                accountState = data.at(pS + 2) - '0';
             else
                 accountState = 0;
             account.state = Account::OnlineState(accountState);
@@ -637,16 +655,20 @@ void AccountPrivate::parseMixedList(QByteArray& data,
     pE = data.indexOf("</MList>");
     fieldBegin.append('<').append(fieldName).append('>');
     fieldEnd.append("</").append(fieldName).append('>');
+    list.clear();
     if (p1 >= 0 && pE > 13)
     {
         p2 = p1;
-        while (p1 >= 1 && p2 >= 1 && p1 <= pE)
+        while (true)
         {
             p1 = data.indexOf(fieldBegin, p1 + 1);
             p2 = data.indexOf(fieldEnd, p2 + 1);
+            if (p1 < 0 || p2 < 0)
+                break;
+
             length = p2 - p1 - fieldBegin.length();
             if (length > 0)
-                list.append(data.mid(p1 + fieldBegin.length() + 1, length));
+                list.append(data.mid(p1 + fieldBegin.length(), length));
             else
                 list.append(QByteArray());
         }

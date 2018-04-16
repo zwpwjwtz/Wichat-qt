@@ -4,6 +4,7 @@
 #include <QMainWindow>
 #include <QStandardItemModel>
 #include <QQueue>
+#include <QTimer>
 #include "account.h"
 #include "usersession.h"
 #include "peersession.h"
@@ -16,6 +17,7 @@ class QTextBrowser;
 class QTextEdit;
 class QActionGroup;
 class QSystemTrayIcon;
+class AccountInfoDialog;
 
 namespace Ui {
 class MainWindow;
@@ -55,11 +57,13 @@ private:
     };
 
     Ui::MainWindow *ui;
+    AccountInfoDialog* accountInfo;
     QPushButton* buttonTabClose;
     QColorDialog* dialogColor;
     QMenu* menuFontStyle;
     QMenu* menuTextAlign;
     QMenu* menuSendOption;
+    QMenu* menuFriendOption;
     QMenu* menuSysTray;
     QSystemTrayIcon* sysTrayIcon;
     QActionGroup* groupTextAlign;
@@ -67,6 +71,7 @@ private:
     QList<QTextBrowser*> browserList;
     QList<QTextEdit*> editorList;
     QStandardItemModel listFriendModel;
+    QTimer timer;
     UserSession userSessionList;
     PeerSession peerSessionList;
     QString userID;
@@ -106,8 +111,13 @@ private slots:
     void onChangeStateFinished(int queryID,
                                bool successful,
                                Account::OnlineState newState);
+    void onUpdateFriendListFinished(int queryID,
+                                    QList<Account::AccountListEntry> friends);
+    void onGetFriendInfoFinished(int queryID,
+                                 QList<Account::AccountInfoEntry> infoList);
 
     // Customized slots for UI events
+    void onTimerTimeout();
     void onMouseButtonRelease();
     void onMouseHoverEnter(QObject* watched, QHoverEvent* event);
     void onMouseHoverLeave(QObject* watched, QHoverEvent* event);
@@ -115,6 +125,8 @@ private slots:
     void onSessionTabClose(bool checked);
     void onSysTrayIconClicked(int reason);
     void onSysTrayMenuClicked(QAction* action);
+    void onListFriendMenuClicked(QAction* action);
+    void onFriendRemarksChanged(QString ID, QString remarks);
 
     // Auto-connected slots for UI events
     void on_buttonFont_clicked();
@@ -126,6 +138,9 @@ private slots:
     void on_buttonSend_clicked();
     void on_buttonSendOpt_clicked();
     void on_tabSession_tabBarClicked(int index);
+    void on_tabSession_currentChanged(int index);
+    void on_listFriend_doubleClicked(const QModelIndex &index);
+    void on_listFriend_customContextMenuRequested(const QPoint &pos);
 };
 
 #endif // MAINWINDOW_H
