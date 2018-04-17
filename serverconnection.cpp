@@ -161,7 +161,7 @@ int ServerConnection::getServerList()
 ServerConnection::ConnectionStatus
 ServerConnection::sendRequest(int serverID,
                               QString URL,
-                              QByteArray& content,
+                              const QByteArray& content,
                               QByteArray& buffer)
 {
     Q_D(ServerConnection);
@@ -202,7 +202,7 @@ ServerConnection::sendRequest(int serverID,
 
 bool ServerConnection::sendAsyncRequest(int serverID,
                                         QString URL,
-                                        QByteArray& content,
+                                        const QByteArray& content,
                                         int& requestID)
 {
     Q_D(ServerConnection);
@@ -294,15 +294,17 @@ QString ServerConnectionPrivate::selectServer(int serverID)
     QString server;
     if (q->init() != ServerConnection::ConnectionStatus::Ok)
         return server;
-    if (serverID == 1)
+    switch (serverID)
     {
-        if (AccServerList.isEmpty()) return "";
-        server = AccServerList[0].trimmed();
-    }
-    else
-    {
-        if (RecServerList.isEmpty()) return "";
-        server = RecServerList[0].trimmed();
+        case WICHAT_SERVER_ID_ACCOUNT:
+            if (AccServerList.isEmpty()) return "";
+            server = AccServerList[0].trimmed();
+            break;
+        case WICHAT_SERVER_ID_RECORD:
+            if (RecServerList.isEmpty()) return "";
+            server = RecServerList[0].trimmed();
+            break;
+        default:;
     }
     return server;
 }

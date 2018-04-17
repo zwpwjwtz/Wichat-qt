@@ -5,7 +5,7 @@
 
 #include "account.h"
 #include "encryptor.h"
-#include "serverconnection.h"
+#include "requestmanager.h"
 
 
 class AccountPrivate : public QObject
@@ -16,13 +16,11 @@ protected:
     Account* q_ptr;
 
 public:
-    enum ServerObject
+    enum class ServerObject
     {
-        Action_Acc_Action = 1,
-        Action_Fri_Action = 2,
-        Action_Msg_Exchange = 3,
-        Action_Msg_Get_List = 4,
-        Action_Msg_Get_Key = 5,
+        AccountLogin = 1,
+        AccountAction = 2,
+        FriendAction = 3
     };
 
     enum class RequestType
@@ -42,13 +40,7 @@ public:
 
     enum PrivateEventType
     {
-        requestFinished = 1
-    };
-
-    struct RequestRecord
-    {
-        RequestType type;
-        int requestID;
+        RequestFinished = 1
     };
 
     QString currentID;
@@ -57,33 +49,25 @@ public:
     qint64 sessionValidTime;
     Account::OnlineState currentState;
     QString currentOfflineMsg;
-
     Encryptor encoder;
-    ServerConnection server;
-    QList<RequestRecord> requestList;
+    RequestManager server;
 
     AccountPrivate(Account* parent = 0);
-    bool exchangeData(const QByteArray& data,
-                      QByteArray& result,
-                      ServerObject object,
-                      bool synchronous = true,
-                      int* requestID = nullptr);
-    void addRequestRecord(RequestType type, int requestID);
-    void removeRequestRecord(int requestID);
-    bool processReplyData(RequestType type, QByteArray& data);
     void parseAccountList(QByteArray& data,
                           QByteArray listType,
                           QList<Account::AccountListEntry>& list);
     void parseMixedList(QByteArray& data,
                         QByteArray fieldName,
                         QList<QByteArray>& list);
+    bool processReplyData(RequestType type, QByteArray& data);
     QByteArray formatID(QString ID);
     Account::OnlineState intToOnlineState(int var);
+    QString serverObjectToPath(ServerObject objectID);
 
 signals:
     void privateEvent(PrivateEventType eventType, int data);
 
-private slots:
+protected slots:
     void onRequestFinished(int requestID);
 };
 

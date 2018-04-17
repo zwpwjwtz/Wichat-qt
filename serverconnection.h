@@ -39,11 +39,11 @@ public:
     int getServerList();
     ConnectionStatus sendRequest(int serverID,
                                  QString URL,
-                                 QByteArray& content,
+                                 const QByteArray &content,
                                  QByteArray& buffer);
     bool sendAsyncRequest(int serverID,
                           QString URL,
-                          QByteArray& content,
+                          const QByteArray& content,
                           int& requestID);
     ConnectionStatus getAsyncResponse(int requestID,
                                       QByteArray& buffer);

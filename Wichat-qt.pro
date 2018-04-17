@@ -39,7 +39,8 @@ SOURCES += main.cpp\
     account.cpp \
     serverconfigdialog.cpp \
     global_objects.cpp \
-    accountinfodialog.cpp
+    accountinfodialog.cpp \
+    requestmanager.cpp
 
 HEADERS  += mainwindow.h \
     loginwindow.h \
@@ -70,7 +71,9 @@ HEADERS  += mainwindow.h \
     opensslpp/include/opensslpp/sha.h \
     serverconfigdialog.h \
     global_objects.h \
-    accountinfodialog.h
+    accountinfodialog.h \
+    requestmanager.h \
+    Private/requestmanager_p.h
 
 FORMS    += mainwindow.ui \
     loginwindow.ui \
