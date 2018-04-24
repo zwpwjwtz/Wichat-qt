@@ -220,10 +220,7 @@ bool ServerConnection::sendAsyncRequest(int serverID,
                                d->oBuffer,
                                false);
     if (requestID != 0)
-    {
-        d->requestIdList.push_back(requestID);
         return true;
-    }
     else
         return false;
 }

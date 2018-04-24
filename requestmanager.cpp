@@ -11,7 +11,7 @@ RequestManager::RequestManager()
             &RequestManager::onPrivateEvent);
 }
 
-void RequestManager::setSessionInfo(QString sessionID, QByteArray key)
+void RequestManager::setSessionInfo(QByteArray sessionID, QByteArray key)
 {
     Q_D(RequestManager);
 
@@ -22,7 +22,7 @@ void RequestManager::setSessionInfo(QString sessionID, QByteArray key)
 RequestManager::RequestError
 RequestManager::sendData(const QByteArray& data,
                          QByteArray& result,
-                         int serverID,
+                         ServerType serverID,
                          QString objectPath,
                          bool synchronous,
                          int* requestID)
@@ -40,26 +40,45 @@ RequestManager::sendData(const QByteArray& data,
                        temp);
     bufferIn.append(temp);
 
-    RequestError errCode = sendRawData(temp, result,
+    RequestError errCode = sendRawData(bufferIn, result,
                                        serverID, objectPath,
                                        synchronous, requestID);
-    if (!synchronous || errCode != Ok)
+    if (errCode != Ok)
         return errCode;
+    if (!synchronous)
+    {
+        d->requestList[d->getRecordIndexByID(*requestID)].rawData = false;
+        return errCode;
+    }
 
+    if (result.length() <= 4)
+        return ReplyIncomplete;
     d->encoder.decrypt(Encryptor::AES,
                        temp.mid(4),
                        d->sessionKey,
                        result);
     if (d->encoder.getCRC32(result) != temp.mid(0, 4))
         return DecryptError;
-    else
-        return Ok;
+    switch (int(result[0]))
+    {
+        case WICHAT_SERVER_RESPONSE_SUCCESS:
+            return Ok;
+        case WICHAT_SERVER_RESPONSE_BUSY:
+        case WICHAT_SERVER_RESPONSE_IN_MAINTANANCE:
+            return NotAvailable;
+        case WICHAT_SERVER_RESPONSE_INVALID:
+            return UnknownError;
+        case WICHAT_SERVER_RESPONSE_DEVICE_UNSUPPORTED:
+            return VersionTooOld;
+        default:
+            return UnknownError;
+    }
 }
 
 RequestManager::RequestError
 RequestManager::sendRawData(const QByteArray& data,
                            QByteArray& result,
-                           int serverID,
+                           ServerType serverID,
                            QString objectPath,
                            bool synchronous,
                            int* requestID)
@@ -68,24 +87,42 @@ RequestManager::sendRawData(const QByteArray& data,
 
     if (!synchronous)
     {
-        if (d->server.sendAsyncRequest(serverID,
+        if (d->server.sendAsyncRequest(int(serverID),
                                        objectPath,
-                                       const_cast<QByteArray&>(data),
+                                       data,
                                        *requestID))
+        {
+            RequestManagerPrivate::RequestRecord newRequest;
+            newRequest.requestID = *requestID;
+            newRequest.rawData = true;
+            d->requestList.push_back(newRequest);
             return Ok;
+        }
         else
             return CannotConnect;
     }
 
     ServerConnection::ConnectionStatus errCode =
-                            d->server.sendRequest(serverID,
+                            d->server.sendRequest(int(serverID),
                                                   objectPath,
-                                                  const_cast<QByteArray&>(data),
+                                                  data,
                                                   result);
     if (errCode != ServerConnection::Ok)
         return RequestError(errCode);
-    if (result.length() < 4)
-        return ReplyIncomplete;
+    switch (int(result[0]))
+    {
+        case WICHAT_SERVER_RESPONSE_SUCCESS:
+            return Ok;
+        case WICHAT_SERVER_RESPONSE_BUSY:
+        case WICHAT_SERVER_RESPONSE_IN_MAINTANANCE:
+            return NotAvailable;
+        case WICHAT_SERVER_RESPONSE_INVALID:
+            return UnknownError;
+        case WICHAT_SERVER_RESPONSE_DEVICE_UNSUPPORTED:
+            return VersionTooOld;
+        default:
+            return UnknownError;
+    }
 }
 
 RequestManager::RequestError
@@ -99,9 +136,20 @@ RequestManager::getData(int requestID, QByteArray& buffer)
 
     if (errCode != ServerConnection::Ok)
         return RequestError(errCode);
+
+    int recordIndex = d->getRecordIndexByID(requestID);
+    if (recordIndex < 0)
+        return UnknownError;
+    if (d->requestList[recordIndex].rawData)
+    {
+        buffer = data;
+        d->requestList.removeAt(recordIndex);
+        return Ok;
+    }
+
+     d->requestList.removeAt(recordIndex);
     if (data.length() < 4)
         return ReplyIncomplete;
-
     QByteArray crc32 = data.left(4);
     d->encoder.decrypt(Encryptor::AES,
                                data.mid(4),
@@ -120,37 +168,29 @@ RequestManager::RequestType RequestManager::getRecordType(int requestID)
 {
     Q_D(RequestManager);
 
-    for (int i=0; i<d->requestList.count(); i++)
-    {
-        if (d->requestList[i].requestID == requestID)
-        {
-            return d->requestList[i].type;
-        }
-    }
+    int index = d->getRecordIndexByID(requestID);
+    if (index >= 0)
+        return d->requestList[index].type;
+    else
+        return 0;
 }
 
-void RequestManager::setRecordType(int type, int requestID)
+void RequestManager::setRecordType(int requestID, RequestType type)
 {
     Q_D(RequestManager);
 
-    RequestManagerPrivate::RequestRecord record;
-    record.type = type;
-    record.requestID = requestID;
-    d->requestList.push_back(record);
+    int index = d->getRecordIndexByID(requestID);
+    if (index >= 0)
+        d->requestList[index].type = type;
 }
 
 void RequestManager::removeRequestRecord(int requestID)
 {
     Q_D(RequestManager);
 
-    for (int i=0; i<d->requestList.count(); i++)
-    {
-        if (d->requestList[i].requestID == requestID)
-        {
-            d->requestList.removeAt(i);
-            break;
-        }
-    }
+    int index = d->getRecordIndexByID(requestID);
+    if (index >= 0)
+        d->requestList.removeAt(index);
 }
 
 void RequestManager::onPrivateEvent(int eventType, int data)
@@ -173,6 +213,18 @@ RequestManagerPrivate::RequestManagerPrivate(RequestManager* parent)
             SIGNAL(onRequestFinished(int)),
             this,
             SLOT(onRequestFinished(int)));
+}
+
+int RequestManagerPrivate::getRecordIndexByID(int requestID)
+{
+    for (int i=0; i<requestList.count(); i++)
+    {
+        if (requestList[i].requestID == requestID)
+        {
+            return i;
+        }
+    }
+    return -1;
 }
 
 void RequestManagerPrivate::onRequestFinished(int requestID)

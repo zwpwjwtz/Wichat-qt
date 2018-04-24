@@ -2,7 +2,6 @@
 
 #include "peersession.h"
 #include "Private/peersession_p.h"
-#include "common.h"
 
 #define WICHAT_SESSION_KEY_FILENAME "session2.dat"
 
@@ -102,14 +101,14 @@ bool PeerSession::loadSessionKey(QString userDir, QByteArray& keySalt)
         p2 = plain.indexOf('\0', p1);
         newSession.ID = plain.mid(p1, p2 - p1);
         p2 = plain.indexOf('\0', p1);
-        newSession.sendsKey = plain.mid(p1, p2 - p1);
+        newSession.sendersKey = plain.mid(p1, p2 - p1);
         p2 = plain.indexOf('\0', p1);
         newSession.receiversKey = plain.mid(p1, p2 - p1);
         p2 = plain.indexOf('\0', p1);
         newSession.updateTime = plain.mid(p1, p2 - p1).toInt(&ok);
 
         if (newSession.ID.isEmpty() ||
-            newSession.sendsKey.isEmpty() ||
+            newSession.sendersKey.isEmpty() ||
             newSession.receiversKey.isEmpty() ||
             !ok)
         {
@@ -133,7 +132,7 @@ bool PeerSession::saveSessionKey(QString userDir, QByteArray& keySalt)
     QByteArray plain;
     for (int i=0; i<d->sessionKeyList.count(); i++)
         plain.append(d->sessionKeyList[i].ID).append('\0')
-             .append(d->sessionKeyList[i].sendsKey).append('\0')
+             .append(d->sessionKeyList[i].sendersKey).append('\0')
              .append(d->sessionKeyList[i].receiversKey).append('\0')
              .append(d->sessionKeyList[i].updateTime).append('\0');
     plain.append('\0');

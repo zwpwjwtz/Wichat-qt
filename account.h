@@ -3,7 +3,7 @@
 
 #include <QObject>
 
-
+class RequestManager;
 class AccountPrivate;
 
 class Account : public QObject
@@ -58,6 +58,7 @@ public:
     static const int MaxRemarkLen = 16;
 
     explicit Account();
+    explicit Account(RequestManager& server);
 
     bool checkID(QString ID);
     bool checkPassword(QString password);
@@ -93,7 +94,7 @@ signals:
     void queryFriendInfoFinished(int queryID, QList<AccountInfoEntry> infos);
 
 private:
-    void dispatchQueryRespone(int queryID);
+    void dispatchQueryRespone(int requestID);
 
 private slots:
     void onPrivateEvent(int eventType, int data);

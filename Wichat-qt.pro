@@ -40,7 +40,8 @@ SOURCES += main.cpp\
     serverconfigdialog.cpp \
     global_objects.cpp \
     accountinfodialog.cpp \
-    requestmanager.cpp
+    requestmanager.cpp \
+    conversation.cpp
 
 HEADERS  += mainwindow.h \
     loginwindow.h \
@@ -73,7 +74,9 @@ HEADERS  += mainwindow.h \
     global_objects.h \
     accountinfodialog.h \
     requestmanager.h \
-    Private/requestmanager_p.h
+    Private/requestmanager_p.h \
+    conversation.h \
+    Private/conversation_p.h
 
 FORMS    += mainwindow.ui \
     loginwindow.ui \

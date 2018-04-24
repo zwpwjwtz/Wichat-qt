@@ -13,6 +13,13 @@ protected:
 
 public:
     typedef int RequestType;
+    enum ServerType
+    {
+        RootServer = 0,
+        AccountServer = 2,
+        RecordServer = 3,
+    };
+
     enum RequestError
     {
         Ok = 0,
@@ -27,16 +34,16 @@ public:
     };
 
     explicit RequestManager();
-    void setSessionInfo(QString sessionID, QByteArray key);
+    void setSessionInfo(QByteArray sessionID, QByteArray key);
     RequestError sendRawData(const QByteArray& data,
                              QByteArray& result,
-                             int serverID,
+                             ServerType serverID,
                              QString objectPath,
                              bool synchronous = true,
                              int* requestID = nullptr);
     RequestError sendData(const QByteArray& data,
                           QByteArray& result,
-                          int serverID,
+                          ServerType serverID,
                           QString objectPath,
                           bool synchronous = true,
                           int* requestID = nullptr);

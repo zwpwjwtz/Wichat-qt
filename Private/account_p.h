@@ -50,9 +50,11 @@ public:
     Account::OnlineState currentState;
     QString currentOfflineMsg;
     Encryptor encoder;
-    RequestManager server;
+    RequestManager* server;
+    bool defaultServer;
 
-    AccountPrivate(Account* parent = 0);
+    AccountPrivate(Account* parent = 0, RequestManager *server = 0);
+    ~AccountPrivate();
     void parseAccountList(QByteArray& data,
                           QByteArray listType,
                           QList<Account::AccountListEntry>& list);

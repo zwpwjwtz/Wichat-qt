@@ -17,7 +17,7 @@ public:
     struct SessionKeyData : public AbstractSessionData
     {
         QString ID;
-        QByteArray sendsKey;
+        QByteArray sendersKey;
         QByteArray receiversKey;
         qint64 updateTime;
     };

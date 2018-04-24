@@ -2,13 +2,15 @@
 #define GLOBAL_OBJECTS_H
 
 #include "wichatconfig.h"
-#include "serverconnection.h"
+#include "requestmanager.h"
 #include "account.h"
+#include "conversation.h"
 #include "mainwindow.h"
 
 extern WichatConfig globalConfig;
-extern ServerConnection globalConnection;
+extern RequestManager globalConnection;
 extern Account globalAccount;
+extern Conversation globalConversation;
 
 extern MainWindow* globalMainWindow;
 

@@ -1,6 +1,7 @@
 #include "global_objects.h"
 
 WichatConfig globalConfig;
-ServerConnection globalConnection;
-Account globalAccount;
+RequestManager globalConnection;
+Account globalAccount(globalConnection);
+Conversation globalConversation(globalConnection);
 MainWindow* globalMainWindow = nullptr;

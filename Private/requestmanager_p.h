@@ -23,6 +23,7 @@ public:
     {
         int requestID;
         RecordType type;
+        bool rawData;
     };
 
     enum PrivateEventType
@@ -30,13 +31,14 @@ public:
         RequestFinished = 1
     };
 
-    QString currentSession;
+    QByteArray currentSession;
     QByteArray sessionKey;
     Encryptor encoder;
     ServerConnection server;
     QList<RequestRecord> requestList;
 
     RequestManagerPrivate(RequestManager *parent = 0);
+    int getRecordIndexByID(int requestID);
 
 signals:
     void privateEvent(PrivateEventType eventType, int data);
