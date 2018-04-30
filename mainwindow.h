@@ -5,7 +5,9 @@
 #include <QStandardItemModel>
 #include <QQueue>
 #include <QTimer>
+#include <QEventLoop>
 #include "account.h"
+#include "conversation.h"
 #include "usersession.h"
 #include "peersession.h"
 #include "notification.h"
@@ -53,7 +55,8 @@ private:
         taskUpdateAll = 7,
         taskGetMsgList = 8,
         taskReloadMsg = 9,
-        taskRebuildConnection = 10
+        taskRebuildConnection = 10,
+        taskConversationLogin = 11
     };
 
     Ui::MainWindow *ui;
@@ -72,13 +75,18 @@ private:
     QList<QTextEdit*> editorList;
     QStandardItemModel listFriendModel;
     QTimer timer;
+    QEventLoop conversationLock;
     UserSession userSessionList;
     PeerSession peerSessionList;
     QString userID;
     QQueue<TaskType> taskList;
+    QQueue<QString> brokenConnectionList;
+    QMap<int, QString> queryList;
     Notification noteList;
     bool manualExit;
+    int conversationLoginState;
     int lastHoveredTab;
+    static const int MaxEmotion = 66;
 
     void addTask(TaskType task);
     void doTask();
@@ -100,9 +108,12 @@ private:
     void updateSysTrayMenu();
     void updateFriendList();
     QString getStateImagePath(QString ID);
+    void conversationLogin();
     void getMessageList();
     void showNotification();
     void fixBrokenConnection();
+    QString addSenderInfo(const QString& content, QString ID);
+    QString extractHTMLTag(const QString& rawHTML, QString tagName);
     static QString stateToImagePath(int stateNumber, bool displayHide = false);
 
 private slots:
@@ -115,6 +126,14 @@ private slots:
                                     QList<Account::AccountListEntry> friends);
     void onGetFriendInfoFinished(int queryID,
                                  QList<Account::AccountInfoEntry> infoList);
+    void onConnectionBroken(QString ID);
+    void onConversationVerifyFinished(int queryID,
+                                      Conversation::VerifyError errorCode);
+    void onResetSessionFinished(int queryID, bool successful);
+    void onSendMessageFinished(int queryID, bool successful);
+    void onGetMessageListFinished(int queryID,
+                                  QList<Conversation::AccountListEntry> msgList);
+    void onReceiveMessageFinished(int queryID, QByteArray& content);
 
     // Customized slots for UI events
     void onTimerTimeout();

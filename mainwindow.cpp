@@ -1,4 +1,4 @@
-﻿#include <QMessageBox>
+#include <QMessageBox>
 #include <QCloseEvent>
 #include <QKeyEvent>
 #include <QStackedLayout>
@@ -35,6 +35,8 @@
 #define WICHAT_MAIN_MENU_FRIEND_OPEN "open"
 #define WICHAT_MAIN_MENU_FRIEND_REMOVE "remove"
 #define WICHAT_MAIN_MENU_FRIEND_INFO "info"
+
+#define WICHAT_MAIN_TIME_FORMAT "yyyy-MM-dd hh:mm:ss"
 
 
 Account::OnlineState Wichat_stateList[4] = {
@@ -134,6 +136,34 @@ MainWindow::MainWindow(QWidget *parent) :
             &Account::queryFriendInfoFinished,
             this,
             &MainWindow::onGetFriendInfoFinished);
+    connect(&globalConversation,
+            &Conversation::connectionBroken,
+            this,
+            &MainWindow::onConnectionBroken);
+    connect(&globalConversation,
+            &Conversation::verifyFinished,
+            this,
+            &MainWindow::onConversationVerifyFinished);
+    connect(&globalConversation,
+            &Conversation::resetSessionFinished,
+            this,
+            &MainWindow::onResetSessionFinished);
+    connect(&globalConversation,
+            &Conversation::sendMessageFinished,
+            this,
+            &MainWindow::onSendMessageFinished);
+    connect(&globalConversation,
+            &Conversation::getMessageListFinished,
+            this,
+            &MainWindow::onGetMessageListFinished);
+    connect(&globalConversation,
+            &Conversation::receiveMessageFinished,
+            this,
+            &MainWindow::onReceiveMessageFinished);
+    connect(&globalConversation,
+            &Conversation::verifyFinished,
+            &(this->conversationLock),
+            &QEventLoop::quit);
     connect(buttonTabClose,
             SIGNAL(clicked(bool)),
             this,
@@ -193,6 +223,9 @@ void MainWindow::init()
         loadSession(userSessionList.currentSession().ID);
     }
     applyUserSettings();
+
+    globalConversation.setPeerSession(peerSessionList);
+    globalConversation.setUserDirectory(globalConfig.userDirectory(userID));
 
     sysTrayIcon->show();
     updateSysTrayMenu();
@@ -299,8 +332,8 @@ void MainWindow::doTask()
             refreshTab();
             break;
         case taskUpdateAll:
-            addTask(taskGetMsgList);
             addTask(taskUpdateFriList);
+            addTask(taskGetMsgList);
             break;
         case taskGetMsgList:
             QCoreApplication::processEvents();
@@ -312,6 +345,9 @@ void MainWindow::doTask()
             break;
         case taskRebuildConnection:
             fixBrokenConnection();
+            break;
+        case taskConversationLogin:
+            conversationLogin();
             break;
         default:;
     }
@@ -428,21 +464,22 @@ void MainWindow::loadSessionContent(QString ID)
 {
     // Clear possible notifications of in-coming messages
     UserSession::SessionData& session = userSessionList.getSession(ID);
-    const Notification::Note* note;
     bool receivedMsg = false;
-    for (int i=0; i<noteList.count(); i++)
+    QList<Notification::Note> notes = noteList.getAll();
+    for (int i=0; i<notes.count(); i++)
     {
-        note = &noteList.peek(i);
-        if (note->source == ID && note->type == Notification::GotMsg)
+        if (notes[i].source == ID && notes[i].type == Notification::GotMsg)
         {
-            noteList.remove(i);
+            noteList.remove(notes[i].ID);
             receivedMsg = true;
         }
     }
 
     if (receivedMsg && ID != userID)
     {
-        // TODO: receiveMessage(ID)
+        int queryID;
+        globalConversation.receiveMessage(ID, queryID);
+        queryList[queryID] = ID;
     }
 
     // Load cached session content from session data
@@ -472,8 +509,73 @@ void MainWindow::loadSessionContent(QString ID)
 
 QByteArray MainWindow::renderHTML(const QByteArray& content)
 {
-    QByteArray result;
-    // TODO
+    int p1, p2, p3, p4;
+    QByteArray temp;
+    QByteArray result = content;
+
+    // Deal with emoticon
+    p2 = 0;
+    while(true)
+    {
+        p1 = result.indexOf("<emotion>", p2);
+        p2 = result.indexOf("</emotion>", p1);
+        if (p1 < 0 || p2 < 0)
+            break;
+        int emotionIndex = int(QString(result.mid(p1 + 9, p2 - p1 - 9))
+                                      .toInt());
+        // TODO: parse emoticon
+
+        result.replace(p1, p2 - p1, temp);
+    }
+
+    // Deal with image
+    p2 = 0;
+    while(true)
+    {
+        p1 = result.indexOf("<image>", p2);
+        p2 = result.indexOf("</image>", p1);
+        if (p1 < 0 || p2 < 0)
+            break;
+        QString fileName = result.mid(p1 + 6, p2 - p1 - 6);
+        temp = QByteArray("<img src=""file://")
+                    .append(fileName.toLatin1())
+                    .append(""" />");
+
+        result.replace(p1, p2 - p1, temp);
+    }
+
+    // Deal with file
+    p2 = 0;
+    while(true)
+    {
+        p1 = result.indexOf("<file>", p2);
+        p2 = result.indexOf("</file>", p1);
+        if (p1 < 0 || p2 < 0)
+            break;
+        QString fileName = result.mid(p1 + 6, p2 - p1 - 6);
+
+        QString noteText;
+        p3 = result.lastIndexOf("<div class=s", p1 - 1);
+        p4 = result.lastIndexOf("<div class=r", p1 - 1);
+        if (p3 >= 0 && p4  < p3)
+            noteText = QString("You sent file ""%1"" to him/her.")
+                              .arg(fileName);
+        else
+            noteText = QString("He/she sent file ""%1"" to you.")
+                              .arg(fileName);
+        temp = QByteArray("<div style=""width:300px;border:1px solid;"">"
+                          "<div style=""float:right"">")
+                    .append(noteText.toLatin1())
+                    .append("<a href=""file://")
+                    .append("<img src=""file://")
+                    .append(fileName.toLatin1())
+                    .append(""" />")
+                    .append(fileName)
+                    .append(""" target=_blank>View the file</a></div></div>");
+
+        result.replace(p1, p2 - p1, temp);
+    }
+
     return result;
 }
 
@@ -640,9 +742,27 @@ QString MainWindow::getStateImagePath(QString ID)
     return image;
 }
 
+void MainWindow::conversationLogin()
+{
+    switch (conversationLoginState)
+    {
+        case 0: // Not logged in
+            globalConversation.verify(globalAccount.sessionID(),
+                                  globalAccount.sessionKey());
+            conversationLoginState = 1;
+        case 1: // Waiting for server response
+            conversationLock.exec();
+            break;
+        case 2: // Logged in successfully
+        default:
+            break;
+    }
+}
+
 void MainWindow::getMessageList()
 {
-
+    conversationLogin();
+    globalConversation.getMessageList();
 }
 
 void MainWindow::showNotification()
@@ -652,7 +772,101 @@ void MainWindow::showNotification()
 
 void MainWindow::fixBrokenConnection()
 {
+    int queryID;
+    QString sessionID = brokenConnectionList.dequeue();
+    conversationLogin();
+    globalConversation.fixBrokenConnection(sessionID,
+                                           queryID);
+    queryList[queryID] = sessionID;
+}
 
+QString MainWindow::addSenderInfo(const QString& content, QString ID)
+{
+    QString configString;
+    QString styleStringHeader, styleStringFooter;
+    QString result("<div class=s><b>%ID%</b>&nbsp;&nbsp;%TIME%</div>");
+
+    // Set up <font> tag
+    configString = globalConfig.prefFontFamily(ID);
+    if (!configString.isEmpty())
+        styleStringHeader.append("face=\"")
+                        .append(configString)
+                        .append("\"");
+    configString = globalConfig.prefFontColor(ID);
+    if (!configString.isEmpty())
+        styleStringHeader.append(" color=\"")
+                        .append(configString)
+                        .append("\"");
+    configString = globalConfig.prefFontSize(ID);
+    if (!configString.isEmpty())
+        styleStringHeader.append("style=\"font-size:")
+                        .append(configString)
+                        .append("\"");
+    if (!styleStringHeader.isEmpty())
+    {
+        styleStringHeader.prepend("<font ").append('>');
+        styleStringFooter = "</font>";
+    }
+    configString = globalConfig.prefFontStyle(ID);
+    if (configString == WICHAT_MAIN_FONT_STYLE_BOLD)
+    {
+        styleStringHeader.append("<b>");
+        styleStringFooter.append("</b>");
+    }
+    else if (configString == WICHAT_MAIN_FONT_STYLE_ITALIC)
+    {
+        styleStringHeader.append("<i>");
+        styleStringFooter.append("</i>");
+    }
+    else if (configString == WICHAT_MAIN_FONT_STYLE_UNDERLINE)
+    {
+        styleStringHeader.append("<u>");
+        styleStringFooter.append("</u>");
+    }
+    else if (configString == WICHAT_MAIN_FONT_STYLE_STRIKEOUT)
+    {
+        styleStringHeader.append("<del>");
+        styleStringFooter.append("</del>");
+    }
+    else if (configString == WICHAT_MAIN_FONT_STYLE_OVERLINE)
+    {
+        styleStringHeader.append("<span style=\"text-decoration:overline\">");
+        styleStringFooter.append("</span>");
+    }
+
+    // Set up alignment tag
+    configString = globalConfig.prefFontStyle(ID);
+    if (configString == WICHAT_MAIN_TEXT_ALIGN_CENTER)
+        styleStringHeader.prepend(" align=left>");
+    else if (configString == WICHAT_MAIN_TEXT_ALIGN_RIGHT)
+        styleStringHeader.prepend(" align=right>");
+    else
+        styleStringHeader.prepend(">");
+
+    styleStringHeader.prepend("<div class=c");
+    styleStringFooter.append("</div>");
+    result.replace("%ID%", ID);
+    result.replace("%TIME%", QDateTime::currentDateTime()
+                                           .toString(WICHAT_MAIN_TIME_FORMAT));
+    result.append(styleStringHeader).append(content).append(styleStringFooter);
+
+    return result;
+}
+
+QString MainWindow::extractHTMLTag(const QString& rawHTML, QString tagName)
+{
+    int p1, p2, p3;
+    QString tagBegin(tagName), tagEnd(tagName);
+    tagBegin.prepend('<');
+    tagEnd.prepend("</").append('>');
+
+    p1 = rawHTML.indexOf(tagBegin, 0, Qt::CaseInsensitive);
+    p2 = rawHTML.indexOf('>', p1);
+    p3 = rawHTML.indexOf(tagEnd, 0, Qt::CaseInsensitive);
+    if (p1 >= 0 && p2 > p1 && p3 > p2)
+        return rawHTML.mid(p2 + 1, p3 - p2 - 1);
+    else
+        return "";
 }
 
 QString MainWindow::stateToImagePath(int stateNumber, bool displayHide)
@@ -740,6 +954,72 @@ void MainWindow::onGetFriendInfoFinished(int queryID,
     accountInfo->ID = infoList[0].ID;
     accountInfo->offlineMsg = infoList[0].offlineMsg;
     accountInfo->show();
+}
+
+void MainWindow::onConnectionBroken(QString ID)
+{
+    brokenConnectionList.enqueue(ID);
+    addTask(taskRebuildConnection);
+}
+
+void MainWindow::onConversationVerifyFinished(int queryID,
+                                            Conversation::VerifyError errorCode)
+{
+    if (errorCode == Conversation::VerifyError::Ok)
+    {
+        conversationLoginState = 2;
+        peerSessionList.loadSessionKey(globalConfig.userDirectory(userID),
+                                       globalConversation.keySalt());
+    }
+    else
+        conversationLoginState = 0;
+}
+
+void MainWindow::onResetSessionFinished(int queryID, bool successful)
+{
+    if (!successful)
+        addTask(taskConversationLogin);
+}
+
+void MainWindow::onSendMessageFinished(int queryID, bool successful)
+{
+    if (successful)
+        return;
+
+    QString destination = queryList.value(queryID);
+    queryList.remove(queryID);
+    if (!destination.isEmpty())
+        QMessageBox::warning(this, "Failed to send message",
+                             QString("Wichat failed to send message to %1.\n"
+                             "Please check your network, then try again.")
+                             .arg(destination));
+}
+
+void MainWindow::onGetMessageListFinished(int queryID,
+                                QList<Conversation::AccountListEntry> msgList)
+{
+    Notification::Note newNote;
+    newNote.destination = userID;
+    newNote.type = Notification::GotMsg;
+    newNote.time = QDateTime::currentDateTime();
+    for (int i=0; i<msgList.count(); i++)
+    {
+        newNote.source = msgList[i].ID;
+        newNote.ID = noteList.getNewID();
+        noteList.append(newNote);
+    }
+}
+
+void MainWindow::onReceiveMessageFinished(int queryID, QByteArray& content)
+{
+    QString sourceID = queryList.value(queryID);
+    if (sourceID.isEmpty())
+        return;
+    queryList.remove(queryID);
+
+    content.replace("<div class=s>", "<div class=r>");
+    userSessionList.getSession(sourceID).cache.append(content);
+    browserList[getSessionIndex(sourceID)]->append(renderHTML(content));
 }
 
 void MainWindow::onTimerTimeout()
@@ -1048,9 +1328,24 @@ void MainWindow::on_buttonSend_clicked()
     if (sessionIndex < 0)
         return;
 
-    // TODO: sendMessage(ID, content)
+    int queryID;
+    QByteArray content;
+    content = addSenderInfo(extractHTMLTag(editorList[sessionIndex]->toHtml(),
+                                           "body"),
+                            userID).toUtf8();
+    if (sessionID != userID)
+    {
+        if (!globalConversation.sendMessage(sessionID, content, queryID))
+        {
+            QMessageBox::warning(this, "Cannot send message",
+                                 "Wichat is currently unable to send message.");
+            return;
+        }
+        else
+            queryList[queryID] = sessionID;
+    }
 
-    browserList[sessionIndex]->append(editorList[sessionIndex]->toHtml());
+    browserList[sessionIndex]->append(content);
     editorList[sessionIndex]->clear();
 }
 

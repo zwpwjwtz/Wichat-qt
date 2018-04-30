@@ -157,6 +157,18 @@ QString Account::ID()
     return d->currentID;
 }
 
+QByteArray Account::sessionID()
+{
+    Q_D(Account);
+    return d->currentSession;
+}
+
+QByteArray Account::sessionKey()
+{
+    Q_D(Account);
+    return d->sessionKey;
+}
+
 bool Account::setPassword(QString oldPassword, QString newPassword)
 {
     Q_D(Account);
@@ -188,9 +200,7 @@ bool Account::resetSession(int& queryID)
                             false, &queryID))
         return false;
 
-    d->server->setRecordType(queryID,
-                            RequestManager::RequestType(
-                                AccountPrivate::RequestType::ResetSession));
+    d->addRequest(queryID, AccountPrivate::RequestType::ResetSession);
     return true;
 }
 
@@ -216,9 +226,7 @@ bool Account::setState(OnlineState newState, int& queryID)
                             false, &queryID))
         return false;
 
-    d->server->setRecordType(queryID,
-                            RequestManager::RequestType(
-                                AccountPrivate::RequestType::SetState));
+    d->addRequest(queryID, AccountPrivate::RequestType::SetState);
     return true;
 }
 
@@ -247,9 +255,8 @@ bool Account::setOfflineMsg(QString newMessage, int &queryID)
         return false;
 
     d->currentOfflineMsg = newMessage;
-    d->server->setRecordType(queryID,
-                            RequestManager::RequestType(
-                                AccountPrivate::RequestType::SetOfflineMsg));
+
+    d->addRequest(queryID, AccountPrivate::RequestType::SetOfflineMsg);
     return true;
 }
 
@@ -267,9 +274,7 @@ bool Account::queryFriendList(int& queryID)
                             false, &queryID))
         return false;
 
-    d->server->setRecordType(queryID,
-                            RequestManager::RequestType(
-                                AccountPrivate::RequestType::GetFriendList));
+    d->addRequest(queryID, AccountPrivate::RequestType::GetFriendList);
     return true;
 }
 
@@ -290,9 +295,7 @@ bool Account::addFriend(QString ID, int &queryID)
                             false, &queryID))
         return false;
 
-    d->server->setRecordType(queryID,
-                            RequestManager::RequestType(
-                                AccountPrivate::RequestType::AddFriend));
+    d->addRequest(queryID, AccountPrivate::RequestType::AddFriend);
     return true;
 }
 
@@ -313,9 +316,7 @@ bool Account::removeFriend(QString ID, int& queryID)
                             false, &queryID))
         return false;
 
-    d->server->setRecordType(queryID,
-                            RequestManager::RequestType(
-                                AccountPrivate::RequestType::RemoveFriend));
+    d->addRequest(queryID, AccountPrivate::RequestType::RemoveFriend);
     return true;
 }
 
@@ -341,9 +342,7 @@ bool Account::queryFriendRemarks(QList<QString> IDs, int &queryID)
                             false, &queryID))
         return false;
 
-    d->server->setRecordType(queryID,
-                            RequestManager::RequestType(
-                                AccountPrivate::RequestType::GetFriendRemarks));
+    d->addRequest(queryID, AccountPrivate::RequestType::GetFriendRemarks);
     return true;
 }
 
@@ -364,9 +363,7 @@ bool Account::setFriendRemarks(QString ID, QString remarks, int &queryID)
                             false, &queryID))
         return false;
 
-    d->server->setRecordType(queryID,
-                            RequestManager::RequestType(
-                                AccountPrivate::RequestType::SetFriendRemarks));
+    d->addRequest(queryID, AccountPrivate::RequestType::SetFriendRemarks);
     return true;
 }
 
@@ -387,9 +384,7 @@ bool Account::queryFriendInfo(QString ID, int& queryID)
                             false, &queryID))
         return false;
 
-    d->server->setRecordType(queryID,
-                            RequestManager::RequestType(
-                                AccountPrivate::RequestType::GetFriendInfo));
+    d->addRequest(queryID, AccountPrivate::RequestType::GetFriendInfo);
     return true;
 }
 
@@ -400,8 +395,8 @@ void Account::dispatchQueryRespone(int requestID)
     bool successful;
     QByteArray data;
     QList<QByteArray> tempList;
-    AccountPrivate::RequestType requestType =
-            AccountPrivate::RequestType(d->server->getRecordType(requestID));
+    int requestIndex = d->getRequestIndexByID(requestID);
+    AccountPrivate::RequestType requestType = d->requestList[requestIndex].type;
     RequestManager::RequestError errCode = d->server->getData(requestID, data);
     if (errCode == RequestManager::Ok)
     {
@@ -506,14 +501,18 @@ void Account::dispatchQueryRespone(int requestID)
         emit queryError(requestID, QueryError::NetworkError);
     else
         emit queryError(requestID, QueryError::UnknownError);
+
+    d->requestList.removeAt(requestIndex);
 }
 
 void Account::onPrivateEvent(int eventType, int data)
 {
+    Q_D(Account);
     switch (AccountPrivate::PrivateEventType(eventType))
     {
         case AccountPrivate::RequestFinished:
-            dispatchQueryRespone(data);
+            if (d->getRequestIndexByID(data) >= 0)
+                dispatchQueryRespone(data);
             break;
         default:;
     }
@@ -542,6 +541,24 @@ AccountPrivate::~AccountPrivate()
 {
     if (this->defaultServer)
         delete this->server;
+}
+
+int AccountPrivate::getRequestIndexByID(int requestID)
+{
+    for (int i=0; i<requestList.count(); i++)
+    {
+        if (requestList[i].ID == requestID)
+            return i;
+    }
+    return -1;
+}
+
+void AccountPrivate::addRequest(int requestID, RequestType type)
+{
+    RequestInfo request;
+    request.ID = requestID;
+    request.type = type;
+    requestList.append(request);
 }
 
 bool AccountPrivate::processReplyData(RequestType type, QByteArray& data)

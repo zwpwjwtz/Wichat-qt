@@ -12,12 +12,11 @@ protected:
     RequestManagerPrivate* d_ptr;
 
 public:
-    typedef int RequestType;
     enum ServerType
     {
         RootServer = 0,
-        AccountServer = 2,
-        RecordServer = 3,
+        AccountServer = 1,
+        RecordServer = 2,
     };
 
     enum RequestError
@@ -48,9 +47,7 @@ public:
                           bool synchronous = true,
                           int* requestID = nullptr);
     RequestError getData(int requestID, QByteArray& buffer);
-    RequestType getRecordType(int requestID);
-    void setRecordType(int requestID, RequestType type);
-    void removeRequestRecord(int requestID);
+    void removeRequest(int requestID);
 
 signals:
     void onRequestFinished(int requestID);

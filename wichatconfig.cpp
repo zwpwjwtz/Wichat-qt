@@ -124,7 +124,7 @@ int WichatConfig::lastLoginState(QString userID)
     Q_D(WichatConfig);
     if (!d->switchUser(userID))
         return -1;
-    return d->userConfig.value(WICHAT_CONFIG_KEY_LOGIN_STATE).toInt();
+    return d->userConfig->value(WICHAT_CONFIG_KEY_LOGIN_STATE).toInt();
 }
 
 void WichatConfig::setLastLoginState(QString userID, int state)
@@ -132,7 +132,7 @@ void WichatConfig::setLastLoginState(QString userID, int state)
     Q_D(WichatConfig);
     if (!d->switchUser(userID))
         return;
-    d->userConfig.setValue(WICHAT_CONFIG_KEY_LOGIN_STATE, state);
+    d->userConfig->setValue(WICHAT_CONFIG_KEY_LOGIN_STATE, state);
 }
 
 bool WichatConfig::rememberPassword(QString userID)
@@ -140,7 +140,7 @@ bool WichatConfig::rememberPassword(QString userID)
     Q_D(WichatConfig);
     if (!d->switchUser(userID))
         return false;
-    return d->userConfig.value(WICHAT_CONFIG_KEY_LOGIN_REM).toBool();
+    return d->userConfig->value(WICHAT_CONFIG_KEY_LOGIN_REM).toBool();
 }
 
 void WichatConfig::setRememberPassword(QString userID, bool remember)
@@ -148,7 +148,7 @@ void WichatConfig::setRememberPassword(QString userID, bool remember)
     Q_D(WichatConfig);
     if (!d->switchUser(userID))
         return;
-    d->userConfig.setValue(WICHAT_CONFIG_KEY_LOGIN_REM, remember);
+    d->userConfig->setValue(WICHAT_CONFIG_KEY_LOGIN_REM, remember);
 }
 
 QVector<QString> WichatConfig::lastSessions(QString userID)
@@ -156,7 +156,7 @@ QVector<QString> WichatConfig::lastSessions(QString userID)
     Q_D(WichatConfig);
     if (!d->switchUser(userID))
         return QVector<QString>();
-    return d->userConfig.value(WICHAT_CONFIG_KEY_SESSION_LAST)
+    return d->userConfig->value(WICHAT_CONFIG_KEY_SESSION_LAST)
                         .toString().split(';').toVector();
 }
 
@@ -171,7 +171,7 @@ void WichatConfig::setLastSession(QString userID, QVector<QString> lastSessions)
         sessionIdList.append(lastSessions[i]).append(';');
     if (sessionIdList[sessionIdList.length() - 1] == ';')
         sessionIdList.chop(1);
-    d->userConfig.setValue(WICHAT_CONFIG_KEY_SESSION_LAST, sessionIdList);
+    d->userConfig->setValue(WICHAT_CONFIG_KEY_SESSION_LAST, sessionIdList);
 }
 
 QString WichatConfig::prefFontFamily(QString userID)
@@ -179,7 +179,7 @@ QString WichatConfig::prefFontFamily(QString userID)
     Q_D(WichatConfig);
     if (!d->switchUser(userID))
         return "";
-    return d->userConfig.value(WICHAT_CONFIG_KEY_PREF_FONT_FAMILY).toString();
+    return d->userConfig->value(WICHAT_CONFIG_KEY_PREF_FONT_FAMILY).toString();
 }
 
 void WichatConfig::setPrefFontFamily(QString userID, QString family)
@@ -187,7 +187,7 @@ void WichatConfig::setPrefFontFamily(QString userID, QString family)
     Q_D(WichatConfig);
     if (!d->switchUser(userID))
         return;
-    d->userConfig.setValue(WICHAT_CONFIG_KEY_PREF_FONT_FAMILY, family);
+    d->userConfig->setValue(WICHAT_CONFIG_KEY_PREF_FONT_FAMILY, family);
 }
 
 QString WichatConfig::prefFontSize(QString userID)
@@ -195,7 +195,7 @@ QString WichatConfig::prefFontSize(QString userID)
     Q_D(WichatConfig);
     if (!d->switchUser(userID))
         return "";
-    return d->userConfig.value(WICHAT_CONFIG_KEY_PREF_FONT_SIZE).toString();
+    return d->userConfig->value(WICHAT_CONFIG_KEY_PREF_FONT_SIZE).toString();
 }
 
 void WichatConfig::setPrefFontSize(QString userID, QString size)
@@ -203,7 +203,7 @@ void WichatConfig::setPrefFontSize(QString userID, QString size)
     Q_D(WichatConfig);
     if (!d->switchUser(userID))
         return;
-    d->userConfig.setValue(WICHAT_CONFIG_KEY_PREF_FONT_SIZE, size);
+    d->userConfig->setValue(WICHAT_CONFIG_KEY_PREF_FONT_SIZE, size);
 }
 
 QString WichatConfig::prefFontColor(QString userID)
@@ -211,7 +211,7 @@ QString WichatConfig::prefFontColor(QString userID)
     Q_D(WichatConfig);
     if (!d->switchUser(userID))
         return "";
-    return d->userConfig.value(WICHAT_CONFIG_KEY_PREF_FONT_COLOR).toString();
+    return d->userConfig->value(WICHAT_CONFIG_KEY_PREF_FONT_COLOR).toString();
 }
 
 void WichatConfig::setPrefFontColor(QString userID, QString color)
@@ -219,7 +219,7 @@ void WichatConfig::setPrefFontColor(QString userID, QString color)
     Q_D(WichatConfig);
     if (!d->switchUser(userID))
         return;
-    d->userConfig.setValue(WICHAT_CONFIG_KEY_PREF_FONT_COLOR, color);
+    d->userConfig->setValue(WICHAT_CONFIG_KEY_PREF_FONT_COLOR, color);
 }
 
 QString WichatConfig::prefFontStyle(QString userID)
@@ -227,7 +227,7 @@ QString WichatConfig::prefFontStyle(QString userID)
     Q_D(WichatConfig);
     if (!d->switchUser(userID))
         return "";
-    return d->userConfig.value(WICHAT_CONFIG_KEY_PREF_FONT_STYLE).toString();
+    return d->userConfig->value(WICHAT_CONFIG_KEY_PREF_FONT_STYLE).toString();
 }
 
 void WichatConfig::setPrefFontStyle(QString userID, QString style)
@@ -235,7 +235,7 @@ void WichatConfig::setPrefFontStyle(QString userID, QString style)
     Q_D(WichatConfig);
     if (!d->switchUser(userID))
         return;
-    d->userConfig.setValue(WICHAT_CONFIG_KEY_PREF_FONT_STYLE, style);
+    d->userConfig->setValue(WICHAT_CONFIG_KEY_PREF_FONT_STYLE, style);
 }
 
 QString WichatConfig::prefTextAlign(QString userID)
@@ -243,7 +243,7 @@ QString WichatConfig::prefTextAlign(QString userID)
     Q_D(WichatConfig);
     if (!d->switchUser(userID))
         return "";
-    return d->userConfig.value(WICHAT_CONFIG_KEY_PREF_TEXT_ALIGN).toString();
+    return d->userConfig->value(WICHAT_CONFIG_KEY_PREF_TEXT_ALIGN).toString();
 }
 
 void WichatConfig::setPrefTextAlign(QString userID, QString alignMode)
@@ -251,7 +251,7 @@ void WichatConfig::setPrefTextAlign(QString userID, QString alignMode)
     Q_D(WichatConfig);
     if (!d->switchUser(userID))
         return;
-    d->userConfig.setValue(WICHAT_CONFIG_KEY_PREF_TEXT_ALIGN, alignMode);
+    d->userConfig->setValue(WICHAT_CONFIG_KEY_PREF_TEXT_ALIGN, alignMode);
 }
 
 int WichatConfig::prefSendKey(QString userID)
@@ -259,7 +259,7 @@ int WichatConfig::prefSendKey(QString userID)
     Q_D(WichatConfig);
     if (!d->switchUser(userID))
         return -1;
-    return d->userConfig.value(WICHAT_CONFIG_KEY_PREF_KEY_SEND).toInt();
+    return d->userConfig->value(WICHAT_CONFIG_KEY_PREF_KEY_SEND).toInt();
 }
 
 void WichatConfig::setPrefSendKey(QString userID, int keyCode)
@@ -267,7 +267,7 @@ void WichatConfig::setPrefSendKey(QString userID, int keyCode)
     Q_D(WichatConfig);
     if (!d->switchUser(userID))
         return;
-    d->userConfig.setValue(WICHAT_CONFIG_KEY_PREF_KEY_SEND, keyCode);
+    d->userConfig->setValue(WICHAT_CONFIG_KEY_PREF_KEY_SEND, keyCode);
 }
 
 int WichatConfig::prefScreenShot(QString userID)
@@ -275,7 +275,7 @@ int WichatConfig::prefScreenShot(QString userID)
     Q_D(WichatConfig);
     if (!d->switchUser(userID))
         return -1;
-    return d->userConfig.value(WICHAT_CONFIG_KEY_PREF_SCNSHOT).toInt();
+    return d->userConfig->value(WICHAT_CONFIG_KEY_PREF_SCNSHOT).toInt();
 }
 
 void WichatConfig::setPrefScreenShot(QString userID, int hidden)
@@ -283,7 +283,7 @@ void WichatConfig::setPrefScreenShot(QString userID, int hidden)
     Q_D(WichatConfig);
     if (!d->switchUser(userID))
         return;
-    d->userConfig.setValue(WICHAT_CONFIG_KEY_PREF_SCNSHOT, hidden);
+    d->userConfig->setValue(WICHAT_CONFIG_KEY_PREF_SCNSHOT, hidden);
 }
 
 int WichatConfig::prefNotify(QString userID)
@@ -291,7 +291,7 @@ int WichatConfig::prefNotify(QString userID)
     Q_D(WichatConfig);
     if (!d->switchUser(userID))
         return -1;
-    return d->userConfig.value(WICHAT_CONFIG_KEY_PREF_NOTIFY).toInt();
+    return d->userConfig->value(WICHAT_CONFIG_KEY_PREF_NOTIFY).toInt();
 }
 
 void WichatConfig::setPrefNotify(QString userID, int notifyLevel)
@@ -299,12 +299,13 @@ void WichatConfig::setPrefNotify(QString userID, int notifyLevel)
     Q_D(WichatConfig);
     if (!d->switchUser(userID))
         return;
-    d->userConfig.setValue(WICHAT_CONFIG_KEY_PREF_NOTIFY, notifyLevel);
+    d->userConfig->setValue(WICHAT_CONFIG_KEY_PREF_NOTIFY, notifyLevel);
 }
 
 WichatConfigPrivate::WichatConfigPrivate(WichatConfig* parent)
 {
     this->q_ptr = parent;
+    this->userConfig = nullptr;
 }
 
 bool WichatConfigPrivate::switchUser(QString userID)
@@ -336,8 +337,11 @@ bool WichatConfigPrivate::switchUser(QString userID)
     }
 
     currentUserDir = userDir.path();
-    userConfig.setPath(QSettings::NativeFormat,
-                       QSettings::UserScope,
-                       currentUserDir.append(WICHAT_CONFIG_FILENAME_USER));
+    if (!userConfig)
+        delete userConfig;
+    userConfig = new QSettings(currentUserDir.append('/')
+                               .append(WICHAT_CONFIG_FILENAME_USER),
+                               QSettings::NativeFormat,
+                               this);
     return true;
 }

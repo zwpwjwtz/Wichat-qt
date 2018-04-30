@@ -15,6 +15,8 @@
 #define WICHAT_SERVER_RESPONSE_RES_EOF 3
 #define WICHAT_SERVER_RESPONSE_RES_OUT_RANGE 4
 
+#define WICHAT_SESSION_FILE_CACHE_DIR "cache"
+
 
 Conversation::Conversation()
 {
@@ -67,16 +69,23 @@ bool Conversation::verify(QByteArray sessionID, QByteArray sessionKey)
                 == RequestManager::CannotConnect)
         return false;
 
-    d->server->setRecordType(queryID,
-                             RequestManager::RequestType(
-                                    ConversationPrivate::RequestType::Verify));
+    d->tempLoginKey = d->encoder.getHMAC(sessionKey, d->tempLoginKey)
+                                .left(KeyLen);
+    d->tempSession = sessionID;
+    d->addRequest(queryID, ConversationPrivate::RequestType::Verify);
     return true;
 }
 
-void Conversation::setRecordPath(QString path)
+QByteArray& Conversation::keySalt()
 {
     Q_D(Conversation);
-    d->recordDir = path;
+    return d->keySalt;
+}
+
+void Conversation::setUserDirectory(QString path)
+{
+    Q_D(Conversation);
+    d->userDir = path;
 }
 
 void Conversation::setPeerSession(PeerSession& sessionList)
@@ -109,10 +118,15 @@ bool Conversation::sendMessage(QString ID, QByteArray &content, int& queryID)
     QByteArray* bufferIn = new QByteArray;
     QByteArray temp;
     d->dataXMLize(content, temp);
+    /*
+     * TODO: End-to-end encryption
+    d->encoder.decrypt(Encryptor::Blowfish,
     d->encoder.encrypt(Encryptor::Blowfish,
                        temp,
                        d->sessionList->getSession(ID).sendersKey,
                        *bufferIn);
+    */
+    bufferIn->append(temp);
 
     // TODO: Reset sending key positively & randomly
 
@@ -141,14 +155,12 @@ bool Conversation::getMessageList()
     if (d->server->sendData(bufferIn, bufferOut,
                             RequestManager::RecordServer,
                             d->serverObjectToPath(
-                               ConversationPrivate::ServerObject::RecordAction),
+                               ConversationPrivate::ServerObject::RecordGet),
                             false, &queryID)
             == RequestManager::CannotConnect)
     return false;
 
-    d->server->setRecordType(queryID,
-                             RequestManager::RequestType(
-                             ConversationPrivate::RequestType::GetMessageList));
+    d->addRequest(queryID, ConversationPrivate::RequestType::GetMessageList);
     return true;
 }
 
@@ -199,9 +211,7 @@ bool Conversation::fixBrokenConnection(QString ID, int& queryID)
             != RequestManager::Ok)
         return false;
 
-    d->server->setRecordType(queryID,
-                             RequestManager::RequestType(
-                             ConversationPrivate::RequestType::FixConnection));
+    d->addRequest(queryID, ConversationPrivate::RequestType::FixConnection);
     return true;
 }
 
@@ -211,9 +221,9 @@ void Conversation::dispatchQueryRespone(int requestID)
 
     QByteArray data;
     bool successful;
+    int requestIndex = d->getRequestIndexByID(requestID);
     ConversationPrivate::RequestType requestType =
-            ConversationPrivate::RequestType(d->server
-                                              ->getRecordType(requestID));
+                                            d->requestList[requestIndex].type;
     RequestManager::RequestError errCode = d->server->getData(requestID, data);
     if (errCode == RequestManager::Ok)
     {
@@ -226,11 +236,11 @@ void Conversation::dispatchQueryRespone(int requestID)
         // So we simply pass the value of "successful" to these signals
             case ConversationPrivate::RequestType::Verify:
             {
-                d->sessionKey = d->encoder.getHMAC(d->sessionKey,
-                                                   d->tempLoginKey)
-                                          .left(KeyLen);
-                d->currentSession = data.left(SessionLen);
-                d->recordSalt = data.mid(SessionLen, RecordSaltLen);
+                d->sessionKey = d->tempLoginKey;
+                d->currentSession = d->tempSession;
+                d->keySalt = data.left(RecordSaltLen);
+                d->server->setSessionInfo(d->currentSession, d->sessionKey);
+                d->loggedin = true;
                 emit verifyFinished(requestID, VerifyError::Ok);
                 break;
             }
@@ -306,18 +316,24 @@ void Conversation::dispatchQueryRespone(int requestID)
                 }
                 transaction->data->append(data.mid(1));
                 transaction->pos += data.length() - 1;
-                if (data[0] != char(WICHAT_SERVER_RESPONSE_RES_EOF))
+                if (transaction->multiPart &&
+                    data[0] != char(WICHAT_SERVER_RESPONSE_RES_EOF))
                 {
                     // Continue to receive the rest part of the message
                     d->processReceiveList();
                     break;
                 }
+                /*
+                 * TODO: End-to-end encryption
                 d->encoder.decrypt(Encryptor::Blowfish,
                                    data,
                                    d->sessionList->getSession(
                                             transaction->target).receiversKey,
                                    *transaction->data);
-                d->dataUnxmlize(*transaction->data, data, d->recordDir);
+                */
+                QString cacheDir(d->userDir);
+                cacheDir.append('/').append(WICHAT_SESSION_FILE_CACHE_DIR);
+                d->dataUnxmlize(*transaction->data, data, cacheDir);
                 emit receiveMessageFinished(transaction->queryID, data);
                 d->removeTransaction(transaction);
                 break;
@@ -337,15 +353,20 @@ void Conversation::dispatchQueryRespone(int requestID)
         emit queryError(requestID, QueryError::NetworkError);
     else
         emit queryError(requestID, QueryError::UnknownError);
+
+    d->requestList.removeAt(requestIndex);
 }
 
 
 void Conversation::onPrivateEvent(int eventType, int data)
 {
+    Q_D(Conversation);
+
     switch (ConversationPrivate::PrivateEventType(eventType))
     {
         case ConversationPrivate::RequestFinished:
-            dispatchQueryRespone(data);
+            if (d->getRequestIndexByID(data) >= 0)
+                dispatchQueryRespone(data);
             break;
         default:;
     }
@@ -376,6 +397,24 @@ ConversationPrivate::~ConversationPrivate()
 {
     if (defaultServer)
         delete this->server;
+}
+
+int ConversationPrivate::getRequestIndexByID(int requestID)
+{
+    for (int i=0; i<requestList.count(); i++)
+    {
+        if (requestList[i].ID == requestID)
+            return i;
+    }
+    return -1;
+}
+
+void ConversationPrivate::addRequest(int requestID, RequestType type)
+{
+    RequestInfo request;
+    request.ID = requestID;
+    request.type = type;
+    requestList.append(request);
 }
 
 bool ConversationPrivate::processReplyData(RequestType type, QByteArray& data)
@@ -440,6 +479,7 @@ bool ConversationPrivate::processSendList()
         bufferIn.append(char(1));
     else
         bufferIn.append(char(0));
+    bufferIn.append(*(transaction.data));
 
     if (server->sendData(bufferIn, bufferOut,
                          RequestManager::RecordServer,
@@ -451,9 +491,7 @@ bool ConversationPrivate::processSendList()
         removeTransaction(&transaction);
         return false;
     }
-    server->setRecordType(transaction.requestID,
-                          RequestManager::RequestType(
-                                            RequestType::SendMessage));
+    addRequest(transaction.requestID, RequestType::SendMessage);
     return true;
 }
 
@@ -484,9 +522,7 @@ bool ConversationPrivate::processReceiveList()
         removeTransaction(&transaction);
         return false;
     }
-    server->setRecordType(transaction.requestID,
-                          RequestManager::RequestType(
-                                            RequestType::ReceiveMessage));
+    addRequest(transaction.requestID, RequestType::ReceiveMessage);
     return true;
 }
 
@@ -531,7 +567,7 @@ ConversationPrivate::getTransactionByRequestID(int requestID)
     for (int i=0; i<receivingList.length(); i++)
     {
         if (receivingList[i].requestID == requestID)
-            return &(sendingList[i]);
+            return &(receivingList[i]);
     }
     return nullptr;
 }
@@ -577,6 +613,7 @@ void ConversationPrivate::dataXMLize(const QByteArray& src, QByteArray& dest)
     QFile file;
     QString fileName;
     p = 0;
+    dest.clear();
 
     while (true)
     {
@@ -643,7 +680,7 @@ void ConversationPrivate::dataXMLize(const QByteArray& src, QByteArray& dest)
 
 void ConversationPrivate::dataUnxmlize(const QByteArray& src,
                                        QByteArray& dest,
-                                       QString recordDir)
+                                       QString cacheDir)
 {
     int p, p1, p2, p3;
     QFile file;
@@ -651,6 +688,7 @@ void ConversationPrivate::dataUnxmlize(const QByteArray& src,
     qint64 fileLength;
     QByteArray fileContent;
     p = 0;
+    dest.clear();
 
     while (true)
     {
@@ -685,20 +723,22 @@ void ConversationPrivate::dataUnxmlize(const QByteArray& src,
             case 'i':
                 fileContent = src.mid(p2 + 1, fileLength);
                 fileName = QString(encoder.getSHA256(fileContent, true))
-                                  .prepend('/').prepend(recordDir);
+                                  .prepend('/').prepend(cacheDir);
                 file.setFileName(fileName);
                 file.open(QFile::WriteOnly);
                 file.write(fileContent);
                 file.close();
+                dest.append("<img>").append(fileName).append("</img>");
                 break;
             case 'f':
             default:
                 if (fileName.isEmpty())
                     break;
-                file.setFileName(fileName.prepend('/').prepend(recordDir));
+                file.setFileName(fileName.prepend('/').prepend(cacheDir));
                 file.open(QFile::WriteOnly);
                 file.write(src.mid(p2 + 1, fileLength));
                 file.close();
+                dest.append("<file>").append(fileName).append("</file>");
         }
         p3 = src.indexOf("</D>", p2 + fileLength);
         p = p3 + 4;

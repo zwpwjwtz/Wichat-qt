@@ -45,9 +45,10 @@ public:
 
     explicit Conversation();
     explicit Conversation(RequestManager& server);
-    void setRecordPath(QString path);
+    void setUserDirectory(QString path);
     void setPeerSession(PeerSession& sessionList);
     bool verify(QByteArray sessionID, QByteArray sessionKey);
+    QByteArray& keySalt();
     bool resetSession();
     bool sendMessage(QString ID, QByteArray& content, int& queryID);
     bool getMessageList();

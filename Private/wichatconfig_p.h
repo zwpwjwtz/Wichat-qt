@@ -14,7 +14,7 @@ class WichatConfigPrivate : QObject
 public:
     WichatConfigPrivate(WichatConfig* parent);
     QSettings appConfig{"Wichat", "Desktop"};
-    QSettings userConfig;
+    QSettings* userConfig;
     QString currentUserID;
     QString currentUserDir;
 

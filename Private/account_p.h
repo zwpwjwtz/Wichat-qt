@@ -43,6 +43,12 @@ public:
         RequestFinished = 1
     };
 
+    struct RequestInfo
+    {
+        int ID;
+        RequestType type;
+    };
+
     QString currentID;
     QByteArray currentSession;
     QByteArray sessionKey;
@@ -51,10 +57,13 @@ public:
     QString currentOfflineMsg;
     Encryptor encoder;
     RequestManager* server;
+    QList<RequestInfo> requestList;
     bool defaultServer;
 
     AccountPrivate(Account* parent = 0, RequestManager *server = 0);
     ~AccountPrivate();
+    int getRequestIndexByID(int requestID);
+    void addRequest(int requestID, RequestType type);
     void parseAccountList(QByteArray& data,
                           QByteArray listType,
                           QList<Account::AccountListEntry>& list);

@@ -37,6 +37,7 @@ public:
     QList<Note> getAll();
     void remove(int noteID);
     void clear();
+    int getNewID();
 
 signals:
     void newNote();

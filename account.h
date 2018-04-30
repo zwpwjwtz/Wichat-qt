@@ -68,6 +68,8 @@ public:
 
     QString ID();
     bool setPassword(QString oldPassword, QString newPassword);
+    QByteArray sessionID();
+    QByteArray sessionKey();
     OnlineState state();
     bool setState(OnlineState newState, int& queryID);
     QString offlineMsg();

@@ -59,6 +59,18 @@ void Notification::clear()
     d->noteQueue.clear();
 }
 
+int Notification::getNewID()
+{
+    int newID = 0;
+    while (true)
+    {
+        newID++;
+        if (peek(newID).destination.isEmpty())
+            break;
+    }
+    return newID;
+}
+
 Notification::Note NotificationPrivate::emptyNote = {};
 
 NotificationPrivate::NotificationPrivate(Notification* parent)

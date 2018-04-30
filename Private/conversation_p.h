@@ -41,6 +41,11 @@ public:
         SendingFailed = 2,
         ReceivingFailed = 3
     };
+    struct RequestInfo
+    {
+        int ID;
+        RequestType type;
+    };
     struct MessageTransaction
     {
         QString target;
@@ -58,19 +63,23 @@ public:
     QByteArray currentSession;
     QByteArray sessionKey;
     QByteArray tempLoginKey;
+    QByteArray tempSession;
     qint64 sessionStartTime;
     qint64 sessionValidTime;
-    QByteArray recordSalt;
+    QByteArray keySalt;
     Encryptor encoder;
     RequestManager* server;
     bool defaultServer;
-    QString recordDir;
+    QList<RequestInfo> requestList;
+    QString userDir;
     PeerSession* sessionList;
     QQueue<MessageTransaction> sendingList;
     QQueue<MessageTransaction> receivingList;
 
     ConversationPrivate(Conversation* parent = 0, RequestManager* server = 0);
     ~ConversationPrivate();
+    int getRequestIndexByID(int requestID);
+    void addRequest(int requestID, RequestType type);
     bool processReplyData(RequestType type, QByteArray& data);
     bool processSendList();
     bool processReceiveList();
@@ -82,7 +91,7 @@ public:
     void dataXMLize(const QByteArray& src, QByteArray& dest);
     void dataUnxmlize(const QByteArray& src,
                       QByteArray& dest,
-                      QString recordDir);
+                      QString cacheDir);
     void parseAccountList(QByteArray& data,
                           QByteArray listType,
                           QList<Conversation::AccountListEntry>& list);

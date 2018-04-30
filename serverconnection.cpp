@@ -237,7 +237,8 @@ ServerConnection::getAsyncResponse(int requestID, QByteArray& buffer)
         QNetworkReply* reply = d->reponseList[requestIndex];
         d->reponseList.removeAt(requestIndex);
         d->requestIdList.removeAt(requestIndex);
-        if (reply->error() != QNetworkReply::NetworkError::NoError)
+        QNetworkReply::NetworkError replyErrCode = reply->error();
+        if (replyErrCode != QNetworkReply::NetworkError::NoError)
             errCode = CannotConnect;
         else
         {
@@ -386,7 +387,7 @@ int ServerConnectionPrivate::waitHttpRequest(QNetworkReply* reply,
     if (!synchronous)
     {
         int requestID = 1;
-        while (requestIdList.contains(requestID) && requestID == 0)
+        while (requestIdList.contains(requestID) || requestID == 0)
         {
             requestID = qrand();
         }

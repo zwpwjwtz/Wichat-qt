@@ -164,27 +164,7 @@ RequestManager::getData(int requestID, QByteArray& buffer)
     }
 }
 
-RequestManager::RequestType RequestManager::getRecordType(int requestID)
-{
-    Q_D(RequestManager);
-
-    int index = d->getRecordIndexByID(requestID);
-    if (index >= 0)
-        return d->requestList[index].type;
-    else
-        return 0;
-}
-
-void RequestManager::setRecordType(int requestID, RequestType type)
-{
-    Q_D(RequestManager);
-
-    int index = d->getRecordIndexByID(requestID);
-    if (index >= 0)
-        d->requestList[index].type = type;
-}
-
-void RequestManager::removeRequestRecord(int requestID)
+void RequestManager::removeRequest(int requestID)
 {
     Q_D(RequestManager);
 
@@ -195,11 +175,14 @@ void RequestManager::removeRequestRecord(int requestID)
 
 void RequestManager::onPrivateEvent(int eventType, int data)
 {
+    Q_D(RequestManager);
+
     switch (RequestManagerPrivate::PrivateEventType(eventType))
     {
         case RequestManagerPrivate::RequestFinished:
         {
-            emit onRequestFinished(data);
+            if (d->getRecordIndexByID(data) >= 0)
+                emit onRequestFinished(data);
             break;
         }
         default:;
