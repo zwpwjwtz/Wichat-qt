@@ -20,7 +20,7 @@ ServerConfigDialog::~ServerConfigDialog()
 
 void ServerConfigDialog::on_buttonBox_accepted()
 {
-    WichatRootServer = ui->textRootPort->text();
+    WichatRootServer = ui->textRootServer->text();
     WichatRootServerPort = ui->textRootPort->text().toInt();
     if (WichatRootServerPort <= 0)
         WichatRootServerPort = 80;

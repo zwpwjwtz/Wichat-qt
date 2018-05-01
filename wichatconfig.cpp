@@ -339,7 +339,8 @@ bool WichatConfigPrivate::switchUser(QString userID)
     currentUserDir = userDir.path();
     if (!userConfig)
         delete userConfig;
-    userConfig = new QSettings(currentUserDir.append('/')
+    userConfig = new QSettings(QString(currentUserDir)
+                               .append('/')
                                .append(WICHAT_CONFIG_FILENAME_USER),
                                QSettings::NativeFormat,
                                this);

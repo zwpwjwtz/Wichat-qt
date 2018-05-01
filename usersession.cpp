@@ -45,7 +45,7 @@ bool UserSession::loadFromFile(QString userDir)
         newSession.ID = temp;
 
         // Read active state
-        temp = d->readUntil(sessionFile, '\x00');
+        temp = d->readUntil(sessionFile, QByteArray("\x00", 1));
         if (sessionFile.atEnd())
             break;
         if (temp.at(0) == WICHAT_SESSION_CACHE_FLAG_ACTIVE)

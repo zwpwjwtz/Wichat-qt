@@ -8,7 +8,9 @@
 #include "global_objects.h"
 #include "mainwindow.h"
 #include "wichatconfig.h"
+#include "serverconnection.h"
 #include "account.h"
+
 
 LoginWindow::LoginWindow(QWidget *parent) :
     QWidget(parent),
@@ -39,6 +41,11 @@ void LoginWindow::keyPressEvent(QKeyEvent * event)
 void LoginWindow::on_buttonLogin_clicked()
 {
     globalConfig.setLastID(ui->textID->text());
+
+    QList<QString> rootServer = globalConfig.rootServer().split(',')
+                                                         .toVector().toList();
+    globalConnection.setRootServer(rootServer[0], rootServer[1].toInt());
+
     Account::VerifyError errorCode =
             globalAccount.verify(ui->textID->text(), ui->textPassword->text());
     switch (errorCode)

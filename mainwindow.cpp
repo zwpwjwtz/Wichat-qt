@@ -269,6 +269,9 @@ void MainWindow::closeEvent(QCloseEvent* event)
     if (accountInfo)
         accountInfo->close();
     sysTrayIcon->hide();
+
+    syncSessionContent("");
+    userSessionList.saveToFile(globalConfig.userDirectory(userID));
 }
 
 bool MainWindow::eventFilter(QObject *watched, QEvent *event)
@@ -344,7 +347,7 @@ void MainWindow::doTask()
             showNotification();
             break;
         case taskReloadMsg:
-            loadSessionContent(userSessionList.currentSession().ID);
+            loadSessionContent(lastConversation);
             break;
         case taskRebuildConnection:
             fixBrokenConnection();
@@ -426,7 +429,6 @@ void MainWindow::loadSession(QString ID, bool setTabActive)
         if (!userSessionList.exists(ID))
             userSessionList.add(ID);
         addTab(ID);
-        loadSessionContent(ID);
     }
 
     index = getSessionTabIndex(ID);
@@ -436,28 +438,30 @@ void MainWindow::loadSession(QString ID, bool setTabActive)
         return;
     }
 
-    UserSession::SessionData& oldSession = userSessionList.currentSession();
-    if (oldSession.ID == ID)
+    if (lastConversation == ID)
         return;
+    UserSession::SessionData& oldSession =
+                                userSessionList.getSession(lastConversation);
     if (!oldSession.ID.isEmpty())
     {
         int oldIndex = getSessionIndex(oldSession.ID);
         if (oldIndex >= 0 && oldIndex != ui->tabSession->currentIndex())
         {
-            // Store content in message area and input box to session cache
-            oldSession.cache = browserList[index]->toHtml().toLatin1();
-            oldSession.input = editorList[index]->toHtml().toLatin1();
-
+            syncSessionContent(oldSession.ID);
             browserList[oldIndex]->setVisible(false);
             editorList[oldIndex]->setVisible(false);
-            oldSession.active = false;
         }
     }
 
     index = getSessionIndex(ID);
+    if (!browserList[index]->property("Initialized").toBool())
+    {
+        loadSessionContent(ID);
+        browserList[index]->setProperty("Initialized", true);
+    }
     browserList[index]->setVisible(true);
     editorList[index]->setVisible(true);
-    userSessionList.getSession(ID).active = true;
+    lastConversation = ID;
 
     showNotification();
     updateCaption();
@@ -465,8 +469,10 @@ void MainWindow::loadSession(QString ID, bool setTabActive)
 
 void MainWindow::loadSessionContent(QString ID)
 {
-    // Clear possible notifications of in-coming messages
     UserSession::SessionData& session = userSessionList.getSession(ID);
+    session.active = true;
+
+    // Clear possible notifications of in-coming messages
     bool receivedMsg = false;
     QList<Notification::Note> notes = noteList.getAll();
     for (int i=0; i<notes.count(); i++)
@@ -498,7 +504,7 @@ void MainWindow::loadSessionContent(QString ID)
     //Wichat_addHTMLHeader(buffer, 1);
     buffer.append(session.input);
     //Wichat_addHTMLFooter(buffer, 1);
-    editorList[tabIndex]->setHtml(renderHTML(buffer));
+    editorList[tabIndex]->setHtml(buffer);
 
     // Process possible events (redrawing etc.)
     QCoreApplication::processEvents();
@@ -508,6 +514,28 @@ void MainWindow::loadSessionContent(QString ID)
                     browserList[tabIndex]->verticalScrollBar()->maximum());
     editorList[tabIndex]->verticalScrollBar()->setValue(
                     editorList[tabIndex]->verticalScrollBar()->maximum());
+}
+
+void MainWindow::syncSessionContent(QString ID, bool closeSession)
+{
+    int index;
+
+    if (ID.isEmpty())
+    {
+        index = ui->tabSession->currentIndex();
+        if (index < 0)
+           return;
+        ID = browserList[index]->property("ID").toString();
+    }
+
+    index = getSessionIndex(ID);
+    UserSession::SessionData& session = userSessionList.getSession(ID);
+    if (session.ID == ID)
+    {
+        // Store content in input box to session cache
+        session.input = editorList[index]->toHtml().toLatin1();
+        session.active = closeSession;
+    }
 }
 
 QByteArray MainWindow::renderHTML(const QByteArray& content)
@@ -588,6 +616,7 @@ void MainWindow::addTab(QString ID)
     QTextEdit* newEditor = new QTextEdit;
 
     newBrowser->setProperty("ID", ID);
+    newBrowser->setProperty("Initialized", false);
     newEditor->setProperty("ID", ID);
     newBrowser->resize(ui->textBrowser->size());
     newEditor->resize(ui->textEdit->size());
@@ -609,12 +638,8 @@ void MainWindow::loadTab()
 
     ui->tabSession->clear();
 
-    // Add other session windows for each peer
     for (int i=0; i<sessionIdList.count(); i++)
-    {
-        if (sessionIdList[i] != userID)
-            addTab(sessionIdList[i]);
-    }
+        addTab(sessionIdList[i]);
 }
 
 void MainWindow::refreshTab()
@@ -628,7 +653,7 @@ void MainWindow::refreshTab()
 
 void MainWindow::removeTab(QString ID)
 {
-    userSessionList.remove(ID);
+    syncSessionContent(ID, true);
 
     // Actually close the tab
     int index = getSessionIndex(ID);
@@ -673,7 +698,7 @@ void MainWindow::updateState()
 void MainWindow::updateCaption()
 {
     QString title;
-    if (userSessionList.currentSession().ID == userID)
+    if (lastConversation == userID)
     {
         title.append('[')
              .append(Wichat_stateToString(globalAccount.state()))
@@ -683,7 +708,7 @@ void MainWindow::updateCaption()
     }
     else
         title = QString("Session with %1")
-                .arg(userSessionList.currentSession().ID);
+                .arg(lastConversation);
     setWindowTitle(title);
 }
 
@@ -725,7 +750,7 @@ void MainWindow::updateFriendList()
 
 QString MainWindow::getStateImagePath(QString ID)
 {
-    QString image;
+    QString image = stateToImagePath(int(Account::OnlineState::Offline));
     if (ID == userID)
         image = stateToImagePath(int(globalAccount.state()), true);
     else
@@ -937,6 +962,11 @@ void MainWindow::onUpdateFriendListFinished(int queryID,
         row.append(new QStandardItem(iconPath));
         row.append(new QStandardItem(friends[i].ID));
         listFriendModel.appendRow(row);
+
+        // Update icons in tab
+        int index = getSessionTabIndex(friends[i].ID);
+        if (index >= 0)
+            ui->tabSession->setTabIcon(index, QIcon(iconPath));
     }
 }
 
@@ -1069,8 +1099,7 @@ void MainWindow::onKeyRelease(QObject* watched, QKeyEvent* event)
     if (event->key() == Qt::Key_Return ||
         event->key() == Qt::Key_Enter)
     {
-        if (editorList[getSessionIndex(
-                    userSessionList.currentSession().ID)]->hasFocus())
+        if (editorList[getSessionIndex(lastConversation)]->hasFocus())
         {
             if ((globalConfig.prefSendKey(userID) ==
                                 WICHAT_MAIN_EDITOR_SENDKEY_ENTER &&
@@ -1326,7 +1355,7 @@ void MainWindow::on_buttonSend_clicked()
     }
 #endif
 
-    QString sessionID = userSessionList.currentSession().ID;
+    QString sessionID = lastConversation;
     int sessionIndex = getSessionIndex(sessionID);
     if (sessionIndex < 0)
         return;
@@ -1350,6 +1379,8 @@ void MainWindow::on_buttonSend_clicked()
 
     browserList[sessionIndex]->append(content);
     editorList[sessionIndex]->clear();
+
+    userSessionList.getSession(sessionID).cache.append(renderHTML(content));
 }
 
 void MainWindow::on_buttonSendOpt_clicked()

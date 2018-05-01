@@ -79,6 +79,7 @@ private:
     UserSession userSessionList;
     PeerSession peerSessionList;
     QString userID;
+    QString lastConversation;
     QQueue<TaskType> taskList;
     QQueue<QString> brokenConnectionList;
     QMap<int, QString> queryList;
@@ -96,6 +97,7 @@ private:
     int getSessionTabIndex(QString ID);
     void loadSession(QString ID, bool setTabActive = true);
     void loadSessionContent(QString ID);
+    void syncSessionContent(QString ID, bool closeSession = false);
     QByteArray renderHTML(const QByteArray& content);
     void addTab(QString ID);
     void loadTab();

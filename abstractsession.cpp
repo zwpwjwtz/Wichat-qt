@@ -48,7 +48,8 @@ QByteArray AbstractSessionPrivate::readUntil(QFile& file,
         p = readBuffer.indexOf(delimiter);
         if (p >= 0)
         {
-            file.seek(file.pos() - (readBuffer.length() - p));
+            file.seek(file.pos() - readBuffer.length()
+                      + p + delimiter.length());
             buffer.chop(readBuffer.length() - p);
             break;
         }
