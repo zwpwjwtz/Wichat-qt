@@ -3,7 +3,7 @@
 
 #include <QObject>
 
-class RequestManager;
+class ServerConnection;
 class AccountPrivate;
 
 class Account : public QObject
@@ -58,7 +58,7 @@ public:
     static const int MaxRemarkLen = 16;
 
     explicit Account();
-    explicit Account(RequestManager& server);
+    explicit Account(ServerConnection& server);
 
     bool checkID(QString ID);
     bool checkPassword(QString password);

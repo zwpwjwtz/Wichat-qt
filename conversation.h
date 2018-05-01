@@ -5,7 +5,7 @@
 
 
 class PeerSession;
-class RequestManager;
+class ServerConnection;
 class ConversationPrivate;
 
 class Conversation : public QObject
@@ -44,7 +44,7 @@ public:
     static const int RecordSaltLen = 16;
 
     explicit Conversation();
-    explicit Conversation(RequestManager& server);
+    explicit Conversation(ServerConnection& server);
     void setUserDirectory(QString path);
     void setPeerSession(PeerSession& sessionList);
     bool verify(QByteArray sessionID, QByteArray sessionKey);

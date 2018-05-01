@@ -1,11 +1,14 @@
 #include <QDesktopWidget>
 #include <QKeyEvent>
 #include <QMessageBox>
+
 #include "loginwindow.h"
 #include "ui_loginwindow.h"
 #include "serverconfigdialog.h"
 #include "global_objects.h"
-
+#include "mainwindow.h"
+#include "wichatconfig.h"
+#include "account.h"
 
 LoginWindow::LoginWindow(QWidget *parent) :
     QWidget(parent),

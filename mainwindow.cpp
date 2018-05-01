@@ -13,6 +13,9 @@
 #include "ui_mainwindow.h"
 #include "accountinfodialog.h"
 #include "global_objects.h"
+#include "account.h"
+#include "conversation.h"
+#include "wichatconfig.h"
 
 #define WICHAT_MAIN_FRILIST_FIELD_ICON 0
 #define WICHAT_MAIN_FRILIST_FIELD_ICONPATH 1

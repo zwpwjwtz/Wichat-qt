@@ -27,7 +27,7 @@ Conversation::Conversation()
             &Conversation::onPrivateEvent);
 }
 
-Conversation::Conversation(RequestManager& server)
+Conversation::Conversation(ServerConnection &server)
 {
     this->d_ptr = new ConversationPrivate(this, &server);
     connect(d_ptr,
@@ -373,21 +373,15 @@ void Conversation::onPrivateEvent(int eventType, int data)
 }
 
 ConversationPrivate::ConversationPrivate(Conversation* parent,
-                                         RequestManager* server)
+                                         ServerConnection* server)
 {
     this->q_ptr = parent;
     if (server)
-    {
-        this->server = server;
-        this->defaultServer = false;
-    }
+        this->server = new RequestManager(*server);
     else
-    {
         this->server = new RequestManager;
-        this->defaultServer = true;
-    }
     sessionList = nullptr;
-    connect(server,
+    connect(this->server,
             SIGNAL(onRequestFinished(int)),
             this,
             SLOT(onRequestFinished(int)));
@@ -395,8 +389,7 @@ ConversationPrivate::ConversationPrivate(Conversation* parent,
 
 ConversationPrivate::~ConversationPrivate()
 {
-    if (defaultServer)
-        delete this->server;
+    delete this->server;
 }
 
 int ConversationPrivate::getRequestIndexByID(int requestID)

@@ -28,7 +28,7 @@ Account::Account()
             &Account::onPrivateEvent);
 }
 
-Account::Account(RequestManager& server)
+Account::Account(ServerConnection &server)
 {
     this->d_ptr = new AccountPrivate(this, &server);
     connect(d_ptr,
@@ -518,20 +518,14 @@ void Account::onPrivateEvent(int eventType, int data)
     }
 }
 
-AccountPrivate::AccountPrivate(Account* parent, RequestManager* server)
+AccountPrivate::AccountPrivate(Account* parent, ServerConnection* server)
 {
     this->q_ptr = parent;
     if (server)
-    {
-        this->server = server;
-        this->defaultServer = false;
-    }
+        this->server = new RequestManager(*server);
     else
-    {
         this->server = new RequestManager;
-        this->defaultServer = true;
-    }
-    connect(server,
+    connect(this->server,
             SIGNAL(onRequestFinished(int)),
             this,
             SLOT(onRequestFinished(int)));
@@ -539,8 +533,7 @@ AccountPrivate::AccountPrivate(Account* parent, RequestManager* server)
 
 AccountPrivate::~AccountPrivate()
 {
-    if (this->defaultServer)
-        delete this->server;
+    delete this->server;
 }
 
 int AccountPrivate::getRequestIndexByID(int requestID)

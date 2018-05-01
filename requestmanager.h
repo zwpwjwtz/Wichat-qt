@@ -3,6 +3,8 @@
 
 #include <QObject>
 
+class ServerConnection;
+
 class RequestManagerPrivate;
 class RequestManager : public QObject
 {
@@ -33,6 +35,7 @@ public:
     };
 
     explicit RequestManager();
+    explicit RequestManager(ServerConnection& server);
     void setSessionInfo(QByteArray sessionID, QByteArray key);
     RequestError sendRawData(const QByteArray& data,
                              QByteArray& result,

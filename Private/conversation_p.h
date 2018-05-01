@@ -69,14 +69,13 @@ public:
     QByteArray keySalt;
     Encryptor encoder;
     RequestManager* server;
-    bool defaultServer;
     QList<RequestInfo> requestList;
     QString userDir;
     PeerSession* sessionList;
     QQueue<MessageTransaction> sendingList;
     QQueue<MessageTransaction> receivingList;
 
-    ConversationPrivate(Conversation* parent = 0, RequestManager* server = 0);
+    ConversationPrivate(Conversation* parent = 0, ServerConnection* server = 0);
     ~ConversationPrivate();
     int getRequestIndexByID(int requestID);
     void addRequest(int requestID, RequestType type);

@@ -58,9 +58,8 @@ public:
     Encryptor encoder;
     RequestManager* server;
     QList<RequestInfo> requestList;
-    bool defaultServer;
 
-    AccountPrivate(Account* parent = 0, RequestManager *server = 0);
+    AccountPrivate(Account* parent = 0, ServerConnection* server = 0);
     ~AccountPrivate();
     int getRequestIndexByID(int requestID);
     void addRequest(int requestID, RequestType type);

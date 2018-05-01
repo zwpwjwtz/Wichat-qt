@@ -34,10 +34,13 @@ public:
     QByteArray currentSession;
     QByteArray sessionKey;
     Encryptor encoder;
-    ServerConnection server;
+    ServerConnection* server;
+    bool defaultServer;
     QList<RequestRecord> requestList;
 
-    RequestManagerPrivate(RequestManager *parent = 0);
+    RequestManagerPrivate(RequestManager *parent = 0,
+                          ServerConnection* server = 0);
+    ~RequestManagerPrivate();
     int getRecordIndexByID(int requestID);
 
 signals:

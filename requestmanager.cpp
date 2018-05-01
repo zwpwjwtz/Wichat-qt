@@ -11,6 +11,15 @@ RequestManager::RequestManager()
             &RequestManager::onPrivateEvent);
 }
 
+RequestManager::RequestManager(ServerConnection& server)
+{
+    this->d_ptr = new RequestManagerPrivate(this, &server);
+    connect(d_ptr,
+            &RequestManagerPrivate::privateEvent,
+            this,
+            &RequestManager::onPrivateEvent);
+}
+
 void RequestManager::setSessionInfo(QByteArray sessionID, QByteArray key)
 {
     Q_D(RequestManager);
@@ -87,7 +96,7 @@ RequestManager::sendRawData(const QByteArray& data,
 
     if (!synchronous)
     {
-        if (d->server.sendAsyncRequest(int(serverID),
+        if (d->server->sendAsyncRequest(int(serverID),
                                        objectPath,
                                        data,
                                        *requestID))
@@ -103,7 +112,7 @@ RequestManager::sendRawData(const QByteArray& data,
     }
 
     ServerConnection::ConnectionStatus errCode =
-                            d->server.sendRequest(int(serverID),
+                            d->server->sendRequest(int(serverID),
                                                   objectPath,
                                                   data,
                                                   result);
@@ -132,7 +141,7 @@ RequestManager::getData(int requestID, QByteArray& buffer)
 
     QByteArray data;
     ServerConnection::ConnectionStatus errCode =
-                            d->server.getAsyncResponse(requestID, data);
+                            d->server->getAsyncResponse(requestID, data);
 
     if (errCode != ServerConnection::Ok)
         return RequestError(errCode);
@@ -189,13 +198,30 @@ void RequestManager::onPrivateEvent(int eventType, int data)
     }
 }
 
-RequestManagerPrivate::RequestManagerPrivate(RequestManager* parent)
+RequestManagerPrivate::RequestManagerPrivate(RequestManager* parent,
+                                             ServerConnection *server)
 {
     this->q_ptr = parent;
-    connect(&server,
+    if (server)
+    {
+        this->server = server;
+        defaultServer = false;
+    }
+    else
+    {
+        this->server = new ServerConnection;
+        defaultServer = true;
+    }
+    connect(this->server,
             SIGNAL(onRequestFinished(int)),
             this,
             SLOT(onRequestFinished(int)));
+}
+
+RequestManagerPrivate::~RequestManagerPrivate()
+{
+    if (defaultServer)
+        delete server;
 }
 
 int RequestManagerPrivate::getRecordIndexByID(int requestID)
