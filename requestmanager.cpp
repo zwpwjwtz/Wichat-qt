@@ -42,9 +42,8 @@ RequestManager::sendData(const QByteArray& data,
     result.clear();
 
     bufferIn.append(d->currentSession);
-    bufferIn.append(d->encoder.getCRC32(data));
     d->encoder.encrypt(Encryptor::AES,
-                       data,
+                       d->encoder.getCRC32(data).append(data),
                        d->sessionKey,
                        temp);
     bufferIn.append(temp);
@@ -63,11 +62,13 @@ RequestManager::sendData(const QByteArray& data,
     if (result.length() <= 4)
         return ReplyIncomplete;
     d->encoder.decrypt(Encryptor::AES,
-                       temp.mid(4),
+                       result,
                        d->sessionKey,
-                       result);
-    if (d->encoder.getCRC32(result) != temp.mid(0, 4))
+                       temp);
+    if (d->encoder.getCRC32(temp.mid(4)) != temp.left(4))
         return DecryptError;
+
+    result = temp.mid(4);
     switch (int(result[0]))
     {
         case WICHAT_SERVER_RESPONSE_SUCCESS:
@@ -159,16 +160,16 @@ RequestManager::getData(int requestID, QByteArray& buffer)
      d->requestList.removeAt(recordIndex);
     if (data.length() < 4)
         return ReplyIncomplete;
-    QByteArray crc32 = data.left(4);
+
     d->encoder.decrypt(Encryptor::AES,
-                               data.mid(4),
-                               d->sessionKey,
-                               data);
-    if (d->encoder.getCRC32(data) != crc32)
+                       data,
+                       d->sessionKey,
+                       data);
+    if (d->encoder.getCRC32(data.mid(4)) != data.left(4))
         return DecryptError;
     else
     {
-        buffer = data;
+        buffer = data.mid(4);
         return Ok;
     }
 }

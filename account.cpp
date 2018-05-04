@@ -134,15 +134,18 @@ Account::VerifyError Account::verify(QString ID, QString password)
     if (errCode != RequestManager::Ok)
         return VerifyError::VerificationFailed;
 
-    // Extract session and account information
-    d->currentSession = bufferOut.mid(1, SessionLen);
-    d->sessionValidTime = *((qint16*)(bufferOut.mid(SessionLen + 1, 2).data()));
-    d->currentState = d->intToOnlineState(bufferOut.mid(SessionLen + 3, 1)[0]);
-    bufferOut.remove(0, SessionLen + 4);
     d->encoder.decrypt(Encryptor::AES,
-                       bufferOut,
+                       bufferOut.mid(1 + SessionLen),
                        tempKey,
                        bufferIn);
+    if (bufferIn.left(4) != d->encoder.getCRC32(bufferIn.mid(4)))
+        return VerifyError::UnknownError;
+
+    // Extract session and account information
+    d->currentSession = bufferOut.mid(1, SessionLen);
+    bufferIn.remove(0, 4);
+    d->currentState = d->intToOnlineState(bufferIn.at(1));
+    d->sessionValidTime = *((qint16*)(bufferIn.mid(2, 2).data()));
     d->sessionKey = bufferIn.mid(4, KeyLen);
     d->currentOfflineMsg = QString(bufferIn.mid(4 + KeyLen)).trimmed();
     d->currentID = ID;
