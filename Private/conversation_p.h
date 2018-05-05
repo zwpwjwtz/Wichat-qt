@@ -86,15 +86,15 @@ public:
     MessageTransaction* getTransactionByQueryID(int queryID);
     MessageTransaction* getTransactionByRequestID(int requestID);
     void removeTransaction(MessageTransaction* transaction);
-    QByteArray formatID(QString ID);
     void dataXMLize(const QByteArray& src, QByteArray& dest);
     void dataUnxmlize(const QByteArray& src,
                       QByteArray& dest,
                       QString cacheDir);
-    void parseAccountList(QByteArray& data,
-                          QByteArray listType,
-                          QList<Conversation::AccountListEntry>& list);
-    QString serverObjectToPath(ServerObject objectID);
+    static void parseAccountList(QByteArray& data,
+                                 QByteArray listType,
+                                 QList<Conversation::AccountListEntry>& list);
+    static QByteArray formatID(QString ID);
+    static QString serverObjectToPath(ServerObject objectID);
 
 signals:
     void privateEvent(PrivateEventType eventType, int data);

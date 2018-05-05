@@ -46,12 +46,12 @@ public:
     int rootServerPort;
     QList<QString> AccServerList;
     QList<QString> RecServerList;
-    QByteArray iBuffer, oBuffer;
     QList<int> requestIdList;
     QList<QNetworkReply*> reponseList;
     bool hasInited = false;
 
     ServerConnectionPrivate(ServerConnection* parent);
+    int getServerList();
     QString selectServer(int serverID);
     int httpRequest(QString strHostName,
                     int intPort,

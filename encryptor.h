@@ -25,24 +25,24 @@ public:
 
     explicit Encryptor();
 
-    QByteArray getCRC32(const QByteArray &source);
-    QByteArray getSHA256(const QByteArray& source, bool toDec = false);
-    QByteArray getHMAC(const QByteArray& source,
-                       QByteArray key,
-                       bool toDec = false);
+    static QByteArray getCRC32(const QByteArray &source);
+    static QByteArray getSHA256(const QByteArray& source, bool toDec = false);
+    static QByteArray getHMAC(const QByteArray& source,
+                              QByteArray key,
+                              bool toDec = false);
 
-    bool encrypt(Algorithm algo,
-                 const QByteArray& source,
-                 const QByteArray& key,
-                 QByteArray& result);
-    bool decrypt(Algorithm algo,
-                 const QByteArray& source,
-                 const QByteArray& key,
-                 QByteArray& result);
-    QByteArray genKey(QString seed, bool hex = false);
-    QByteArray fuse(const QByteArray& str, QByteArray delta, int base = 128);
-    QByteArray fuse_R(const QByteArray &str, QByteArray delta, int base = 128);
-    QByteArray byteXOR(const QByteArray& array1, const QByteArray& array2);
+    static bool encrypt(Algorithm algo,
+                        const QByteArray& source,
+                        const QByteArray& key,
+                        QByteArray& result);
+    static bool decrypt(Algorithm algo,
+                        const QByteArray& source,
+                        const QByteArray& key,
+                        QByteArray& result);
+    static QByteArray genKey(QString seed, bool hex = false);
+    static QByteArray fuse(const QByteArray& str, QByteArray delta, int base = 128);
+    static QByteArray fuse_R(const QByteArray &str, QByteArray delta, int base = 128);
+    static QByteArray byteXOR(const QByteArray& array1, const QByteArray& array2);
 
 protected:
     EncryptorPrivate* d_ptr;

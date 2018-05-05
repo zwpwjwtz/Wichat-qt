@@ -10,9 +10,7 @@ Encryptor::Encryptor()
 
 QByteArray Encryptor::getCRC32(const QByteArray& source)
 {
-    Q_D(Encryptor);
-
-    unsigned int ret = d->crc32_string(source.data(), source.size());
+    unsigned int ret = EncryptorPrivate::crc32_string(source.data(), source.size());
     return QByteArray()
             .append(ret & 0xFF)
             .append((ret >> 8) & 0xFF)
@@ -22,17 +20,14 @@ QByteArray Encryptor::getCRC32(const QByteArray& source)
 
 QByteArray Encryptor::getSHA256(const QByteArray& source, bool toDec)
 {
-    Q_D(Encryptor);
-
     QByteArray result;
-    d->result = d->hasher.hash(source, QCryptographicHash::Sha256);
+    result = EncryptorPrivate::hasher.hash(source, QCryptographicHash::Sha256);
     if (toDec)
     {
-        for (int i=0; i<d->result.size(); i++)
-            result[i] = char(int(d->result[i]) + 48);
+        for (int i=0; i<result.size(); i++)
+            result[i] = char(int(result[i]) + 48);
     }
-    else
-        result = d->result;
+
     return result;
 }
 
@@ -43,14 +38,13 @@ QByteArray Encryptor::getHMAC(const QByteArray& source,
     // This function is adapted from Qt Wiki page
     // Link: http://wiki.qt.io/HMAC-SHA1
 
-    Q_D(Encryptor);
     QByteArray result;
 
     const int blockSize = 64; // HMAC-SHA-256 block size, defined in standard
     if (key.length() > blockSize)
     {
         // reduce key length with SHA-256 compression
-        key = d->hasher.hash(key, QCryptographicHash::Sha256);
+        key = EncryptorPrivate::hasher.hash(key, QCryptographicHash::Sha256);
     }
 
     QByteArray innerPadding(blockSize, char(0x36));
@@ -67,16 +61,15 @@ QByteArray Encryptor::getHMAC(const QByteArray& source,
    // result = hash (outerPadding CONCAT hash (innerPadding CONCAT baseString))
     QByteArray total = outerPadding;
     QByteArray part = innerPadding.append(source);
-    total.append(d->hasher.hash(part, QCryptographicHash::Sha256));
-    d->result = d->hasher.hash(total, QCryptographicHash::Sha256);
+    total.append(EncryptorPrivate::hasher.hash(part, QCryptographicHash::Sha256));
+    result = EncryptorPrivate::hasher.hash(total, QCryptographicHash::Sha256);
 
     if (toDec)
     {
-        for (int i=0; i<d->result.size(); i++)
-            result[i] = char(int(d->result[i]) + 48);
+        for (int i=0; i<result.size(); i++)
+            result[i] = char(int(result[i]) + 48);
     }
-    else
-        result = d->result;
+
     return result;
 }
 
@@ -85,8 +78,6 @@ bool Encryptor::encrypt(Algorithm algo,
                         const QByteArray& key,
                         QByteArray& result)
 {
-    Q_D(Encryptor);
-
     bool ret = false;
     qint64 sourceLen = source.length();
     char* resultByte = nullptr;
@@ -98,7 +89,7 @@ bool Encryptor::encrypt(Algorithm algo,
             break;
         case Blowfish:
             resultByte = new char[sourceLen];
-            ret = d->BlowFish(source.constData(), sourceLen,
+            ret = EncryptorPrivate::BlowFish(source.constData(), sourceLen,
                               key.constData(),
                               resultByte, sourceLen,
                               1);
@@ -123,7 +114,8 @@ bool Encryptor::encrypt(Algorithm algo,
             result.clear();
             for (unsigned int i=0; i<iv.size(); i++)
                 result.append(iv[i]);
-            result.append(d->charVectorToQByteArray(cipher));
+            result.append(EncryptorPrivate::charVectorToQByteArray(cipher));
+            ret = true;
             break;
         }
         default:;
@@ -138,8 +130,6 @@ bool Encryptor::decrypt(Algorithm algo,
                         const QByteArray& key,
                         QByteArray& result)
 {
-    Q_D(Encryptor);
-
     bool ret = false;
     qint64 sourceLen = source.length();
     char* resultByte = nullptr;
@@ -151,7 +141,7 @@ bool Encryptor::decrypt(Algorithm algo,
             break;
         case Blowfish:
             resultByte = new char[sourceLen];
-            ret = d->BlowFish(source.constData(), sourceLen,
+            ret = EncryptorPrivate::BlowFish(source.constData(), sourceLen,
                               key.constData(),
                               resultByte, sourceLen,
                               2);
@@ -172,10 +162,11 @@ bool Encryptor::decrypt(Algorithm algo,
             Aes256Cbc::Iv iv;
             for (unsigned int i=0; i<iv.size(); i++)
                 iv[i] = source[i];
-            aes->decrypt(d->qByteArrayToCharVector(source.mid(iv.size())),
+            aes->decrypt(EncryptorPrivate::qByteArrayToCharVector(source.mid(iv.size())),
                          iv,
                          plain);
-            result = d->charVectorToQByteArray(plain);
+            result = EncryptorPrivate::charVectorToQByteArray(plain);
+            ret = true;
             break;
         }
         default:;
@@ -188,9 +179,8 @@ bool Encryptor::decrypt(Algorithm algo,
 
 QByteArray Encryptor::fuse(const QByteArray& str, QByteArray delta, int base)
 {
-    Q_D(Encryptor);
     if (delta.length() < 8)
-        delta = d->DefaultDelta;
+        delta = EncryptorPrivate::DefaultDelta;
     int j = 0;
     QByteArray temp;
     for (int i=0; i< str.length(); i++)
@@ -205,9 +195,8 @@ QByteArray Encryptor::fuse(const QByteArray& str, QByteArray delta, int base)
 
 QByteArray Encryptor::fuse_R(const QByteArray& str, QByteArray delta, int base)
 {
-    Q_D(Encryptor);
     if (delta.length() < 8)
-        delta = d->DefaultDelta;
+        delta = EncryptorPrivate::DefaultDelta;
     int j = 0;
     QByteArray temp;
     for (int i=0; i< str.length(); i++)
@@ -234,14 +223,15 @@ QByteArray Encryptor::byteXOR(const QByteArray& array1, const QByteArray& array2
 
 QByteArray Encryptor::genKey(QString seed, bool hex)
 {
-    Q_D(Encryptor);
     if (seed.length() < MinKeyLength)
-        seed.append(d->charVectorToQByteArray(
-                            d->randGenerator->getRandomBytes(MinKeyLength)));
+        seed.append(EncryptorPrivate::charVectorToQByteArray(
+                        EncryptorPrivate::randGenerator->getRandomBytes(
+                                                                MinKeyLength)));
 
     int keyLength = 0;
     qsrand(QDateTime::currentDateTime().toTime_t());
-    while (keyLength < MinKeyLength || d->factorNumber(keyLength) > 4)
+    while (keyLength < MinKeyLength ||
+           EncryptorPrivate::factorNumber(keyLength) > 4)
         keyLength = qrand() % MaxKeyLength + 1;
 
     int p = 0;
@@ -637,6 +627,8 @@ const unsigned int scm_auiInitS[BLOWFISH_MAX_SBLOCK_XSIZE][BLOWFISH_MAX_SBLOCK_Y
      0x90d4f869, 0xa65cdea0, 0x3f09252d, 0xc208e69f,
      0xb74e6132, 0xce77e25b, 0x578fdfe3, 0x3ac372e6}
 };
+
+QCryptographicHash EncryptorPrivate::hasher{QCryptographicHash::Sha1};
 
 unsigned int EncryptorPrivate::crc32_string(const char * text, long length)
 {

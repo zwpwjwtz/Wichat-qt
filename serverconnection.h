@@ -40,7 +40,6 @@ public:
     ~ServerConnection();
     bool setRootServer(QString serverName, int port);
     ConnectionStatus init(bool refresh = false);
-    int getServerList();
     ConnectionStatus sendRequest(int serverID,
                                  QString URL,
                                  const QByteArray &content,

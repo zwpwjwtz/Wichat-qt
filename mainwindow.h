@@ -114,8 +114,8 @@ private:
     void getMessageList();
     void showNotification();
     void fixBrokenConnection();
-    QString addSenderInfo(const QString& content, QString ID);
-    QString extractHTMLTag(const QString& rawHTML, QString tagName);
+    static QString addSenderInfo(const QString& content, QString ID);
+    static QString extractHTMLTag(const QString& rawHTML, QString tagName);
     static QString stateToImagePath(int stateNumber, bool displayHide = false);
 
 private slots:

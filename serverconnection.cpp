@@ -43,7 +43,7 @@ ServerConnection::ConnectionStatus ServerConnection::init(bool refresh)
     if (d->hasInited && !refresh)
         return status;
 
-    switch (getServerList())
+    switch (d->getServerList())
     {
         case 0:
             d->hasInited = true;
@@ -71,41 +71,40 @@ ServerConnection::ConnectionStatus ServerConnection::init(bool refresh)
  * 4=Version Error;
  * -1=Other Unknown Error
  */
-int ServerConnection::getServerList()
+int ServerConnectionPrivate::getServerList()
 {
-    Q_D(ServerConnection);
-
     int result = 0;
     int received;
     QList<QByteArray> strList;
+    QByteArray iBuffer, oBuffer;
 
-    d->iBuffer.clear();
-    d->iBuffer = d->QueryHeader;
-    d->iBuffer.append(WICHAT_CLIENT_DEVICE).append(d->QueryGetAcc);
+    iBuffer.clear();
+    iBuffer = QueryHeader;
+    iBuffer.append(WICHAT_CLIENT_DEVICE).append(QueryGetAcc);
 
-    received = d->httpRequest(d->rootServer, d->rootServerPort,
+    received = httpRequest(rootServer, rootServerPort,
                               "/Root/query/index.php", "POST",
-                              d->iBuffer,
-                              d->oBuffer);
+                              iBuffer,
+                              oBuffer);
     if (received < 1)
         return 1;
-    switch (d->oBuffer[d->ResponseHeaderLen])
+    switch (oBuffer[ResponseHeaderLen])
     {
         case WICHAT_SERVER_RESPONSE_NONE:
         case WICHAT_SERVER_RESPONSE_BUSY:
             result = 2;
             break;
         case WICHAT_SERVER_RESPONSE_SUCCESS:
-            if (int(d->oBuffer[d->ResponseHeaderLen + 1]) < 1)
+            if (int(oBuffer[ResponseHeaderLen + 1]) < 1)
             {
                 result = 3;
                 break;
             }
-            strList = d->oBuffer.mid(d->ResponseHeaderLen + 2).split('\0');
+            strList = oBuffer.mid(ResponseHeaderLen + 2).split('\0');
             if (strList.count() > 0)
             {
                 for (int i=0; i<strList.count(); i++)
-                    d->AccServerList.push_back(strList[i]);
+                    AccServerList.push_back(strList[i]);
             }
             else
                 result = 3;
@@ -119,30 +118,30 @@ int ServerConnection::getServerList()
     if (result != 0)
         return result;
 
-    d->iBuffer[d->QueryHeaderLen + 1] = d->QueryGetRec;
-    received = d->httpRequest(d->rootServer, d->rootServerPort,
-                              "/Root/query/index.php", d->MethodPost,
-                              d->iBuffer,
-                              d->oBuffer);
+    iBuffer[QueryHeaderLen + 1] = QueryGetRec;
+    received = httpRequest(rootServer, rootServerPort,
+                           "/Root/query/index.php", MethodPost,
+                           iBuffer,
+                           oBuffer);
     if (received < 1)
         return 1;
-    switch(d->oBuffer[d->ResponseHeaderLen])
+    switch(oBuffer[ResponseHeaderLen])
     {
         case WICHAT_SERVER_RESPONSE_NONE:
         case WICHAT_SERVER_RESPONSE_INVALID:
             result = 2;
             break;
         case WICHAT_SERVER_RESPONSE_SUCCESS:
-            if (int(d->oBuffer[d->ResponseHeaderLen + 1]) < 1)
+            if (int(oBuffer[ResponseHeaderLen + 1]) < 1)
             {
                 result = 3;
                 break;
             }
-            strList = d->oBuffer.mid(d->ResponseHeaderLen + 2).split('\0');
+            strList = oBuffer.mid(ResponseHeaderLen + 2).split('\0');
             if (strList.count() > 0)
             {
                 for (int i=0; i<strList.count(); i++)
-                    d->RecServerList.push_back(strList[i]);
+                    RecServerList.push_back(strList[i]);
             }
             else
                 result = 3;
@@ -166,25 +165,26 @@ ServerConnection::sendRequest(int serverID,
 {
     Q_D(ServerConnection);
 
+    QByteArray iBuffer;
     QString server = d->selectServer(serverID);
     if (server.isEmpty())
         return CannotConnect;
 
-    d->iBuffer = d->QueryHeader;
-    d->iBuffer.append(content);
+    iBuffer = d->QueryHeader;
+    iBuffer.append(content);
 
     int received;
 #ifdef QT_DEBUG
     received = d->httpRequest(server, 80,
                               URL, d->MethodPost,
-                              d->iBuffer,
+                              iBuffer,
                               buffer);
 #else
     for (int i = 1; i < d->MaxRequestCount; i++)
     {
         received = d->httpRequest(server, 80,
                                   URL, d->MethodPost,
-                                  d->iBuffer,
+                                  iBuffer,
                                   buffer);
         if (received > 0) break;
     }
@@ -207,17 +207,18 @@ bool ServerConnection::sendAsyncRequest(int serverID,
 {
     Q_D(ServerConnection);
 
+    QByteArray iBuffer;
     QString server = d->selectServer(serverID);
     if (server.isEmpty())
         return false;
 
-    d->iBuffer = d->QueryHeader;
-    d->iBuffer.append(content);
+    iBuffer = d->QueryHeader;
+    iBuffer.append(content);
 
     requestID = d->httpRequest(server, 80,
                                URL, d->MethodPost,
-                               d->iBuffer,
-                               d->oBuffer,
+                               iBuffer,
+                               iBuffer,
                                false);
     if (requestID != 0)
         return true;

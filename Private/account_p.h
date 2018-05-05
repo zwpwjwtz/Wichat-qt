@@ -63,16 +63,16 @@ public:
     ~AccountPrivate();
     int getRequestIndexByID(int requestID);
     void addRequest(int requestID, RequestType type);
-    void parseAccountList(QByteArray& data,
-                          QByteArray listType,
-                          QList<Account::AccountListEntry>& list);
-    void parseMixedList(QByteArray& data,
-                        QByteArray fieldName,
-                        QList<QByteArray>& list);
     bool processReplyData(RequestType type, QByteArray& data);
-    QByteArray formatID(QString ID);
-    Account::OnlineState intToOnlineState(int var);
-    QString serverObjectToPath(ServerObject objectID);
+    static void parseAccountList(QByteArray& data,
+                                 QByteArray listType,
+                                 QList<Account::AccountListEntry>& list);
+    static void parseMixedList(QByteArray& data,
+                               QByteArray fieldName,
+                               QList<QByteArray>& list);
+    static QByteArray formatID(QString ID);
+    static Account::OnlineState intToOnlineState(int var);
+    static QString serverObjectToPath(ServerObject objectID);
 
 signals:
     void privateEvent(PrivateEventType eventType, int data);

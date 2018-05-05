@@ -60,8 +60,8 @@ public:
     explicit Account();
     explicit Account(ServerConnection& server);
 
-    bool checkID(QString ID);
-    bool checkPassword(QString password);
+    static bool checkID(QString ID);
+    static bool checkPassword(QString password);
 
     VerifyError verify(QString ID, QString password);
     bool resetSession(int& queryID);

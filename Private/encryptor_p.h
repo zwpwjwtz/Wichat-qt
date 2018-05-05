@@ -19,19 +19,16 @@ class EncryptorPrivate : QObject
     Q_DECLARE_PUBLIC(Encryptor)
 
 public:
-    QCryptographicHash hasher{QCryptographicHash::Sha1};
-    QByteArray result;
+    static QCryptographicHash hasher;
     static std::unique_ptr<opensslpp::Random> randGenerator;
     static constexpr const char* DefaultDelta =
                                 "`-jvDj34hjG]vb 0-r 32-ug11`JWaepoj 1#@f12?#";
 
-    unsigned int crc32_string(const char * text,long length);
-    bool BlowFish(const char* bufferIn,
-                  long inLength,
-                  const char* key,
-                  char* bufferOut,
-                  long outLength,
-                  int mode);
+    static unsigned int crc32_string(const char * text,long length);
+    static bool BlowFish(const char* bufferIn, long inLength,
+                         const char* key,
+                         char* bufferOut, long outLength,
+                         int mode);
 
 private:
     struct Blowfish_SBlock
@@ -46,17 +43,17 @@ private:
         unsigned int m_auiS[BLOWFISH_MAX_SBLOCK_XSIZE][BLOWFISH_MAX_SBLOCK_YSIZE];
     };
 
-    unsigned char Blowfish_Byte(unsigned int ui);
-    unsigned int Blowfish_F(unsigned int auiS[][BLOWFISH_MAX_SBLOCK_YSIZE], unsigned int ui);
-    void Blowfish_BytesToBlock(const unsigned char *buf, Blowfish_SBlock *b);
-    void Blowfish_BlockToBytes(Blowfish_SBlock *b, unsigned char *buf);
-    void Blowfish_EncryptBlock(Blowfish *blowfish, Blowfish_SBlock *block);
-    void Blowfish_DecryptBlock(Blowfish *blowfish, Blowfish_SBlock *block);
-    int Blowfish_Init(Blowfish *blowfish, const unsigned char *ucKey, int keysize);
+    static unsigned char Blowfish_Byte(unsigned int ui);
+    static unsigned int Blowfish_F(unsigned int auiS[][BLOWFISH_MAX_SBLOCK_YSIZE], unsigned int ui);
+    static void Blowfish_BytesToBlock(const unsigned char *buf, Blowfish_SBlock *b);
+    static void Blowfish_BlockToBytes(Blowfish_SBlock *b, unsigned char *buf);
+    static void Blowfish_EncryptBlock(Blowfish *blowfish, Blowfish_SBlock *block);
+    static void Blowfish_DecryptBlock(Blowfish *blowfish, Blowfish_SBlock *block);
+    static int Blowfish_Init(Blowfish *blowfish, const unsigned char *ucKey, int keysize);
 
-    int factorNumber(int number);
-    QByteArray charVectorToQByteArray(std::vector<unsigned char> var);
-    std::vector<unsigned char> qByteArrayToCharVector(const QByteArray& var);
+    static int factorNumber(int number);
+    static QByteArray charVectorToQByteArray(std::vector<unsigned char> var);
+    static std::vector<unsigned char> qByteArrayToCharVector(const QByteArray& var);
 
 
 protected:
