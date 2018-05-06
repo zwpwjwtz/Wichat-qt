@@ -33,7 +33,7 @@ public:
         VersionNotSupported = 2,
         UnknownError = 255
     };
-    struct AccountListEntry
+    struct MessageListEntry
     {
         QString ID;
     };
@@ -58,10 +58,10 @@ public:
 signals:
     void queryError(int queryID, QueryError errorCode);
     void connectionBroken(QString ID);
-    void verifyFinished(int queryID, VerifyError errorCode);
+    void verifyFinished(int queryID, Conversation::VerifyError errorCode);
     void resetSessionFinished(int queryID, bool successful);
     void sendMessageFinished(int queryID, bool successful);
-    void getMessageListFinished(int queryID, QList<AccountListEntry> msgList);
+    void getMessageListFinished(int queryID, QList<MessageListEntry> msgList);
     void receiveMessageFinished(int queryID, QByteArray& content);
     void fixBrokenConnectionFinished(int queryID, bool successful);
 

@@ -1,4 +1,4 @@
-#include <QStandardPaths>
+#include <QCoreApplication>
 #include <QDir>
 
 #include "wichatconfig.h"
@@ -102,7 +102,10 @@ void WichatConfig::setLastID(QString userID)
 QString WichatConfig::recordPath()
 {
     Q_D(WichatConfig);
-    return d->appConfig.value(WICHAT_CONFIG_KEY_RECORD_PATH).toString();
+    QString path = d->appConfig.value(WICHAT_CONFIG_KEY_RECORD_PATH).toString();
+    if (path.isEmpty())
+        path = d->defaultRecordPath();
+    return path;
 }
 
 void WichatConfig::setRecordPath(QString path)
@@ -316,8 +319,7 @@ bool WichatConfigPrivate::switchUser(QString userID)
     QString tempPath = appConfig.value(WICHAT_CONFIG_KEY_RECORD_PATH)
                                 .toString();
     if (tempPath.isEmpty())
-        tempPath = QStandardPaths::standardLocations(
-                                            QStandardPaths::DataLocation)[0];
+        tempPath = defaultRecordPath();
 
     // Enter data directory
     QDir userDir(tempPath);
@@ -345,4 +347,20 @@ bool WichatConfigPrivate::switchUser(QString userID)
                                QSettings::NativeFormat,
                                this);
     return true;
+}
+
+QString WichatConfigPrivate::defaultRecordPath()
+{
+#ifdef Q_OS_WIN32
+    return QCoreApplication::applicationDirPath();
+#else
+    QString appName = QCoreApplication::applicationName();
+#ifdef Q_OS_MACOS
+    return appName.prepend("/Library/Application Support/")
+                  .prepend(QDir::homePath());
+#else
+    return appName.prepend("/.local/share/")
+                  .prepend(QDir::homePath());
+#endif
+#endif
 }

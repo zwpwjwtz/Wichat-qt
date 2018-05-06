@@ -1,23 +1,20 @@
-#include "requestmanager.h"
+﻿#include "requestmanager.h"
 #include "Private/requestmanager_p.h"
 
 
 RequestManager::RequestManager()
 {
     this->d_ptr = new RequestManagerPrivate(this);
-    connect(d_ptr,
-            &RequestManagerPrivate::privateEvent,
-            this,
-            &RequestManager::onPrivateEvent);
 }
 
 RequestManager::RequestManager(ServerConnection& server)
 {
     this->d_ptr = new RequestManagerPrivate(this, &server);
-    connect(d_ptr,
-            &RequestManagerPrivate::privateEvent,
-            this,
-            &RequestManager::onPrivateEvent);
+}
+
+RequestManager::~RequestManager()
+{
+    delete this->d_ptr;
 }
 
 void RequestManager::setSessionInfo(QByteArray sessionID, QByteArray key)
@@ -183,22 +180,6 @@ void RequestManager::removeRequest(int requestID)
         d->requestList.removeAt(index);
 }
 
-void RequestManager::onPrivateEvent(int eventType, int data)
-{
-    Q_D(RequestManager);
-
-    switch (RequestManagerPrivate::PrivateEventType(eventType))
-    {
-        case RequestManagerPrivate::RequestFinished:
-        {
-            if (d->getRecordIndexByID(data) >= 0)
-                emit onRequestFinished(data);
-            break;
-        }
-        default:;
-    }
-}
-
 RequestManagerPrivate::RequestManagerPrivate(RequestManager* parent,
                                              ServerConnection *server)
 {
@@ -214,7 +195,7 @@ RequestManagerPrivate::RequestManagerPrivate(RequestManager* parent,
         defaultServer = true;
     }
     connect(this->server,
-            SIGNAL(onRequestFinished(int)),
+            SIGNAL(requestFinished(int)),
             this,
             SLOT(onRequestFinished(int)));
 }
@@ -239,5 +220,6 @@ int RequestManagerPrivate::getRecordIndexByID(int requestID)
 
 void RequestManagerPrivate::onRequestFinished(int requestID)
 {
-    emit privateEvent(RequestFinished, requestID);
+    Q_Q(RequestManager);
+    emit q->requestFinished(requestID);
 }

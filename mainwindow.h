@@ -6,6 +6,8 @@
 #include <QQueue>
 #include <QTimer>
 #include <QEventLoop>
+#include <QSystemTrayIcon>
+
 #include "account.h"
 #include "conversation.h"
 #include "usersession.h"
@@ -43,6 +45,11 @@ protected:
     void showEvent(QShowEvent* event);
 
 private:
+    typedef Account::OnlineState OnlineState;
+    typedef Account::AccountListEntry AccountListEntry;
+    typedef Account::AccountInfoEntry AccountInfoEntry;
+    typedef Conversation::MessageListEntry MessageListEntry;
+
     enum TaskType
     {
         taskNone = 0,
@@ -71,6 +78,7 @@ private:
     QSystemTrayIcon* sysTrayIcon;
     QActionGroup* groupTextAlign;
     QActionGroup* groupSendOption;
+    QTabBar* tabBarSession;
     QList<QTextBrowser*> browserList;
     QList<QTextEdit*> editorList;
     QStandardItemModel listFriendModel;
@@ -123,18 +131,18 @@ private slots:
     void onChangeSessionFinished(int queryID, bool successful);
     void onChangeStateFinished(int queryID,
                                bool successful,
-                               Account::OnlineState newState);
+                               OnlineState newState);
     void onUpdateFriendListFinished(int queryID,
-                                    QList<Account::AccountListEntry> friends);
+                                    QList<AccountListEntry> friends);
     void onGetFriendInfoFinished(int queryID,
-                                 QList<Account::AccountInfoEntry> infoList);
+                                 QList<AccountInfoEntry> infoList);
     void onConnectionBroken(QString ID);
     void onConversationVerifyFinished(int queryID,
                                       Conversation::VerifyError errorCode);
     void onResetSessionFinished(int queryID, bool successful);
     void onSendMessageFinished(int queryID, bool successful);
     void onGetMessageListFinished(int queryID,
-                                  QList<Conversation::AccountListEntry> msgList);
+                                  QList<MessageListEntry> msgList);
     void onReceiveMessageFinished(int queryID, QByteArray& content);
 
     // Customized slots for UI events
@@ -144,7 +152,7 @@ private slots:
     void onMouseHoverLeave(QObject* watched, QHoverEvent* event);
     void onKeyRelease(QObject* watched, QKeyEvent* event);
     void onSessionTabClose(bool checked);
-    void onSysTrayIconClicked(int reason);
+    void onSysTrayIconClicked(QSystemTrayIcon::ActivationReason reason);
     void onSysTrayMenuClicked(QAction* action);
     void onListFriendMenuClicked(QAction* action);
     void onFriendRemarksChanged(QString ID, QString remarks);

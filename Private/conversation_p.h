@@ -92,12 +92,12 @@ public:
                       QString cacheDir);
     static void parseAccountList(QByteArray& data,
                                  QByteArray listType,
-                                 QList<Conversation::AccountListEntry>& list);
+                                 QList<Conversation::MessageListEntry> &list);
     static QByteArray formatID(QString ID);
     static QString serverObjectToPath(ServerObject objectID);
 
 signals:
-    void privateEvent(PrivateEventType eventType, int data);
+    void privateEvent(int eventType, int data);
 
 protected slots:
     void onRequestFinished(int requestID);

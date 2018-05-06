@@ -174,8 +174,8 @@
              <height>31</height>
             </rect>
            </property>
-           <property name="currentText">
-            <string>8</string>
+           <property name="currentIndex">
+            <number>2</number>
            </property>
            <item>
             <property name="text">

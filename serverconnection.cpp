@@ -12,11 +12,6 @@
 ServerConnection::ServerConnection()
 {
     this->d_ptr = new ServerConnectionPrivate(this);
-
-    connect(d_ptr,
-            &ServerConnectionPrivate::privateEvent,
-            this,
-            &ServerConnection::onPrivateEvent);
 }
 
 ServerConnection::~ServerConnection()
@@ -173,7 +168,7 @@ ServerConnection::sendRequest(int serverID,
     iBuffer = d->QueryHeader;
     iBuffer.append(content);
 
-    int received;
+    int received = 0;
 #ifdef QT_DEBUG
     received = d->httpRequest(server, 80,
                               URL, d->MethodPost,
@@ -260,21 +255,6 @@ ServerConnection::getAsyncResponse(int requestID, QByteArray& buffer)
     return errCode;
 }
 
-void ServerConnection::onPrivateEvent(int eventType, void* data)
-{
-    switch (ServerConnectionPrivate::PrviateEventType(eventType))
-    {
-        case ServerConnectionPrivate::httpRequestFinished:
-        {
-            int* requestID = (int*)(data);
-            emit onRequestFinished(*requestID);
-            delete requestID;
-            break;
-        }
-        default:;
-    }
-}
-
 ServerConnectionPrivate::ServerConnectionPrivate(ServerConnection* parent)
 {
     this->q_ptr = parent;
@@ -317,7 +297,7 @@ int ServerConnectionPrivate::httpRequest(QString strHostName,
                                          bool boolSync)
 {
 #ifndef IS_LOCAL_SERVER
-    if (network.networkAccessible() != QNetworkAccessManager::Accessible)
+    if (network.networkAccessible() == QNetworkAccessManager::NotAccessible)
         return -1;
 #endif
 
@@ -438,6 +418,8 @@ QNetworkReply* ServerConnectionPrivate::dealHttpRedirect(QNetworkReply* reply,
 
 void ServerConnectionPrivate::onHttpRequestFinished(QNetworkReply* reply)
 {
+    Q_Q(ServerConnection);
+
     // Use property "ID" to check if the reply is a synchronous one
     int requestID = reply->property(WICHAT_CONNECTION_REQUEST_PROP_ID).toInt();
     if (requestID > 0)
@@ -453,8 +435,6 @@ void ServerConnectionPrivate::onHttpRequestFinished(QNetworkReply* reply)
             return;
         }
 
-        int* data = new int;
-        *data = requestID;
-        emit privateEvent(httpRequestFinished, data);
+        emit q->requestFinished(requestID);
     }
 }

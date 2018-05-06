@@ -19,6 +19,7 @@ public:
     QString currentUserDir;
 
     bool switchUser(QString userID);
+    static QString defaultRecordPath();
 };
 
 #endif // WICHATCONFIGPRIVATE_H

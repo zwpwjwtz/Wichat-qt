@@ -10,6 +10,7 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 CONFIG += link_pkgconfig
 PKGCONFIG += openssl
+QMAKE_CXXFLAGS += -std=c++0x
 
 TARGET = Wichat-qt
 TEMPLATE = app
@@ -46,7 +47,6 @@ SOURCES += main.cpp\
 HEADERS  += mainwindow.h \
     loginwindow.h \
     serverconnection.h \
-    serverconnection_p.h \
     common.h \
     encryptor.h \
     wichatconfig.h \

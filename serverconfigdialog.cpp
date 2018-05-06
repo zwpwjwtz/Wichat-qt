@@ -6,16 +6,19 @@ ServerConfigDialog::ServerConfigDialog(QWidget *parent) :
     ui(new Ui::ServerConfigDialog)
 {
     ui->setupUi(this);
-
-    if (!WichatRootServer.isEmpty())
-        ui->textRootServer->setText(WichatRootServer);
-    if (WichatRootServerPort != 0)
-        ui->textRootPort->setText(QString::number(WichatRootServerPort));
 }
 
 ServerConfigDialog::~ServerConfigDialog()
 {
     delete ui;
+}
+
+void ServerConfigDialog::showEvent(QShowEvent* event)
+{
+    if (!WichatRootServer.isEmpty())
+        ui->textRootServer->setText(WichatRootServer);
+    if (WichatRootServerPort != 0)
+        ui->textRootPort->setText(QString::number(WichatRootServerPort));
 }
 
 void ServerConfigDialog::on_buttonBox_accepted()

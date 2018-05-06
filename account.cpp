@@ -18,23 +18,25 @@
 #define WICHAT_RELATION_STATE_BREAKING 3
 //#define WICHAT_RELATION_STATE_REFUSED 4
 
+#define WICHAT_ACCOUNT_EVENT_REQUEST_FINISHED 1
+
 
 Account::Account()
 {
     this->d_ptr = new AccountPrivate(this);
     connect(d_ptr,
-            &AccountPrivate::privateEvent,
+            SIGNAL(privateEvent(int, int)),
             this,
-            &Account::onPrivateEvent);
+            SLOT(onPrivateEvent(int, int)));
 }
 
 Account::Account(ServerConnection &server)
 {
     this->d_ptr = new AccountPrivate(this, &server);
     connect(d_ptr,
-            &AccountPrivate::privateEvent,
+            SIGNAL(privateEvent(int, int)),
             this,
-            &Account::onPrivateEvent);
+            SLOT(onPrivateEvent(int, int)));
 }
 
 bool Account::checkID(QString ID)
@@ -511,9 +513,10 @@ void Account::dispatchQueryRespone(int requestID)
 void Account::onPrivateEvent(int eventType, int data)
 {
     Q_D(Account);
-    switch (AccountPrivate::PrivateEventType(eventType))
+
+    switch (eventType)
     {
-        case AccountPrivate::RequestFinished:
+        case WICHAT_ACCOUNT_EVENT_REQUEST_FINISHED:
             if (d->getRequestIndexByID(data) >= 0)
                 dispatchQueryRespone(data);
             break;
@@ -529,7 +532,7 @@ AccountPrivate::AccountPrivate(Account* parent, ServerConnection* server)
     else
         this->server = new RequestManager;
     connect(this->server,
-            SIGNAL(onRequestFinished(int)),
+            SIGNAL(requestFinished(int)),
             this,
             SLOT(onRequestFinished(int)));
 }
@@ -689,5 +692,5 @@ QString AccountPrivate::serverObjectToPath(ServerObject objectID)
 
 void AccountPrivate::onRequestFinished(int requestID)
 {
-    emit privateEvent(RequestFinished, requestID);
+    emit privateEvent(WICHAT_ACCOUNT_EVENT_REQUEST_FINISHED, requestID);
 }

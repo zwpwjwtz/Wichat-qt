@@ -18,6 +18,9 @@ public:
     QString WichatRootServer;
     int WichatRootServerPort;
 
+protected:
+    void showEvent(QShowEvent* event);
+
 private slots:
     void on_buttonBox_accepted();
 

@@ -2,7 +2,6 @@
 #define ENCRYPTORPRIVATE_H
 
 #include <QObject>
-#include <QCryptographicHash>
 #include "opensslpp/include/opensslpp/random.h"
 
 #define BLOWFISH_MAX_PBLOCK_SIZE 18
@@ -19,7 +18,6 @@ class EncryptorPrivate : QObject
     Q_DECLARE_PUBLIC(Encryptor)
 
 public:
-    static QCryptographicHash hasher;
     static std::unique_ptr<opensslpp::Random> randGenerator;
     static constexpr const char* DefaultDelta =
                                 "`-jvDj34hjG]vb 0-r 32-ug11`JWaepoj 1#@f12?#";

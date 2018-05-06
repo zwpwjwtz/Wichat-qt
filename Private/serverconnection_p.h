@@ -36,11 +36,6 @@ public:
     const char* ResponseHeader = "WiChatSR";
     const int ResponseHeaderLen = 8;
 
-    enum PrviateEventType
-    {
-        httpRequestFinished = 1,
-    };
-
     QNetworkAccessManager network;
     QString rootServer;
     int rootServerPort;
@@ -60,9 +55,6 @@ public:
                     QByteArray& bytePostData,
                     QByteArray& byteReceive,
                     bool boolSync = true);
-
-signals:
-    void privateEvent(PrviateEventType eventType, void* data);
 
 protected:
     int waitHttpRequest(QNetworkReply* reply, bool synchronous = true);

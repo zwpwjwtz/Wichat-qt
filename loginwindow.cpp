@@ -44,7 +44,8 @@ void LoginWindow::on_buttonLogin_clicked()
 
     QList<QString> rootServer = globalConfig.rootServer().split(',')
                                                          .toVector().toList();
-    globalConnection.setRootServer(rootServer[0], rootServer[1].toInt());
+    if (rootServer.count() >= 2)
+        globalConnection.setRootServer(rootServer[0], rootServer[1].toInt());
 
     Account::VerifyError errorCode =
             globalAccount.verify(ui->textID->text(), ui->textPassword->text());
@@ -112,5 +113,5 @@ void LoginWindow::on_buttonSettings_clicked()
 
     rootServerInfo[0] = serverConfig->WichatRootServer;
     rootServerInfo[1] = QString::number(serverConfig->WichatRootServerPort);
-    globalConfig.setRootServer(rootServerInfo.join(','));
+    globalConfig.setRootServer(rootServerInfo.join(","));
 }

@@ -17,23 +17,27 @@
 
 #define WICHAT_SESSION_FILE_CACHE_DIR "cache"
 
+#define WICHAT_CONVERS_EVENT_REQUEST_FINISHED 1
+#define WICHAT_CONVERS_EVENT_SEND_FAILED 2
+#define WICHAT_CONVERS_EVENT_RECEIVE_FAILED 3
+
 
 Conversation::Conversation()
 {
     this->d_ptr = new ConversationPrivate(this);
     connect(d_ptr,
-            &ConversationPrivate::privateEvent,
+            SIGNAL(privateEvent(int, int)),
             this,
-            &Conversation::onPrivateEvent);
+            SLOT(onPrivateEvent(int, int)));
 }
 
 Conversation::Conversation(ServerConnection &server)
 {
     this->d_ptr = new ConversationPrivate(this, &server);
     connect(d_ptr,
-            &ConversationPrivate::privateEvent,
+            SIGNAL(privateEvent(int, int)),
             this,
-            &Conversation::onPrivateEvent);
+            SLOT(onPrivateEvent(int, int)));
 }
 
 bool Conversation::verify(QByteArray sessionID, QByteArray sessionKey)
@@ -279,7 +283,7 @@ void Conversation::dispatchQueryRespone(int requestID)
             }
             case ConversationPrivate::RequestType::GetMessageList:
             {
-                QList<AccountListEntry> idList;
+                QList<MessageListEntry> idList;
                 d->parseAccountList(data, "v", idList);
                 emit getMessageListFinished(requestID, idList);
                 break;
@@ -362,9 +366,9 @@ void Conversation::onPrivateEvent(int eventType, int data)
 {
     Q_D(Conversation);
 
-    switch (ConversationPrivate::PrivateEventType(eventType))
+    switch (eventType)
     {
-        case ConversationPrivate::RequestFinished:
+        case WICHAT_CONVERS_EVENT_REQUEST_FINISHED:
             if (d->getRequestIndexByID(data) >= 0)
                 dispatchQueryRespone(data);
             break;
@@ -382,7 +386,7 @@ ConversationPrivate::ConversationPrivate(Conversation* parent,
         this->server = new RequestManager;
     sessionList = nullptr;
     connect(this->server,
-            SIGNAL(onRequestFinished(int)),
+            SIGNAL(requestFinished(int)),
             this,
             SLOT(onRequestFinished(int)));
 }
@@ -741,10 +745,10 @@ void ConversationPrivate::dataUnxmlize(const QByteArray& src,
 
 void ConversationPrivate::parseAccountList(QByteArray& data,
                                            QByteArray listType,
-                                   QList<Conversation::AccountListEntry>& list)
+                                   QList<Conversation::MessageListEntry>& list)
 {
     int p1, p2, p3, pE;
-    Conversation::AccountListEntry account;
+    Conversation::MessageListEntry account;
     if (listType.isEmpty())
         p1 = data.indexOf("<IDList>");
     else
@@ -789,5 +793,5 @@ QString ConversationPrivate::serverObjectToPath(ServerObject objectID)
 
 void ConversationPrivate::onRequestFinished(int requestID)
 {
-    emit privateEvent(RequestFinished, requestID);
+    emit privateEvent(WICHAT_CONVERS_EVENT_REQUEST_FINISHED, requestID);
 }

@@ -52,10 +52,7 @@ public:
                                       QByteArray& buffer);
 
 signals:
-    void onRequestFinished(int requestID);
-
-private slots:
-    void onPrivateEvent(int eventType, void* data);
+    void requestFinished(int requestID);
 };
 
 #endif // SERVERCONNECTION_H

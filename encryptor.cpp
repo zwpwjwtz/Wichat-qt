@@ -1,4 +1,5 @@
 #include <QDateTime>
+#include <openssl/sha.h>
 #include "encryptor.h"
 #include "Private/encryptor_p.h"
 #include "opensslpp/include/opensslpp/aes_cbc.h"
@@ -20,15 +21,26 @@ QByteArray Encryptor::getCRC32(const QByteArray& source)
 
 QByteArray Encryptor::getSHA256(const QByteArray& source, bool toDec)
 {
-    QByteArray result;
-    result = EncryptorPrivate::hasher.hash(source, QCryptographicHash::Sha256);
+    char result[256 / 8];
+    unsigned int size;
+
+    EVP_MD_CTX* context = EVP_MD_CTX_create();
+    if (!context)
+        return QByteArray();
+
+    EVP_DigestInit_ex(context, EVP_sha256(), nullptr);
+    EVP_DigestUpdate(context, source.constData(), source.length());
+    if (!EVP_DigestFinal_ex(context, (unsigned char*)result, &size))
+        size = 0;
+    EVP_MD_CTX_destroy(context);
+
     if (toDec)
     {
-        for (int i=0; i<result.size(); i++)
+        for (unsigned int i=0; i<size; i++)
             result[i] = char(int(result[i]) + 48);
     }
 
-    return result;
+    return QByteArray(result, size);
 }
 
 QByteArray Encryptor::getHMAC(const QByteArray& source,
@@ -44,7 +56,7 @@ QByteArray Encryptor::getHMAC(const QByteArray& source,
     if (key.length() > blockSize)
     {
         // reduce key length with SHA-256 compression
-        key = EncryptorPrivate::hasher.hash(key, QCryptographicHash::Sha256);
+        key = getSHA256(key);
     }
 
     QByteArray innerPadding(blockSize, char(0x36));
@@ -61,8 +73,8 @@ QByteArray Encryptor::getHMAC(const QByteArray& source,
    // result = hash (outerPadding CONCAT hash (innerPadding CONCAT baseString))
     QByteArray total = outerPadding;
     QByteArray part = innerPadding.append(source);
-    total.append(EncryptorPrivate::hasher.hash(part, QCryptographicHash::Sha256));
-    result = EncryptorPrivate::hasher.hash(total, QCryptographicHash::Sha256);
+    total.append(getSHA256(part));
+    result = getSHA256(total);
 
     if (toDec)
     {
@@ -94,7 +106,7 @@ bool Encryptor::encrypt(Algorithm algo,
                               resultByte, sourceLen,
                               1);
             if (ret)
-                result = QByteArray::fromRawData(resultByte, sourceLen);
+                result = QByteArray(resultByte, sourceLen);
             break;
         case AES:
         {
@@ -105,12 +117,15 @@ bool Encryptor::encrypt(Algorithm algo,
                 tempKey = key.toBase64();
 
             using namespace opensslpp;
-            auto aes = Aes256Cbc::createWithKey(tempKey.toStdString());
             std::vector<uint8_t> cipher;
             Aes256Cbc::Iv iv;
-            aes->encrypt(source.toStdString(),
-                         cipher,
-                         iv);
+            std::string buffer;
+            buffer.append(tempKey.constData(), tempKey.length());
+            auto aes = Aes256Cbc::createWithKey(buffer);
+            buffer.clear();
+            buffer.append(source.constData(), source.length());
+            aes->encrypt(buffer, cipher, iv);
+
             result.clear();
             for (unsigned int i=0; i<iv.size(); i++)
                 result.append(iv[i]);
@@ -146,7 +161,7 @@ bool Encryptor::decrypt(Algorithm algo,
                               resultByte, sourceLen,
                               2);
             if (ret)
-                result.fromRawData(resultByte, sourceLen);
+                result = QByteArray(resultByte, sourceLen);
             break;
         case AES:
         {
@@ -157,9 +172,11 @@ bool Encryptor::decrypt(Algorithm algo,
                 tempKey = key.toBase64();
 
             using namespace opensslpp;
-            auto aes = Aes256Cbc::createWithKey(tempKey.toStdString());
             std::vector<uint8_t> plain;
             Aes256Cbc::Iv iv;
+            std::string buffer;
+            buffer.append(tempKey.constData(), tempKey.length());
+            auto aes = Aes256Cbc::createWithKey(buffer);
             for (unsigned int i=0; i<iv.size(); i++)
                 iv[i] = source[i];
             aes->decrypt(EncryptorPrivate::qByteArrayToCharVector(source.mid(iv.size())),
@@ -627,8 +644,6 @@ const unsigned int scm_auiInitS[BLOWFISH_MAX_SBLOCK_XSIZE][BLOWFISH_MAX_SBLOCK_Y
      0x90d4f869, 0xa65cdea0, 0x3f09252d, 0xc208e69f,
      0xb74e6132, 0xce77e25b, 0x578fdfe3, 0x3ac372e6}
 };
-
-QCryptographicHash EncryptorPrivate::hasher{QCryptographicHash::Sha1};
 
 unsigned int EncryptorPrivate::crc32_string(const char * text, long length)
 {

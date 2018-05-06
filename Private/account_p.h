@@ -38,11 +38,6 @@ public:
         GetFriendInfo = 10
     };
 
-    enum PrivateEventType
-    {
-        RequestFinished = 1
-    };
-
     struct RequestInfo
     {
         int ID;
@@ -75,7 +70,7 @@ public:
     static QString serverObjectToPath(ServerObject objectID);
 
 signals:
-    void privateEvent(PrivateEventType eventType, int data);
+    void privateEvent(int eventType, int data);
 
 protected slots:
     void onRequestFinished(int requestID);

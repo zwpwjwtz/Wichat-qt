@@ -20,7 +20,7 @@ public:
 
 private slots:
     void getCRC32();
-    void getSHA1();
+    //void getSHA1();
     void getSHA256();
     void getHMAC();
 
@@ -37,7 +37,7 @@ void TestEncryptor::getCRC32()
     QCOMPARE(encoder.getCRC32(testVector1),
              QByteArray("\xd5\xea\x31\xca"));
 }
-
+/*
 void TestEncryptor::getSHA1()
 {
     QCOMPARE(encoder.getSHA1(testVector1),
@@ -45,11 +45,11 @@ void TestEncryptor::getSHA1()
                         "\x88\x66\x46\x9f\x68\x08\xda\xa8"
                         "\xf9\xea\x1f\x8f\x21\x00\xb9\xcd"
                         "\x94\x12\x4c\x87", 20));
-}
+}*/
 
 void TestEncryptor::getSHA256()
 {
-    QCOMPARE(QCryptographicHash::hash(testVector1, QCryptographicHash::Sha256),
+    QCOMPARE(encoder.getSHA256(testVector1),
              QByteArray("\x9a\x48\x77\xb7\x1e\x6a\x41\xf2"
                         "\x45\x18\xc8\xe2\x15\x21\x32\x4c"
                         "\xd0\xe2\x29\x35\x0c\x49\x0e\x4a"

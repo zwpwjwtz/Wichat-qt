@@ -36,6 +36,7 @@ public:
 
     explicit RequestManager();
     explicit RequestManager(ServerConnection& server);
+    ~RequestManager();
     void setSessionInfo(QByteArray sessionID, QByteArray key);
     RequestError sendRawData(const QByteArray& data,
                              QByteArray& result,
@@ -53,10 +54,7 @@ public:
     void removeRequest(int requestID);
 
 signals:
-    void onRequestFinished(int requestID);
-
-private slots:
-    void onPrivateEvent(int eventType, int data);
+    void requestFinished(int requestID);
 };
 
 #endif // REQUESTMANAGER_H

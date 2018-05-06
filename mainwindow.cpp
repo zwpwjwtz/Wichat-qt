@@ -7,7 +7,6 @@
 #include <QScrollBar>
 #include <QColorDialog>
 #include <QMenu>
-#include <QSystemTrayIcon>
 
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
@@ -121,52 +120,59 @@ MainWindow::MainWindow(QWidget *parent) :
     buttonTabClose = new QPushButton(QIcon(":/Icons/remove.ico"),
                                      "");
     buttonTabClose->setGeometry(0, 0, 10, 10);
+    tabBarSession = ui->tabSession->findChild<QTabBar*>();
     listFriendModel.setColumnCount(3);
 
     connect(&globalAccount,
-            &Account::resetSessionFinished,
+            SIGNAL(resetSessionFinished(int, bool)),
             this,
-            &MainWindow::onChangeSessionFinished);
+            SLOT(onChangeSessionFinished(int, bool)));
     connect(&globalAccount,
-            &Account::setStateFinished,
+            SIGNAL(setStateFinished(int, bool, OnlineState)),
             this,
-            &MainWindow::onChangeStateFinished);
+            SLOT(onChangeStateFinished(int,bool, OnlineState)));
     connect(&globalAccount,
-            &Account::queryFriendListFinished,
+            SIGNAL(queryFriendListFinished(int,
+                                           QList<AccountListEntry>)),
             this,
-            &MainWindow::onUpdateFriendListFinished);
+            SLOT(onUpdateFriendListFinished(int,
+                                            QList<AccountListEntry>)));
     connect(&globalAccount,
-            &Account::queryFriendInfoFinished,
+            SIGNAL(queryFriendInfoFinished(int,
+                                           QList<AccountInfoEntry>)),
             this,
-            &MainWindow::onGetFriendInfoFinished);
+            SLOT(onGetFriendInfoFinished(int,
+                                         QList<AccountInfoEntry>)));
     connect(&globalConversation,
-            &Conversation::connectionBroken,
+            SIGNAL(connectionBroken(QString)),
             this,
-            &MainWindow::onConnectionBroken);
+            SLOT(onConnectionBroken(QString)));
     connect(&globalConversation,
-            &Conversation::verifyFinished,
+            SIGNAL(verifyFinished(int, Conversation::VerifyError)),
             this,
-            &MainWindow::onConversationVerifyFinished);
+            SLOT(onConversationVerifyFinished(int, Conversation::VerifyError)));
     connect(&globalConversation,
-            &Conversation::resetSessionFinished,
+            SIGNAL(resetSessionFinished(int, bool)),
             this,
-            &MainWindow::onResetSessionFinished);
+            SLOT(onResetSessionFinished(int, bool)));
     connect(&globalConversation,
-            &Conversation::sendMessageFinished,
+            SIGNAL(sendMessageFinished(int, bool)),
             this,
-            &MainWindow::onSendMessageFinished);
+            SLOT(onSendMessageFinished(int, bool)));
     connect(&globalConversation,
-            &Conversation::getMessageListFinished,
+            SIGNAL(getMessageListFinished(int,
+                                          QList<MessageListEntry>)),
             this,
-            &MainWindow::onGetMessageListFinished);
+            SLOT(onGetMessageListFinished(int,
+                                          QList<MessageListEntry>)));
     connect(&globalConversation,
-            &Conversation::receiveMessageFinished,
+            SIGNAL(receiveMessageFinished(int, QByteArray&)),
             this,
-            &MainWindow::onReceiveMessageFinished);
+            SLOT(onReceiveMessageFinished(int, QByteArray&)));
     connect(&globalConversation,
-            &Conversation::verifyFinished,
-            &(this->conversationLock),
-            &QEventLoop::quit);
+            SIGNAL(verifyFinished(int, Conversation::VerifyError)),
+            &conversationLock,
+            SLOT(quit()));
     connect(buttonTabClose,
             SIGNAL(clicked(bool)),
             this,
@@ -176,9 +182,9 @@ MainWindow::MainWindow(QWidget *parent) :
             this,
             SLOT(onListFriendMenuClicked(QAction*)));
     connect(sysTrayIcon,
-            &QSystemTrayIcon::activated,
+            SIGNAL(activated(QSystemTrayIcon::ActivationReason)),
             this,
-            &MainWindow::onSysTrayIconClicked);
+            SLOT(onSysTrayIconClicked(QSystemTrayIcon::ActivationReason)));
     connect(menuSysTray,
             SIGNAL(triggered(QAction*)),
             this,
@@ -190,7 +196,7 @@ MainWindow::MainWindow(QWidget *parent) :
 
     installEventFilter(this);
     ui->listFriend->installEventFilter(this);
-    ui->tabSession->tabBar()->installEventFilter(this);
+    tabBarSession->installEventFilter(this);
 
     accountInfo = nullptr;
     dialogColor = nullptr;
@@ -1029,7 +1035,7 @@ void MainWindow::onSendMessageFinished(int queryID, bool successful)
 }
 
 void MainWindow::onGetMessageListFinished(int queryID,
-                                QList<Conversation::AccountListEntry> msgList)
+                                          QList<MessageListEntry> msgList)
 {
     Notification::Note newNote;
     newNote.destination = userID;
@@ -1068,16 +1074,16 @@ void MainWindow::onMouseButtonRelease()
 
 void MainWindow::onMouseHoverEnter(QObject* watched, QHoverEvent* event)
 {
-    if (watched == ui->tabSession->tabBar())
+    if (watched == tabBarSession)
     {
-        int index = ui->tabSession->tabBar()->tabAt(QCursor::pos()
+        int index = tabBarSession->tabAt(QCursor::pos()
                                                     - pos()
                                                     - QPoint(0, 50));
         if (index < 0)
             return;
 
         lastHoveredTab = index;
-        ui->tabSession->tabBar()->setTabButton(index,
+        tabBarSession->setTabButton(index,
                                                QTabBar::RightSide,
                                                buttonTabClose);
     }
@@ -1085,9 +1091,9 @@ void MainWindow::onMouseHoverEnter(QObject* watched, QHoverEvent* event)
 
 void MainWindow::onMouseHoverLeave(QObject* watched, QHoverEvent* event)
 {
-    if (watched == ui->tabSession->tabBar() && lastHoveredTab >= 0)
+    if (watched == tabBarSession && lastHoveredTab >= 0)
     {
-        ui->tabSession->tabBar()->setTabButton(lastHoveredTab,
+        tabBarSession->setTabButton(lastHoveredTab,
                                                QTabBar::RightSide,
                                                nullptr);
         lastHoveredTab = -1;
@@ -1116,16 +1122,16 @@ void MainWindow::onKeyRelease(QObject* watched, QKeyEvent* event)
 
 void MainWindow::onSessionTabClose(bool checked)
 {
-    int index = ui->tabSession->tabBar()->tabAt(QCursor::pos()
+    int index = tabBarSession->tabAt(QCursor::pos()
                                                 - pos()
                                                 - QPoint(0, 50));
-    ui->tabSession->tabBar()->setTabButton(index,
+    tabBarSession->setTabButton(index,
                                            QTabBar::RightSide,
                                            nullptr);
     removeTab(ui->tabSession->widget(index)->property("ID").toString());
 }
 
-void MainWindow::onSysTrayIconClicked(int reason)
+void MainWindow::onSysTrayIconClicked(QSystemTrayIcon::ActivationReason reason)
 {
     updateSysTrayMenu();
 }
@@ -1202,7 +1208,7 @@ void MainWindow::on_buttonTextStyle_clicked()
 {
     QList<QAction*> actionList;
     QFont fontStyle;
-    QList<QString> fontStyleArgs;
+    QStringList fontStyleArgs;
 
     if (!menuFontStyle)
     {
@@ -1268,7 +1274,7 @@ void MainWindow::on_buttonTextStyle_clicked()
         if (actionList[i]->isChecked())
             fontStyleArgs.push_back(actionList[i]->data().toString());
     }
-    globalConfig.setPrefFontFamily(userID, fontStyleArgs.join(','));
+    globalConfig.setPrefFontFamily(userID, fontStyleArgs.join(","));
     applyFont();
 }
 
@@ -1346,7 +1352,7 @@ void MainWindow::on_buttonSend_clicked()
 {
 #ifndef QT_DEBUG
     if (globalAccount.state() == Account::OnlineState::None ||
-        globalAccount.state() == Account::OnlineState::Offline ||)
+        globalAccount.state() == Account::OnlineState::Offline)
     {
         QMessageBox::warning(this, "Please log in first",
                              "You are off-line now. "
@@ -1434,7 +1440,7 @@ void MainWindow::on_buttonSendOpt_clicked()
 
 void MainWindow::on_tabSession_tabBarClicked(int index)
 {
-    onMouseHoverEnter(ui->tabSession->tabBar(), nullptr);
+    onMouseHoverEnter(tabBarSession, nullptr);
 }
 
 
