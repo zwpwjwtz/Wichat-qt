@@ -15,6 +15,7 @@ AccountInfoDialog::~AccountInfoDialog()
 
 void AccountInfoDialog::showEvent(QShowEvent* event)
 {
+    Q_UNUSED(event)
     ui->labelID->setText(ID);
     if (state == Account::OnlineState::Offline)
         ui->labelOnlineState->setText("Not online");
@@ -27,6 +28,7 @@ void AccountInfoDialog::showEvent(QShowEvent* event)
 
 void AccountInfoDialog::closeEvent(QCloseEvent* event)
 {
+    Q_UNUSED(event)
     if (ui->textRemarks->text() != remarks)
     {
         remarks = ui->textRemarks->text();

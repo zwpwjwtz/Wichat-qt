@@ -15,6 +15,7 @@ ServerConfigDialog::~ServerConfigDialog()
 
 void ServerConfigDialog::showEvent(QShowEvent* event)
 {
+    Q_UNUSED(event)
     if (!WichatRootServer.isEmpty())
         ui->textRootServer->setText(WichatRootServer);
     if (WichatRootServerPort != 0)

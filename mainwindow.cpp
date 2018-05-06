@@ -930,6 +930,7 @@ QString MainWindow::stateToImagePath(int stateNumber, bool displayHide)
 
 void MainWindow::onChangeSessionFinished(int queryID, bool successful)
 {
+    Q_UNUSED(queryID)
     if (!successful)
         addTask(taskLogOut);
 }
@@ -938,6 +939,8 @@ void MainWindow::onChangeStateFinished(int queryID,
                                        bool successful,
                                        Account::OnlineState newState)
 {
+    Q_UNUSED(queryID)
+    Q_UNUSED(newState)
     if (!successful)
         QMessageBox::critical(this, "Wichat error",
                               "Cannot set online state.");
@@ -948,6 +951,7 @@ void MainWindow::onChangeStateFinished(int queryID,
 void MainWindow::onUpdateFriendListFinished(int queryID,
                                     QList<Account::AccountListEntry> friends)
 {
+    Q_UNUSED(queryID)
     listFriendModel.removeRows(0, listFriendModel.rowCount());
 
     QList<QStandardItem*> row;
@@ -979,6 +983,7 @@ void MainWindow::onUpdateFriendListFinished(int queryID,
 void MainWindow::onGetFriendInfoFinished(int queryID,
                                      QList<Account::AccountInfoEntry> infoList)
 {
+    Q_UNUSED(queryID)
     if (infoList.count() < 1)
         return;
 
@@ -1004,6 +1009,7 @@ void MainWindow::onConnectionBroken(QString ID)
 void MainWindow::onConversationVerifyFinished(int queryID,
                                             Conversation::VerifyError errorCode)
 {
+    Q_UNUSED(queryID)
     if (errorCode == Conversation::VerifyError::Ok)
     {
         conversationLoginState = 2;
@@ -1016,6 +1022,7 @@ void MainWindow::onConversationVerifyFinished(int queryID,
 
 void MainWindow::onResetSessionFinished(int queryID, bool successful)
 {
+    Q_UNUSED(queryID)
     if (!successful)
         addTask(taskConversationLogin);
 }
@@ -1037,6 +1044,7 @@ void MainWindow::onSendMessageFinished(int queryID, bool successful)
 void MainWindow::onGetMessageListFinished(int queryID,
                                           QList<MessageListEntry> msgList)
 {
+    Q_UNUSED(queryID)
     Notification::Note newNote;
     newNote.destination = userID;
     newNote.type = Notification::GotMsg;
@@ -1074,6 +1082,7 @@ void MainWindow::onMouseButtonRelease()
 
 void MainWindow::onMouseHoverEnter(QObject* watched, QHoverEvent* event)
 {
+    Q_UNUSED(event)
     if (watched == tabBarSession)
     {
         int index = tabBarSession->tabAt(QCursor::pos()
@@ -1091,6 +1100,7 @@ void MainWindow::onMouseHoverEnter(QObject* watched, QHoverEvent* event)
 
 void MainWindow::onMouseHoverLeave(QObject* watched, QHoverEvent* event)
 {
+    Q_UNUSED(event)
     if (watched == tabBarSession && lastHoveredTab >= 0)
     {
         tabBarSession->setTabButton(lastHoveredTab,
@@ -1102,6 +1112,7 @@ void MainWindow::onMouseHoverLeave(QObject* watched, QHoverEvent* event)
 
 void MainWindow::onKeyRelease(QObject* watched, QKeyEvent* event)
 {
+    Q_UNUSED(watched)
     if (event->key() == Qt::Key_Return ||
         event->key() == Qt::Key_Enter)
     {
@@ -1122,6 +1133,7 @@ void MainWindow::onKeyRelease(QObject* watched, QKeyEvent* event)
 
 void MainWindow::onSessionTabClose(bool checked)
 {
+    Q_UNUSED(checked)
     int index = tabBarSession->tabAt(QCursor::pos()
                                                 - pos()
                                                 - QPoint(0, 50));
@@ -1133,7 +1145,17 @@ void MainWindow::onSessionTabClose(bool checked)
 
 void MainWindow::onSysTrayIconClicked(QSystemTrayIcon::ActivationReason reason)
 {
-    updateSysTrayMenu();
+    switch (reason)
+    {
+        case QSystemTrayIcon::Context:
+            updateSysTrayMenu();
+            break;
+        case QSystemTrayIcon::DoubleClick:
+        case QSystemTrayIcon::Trigger:
+            setWindowState(Qt::WindowActive);
+            break;
+        default:;
+    }
 }
 
 void MainWindow::onSysTrayMenuClicked(QAction* action)
@@ -1440,6 +1462,7 @@ void MainWindow::on_buttonSendOpt_clicked()
 
 void MainWindow::on_tabSession_tabBarClicked(int index)
 {
+    Q_UNUSED(index)
     onMouseHoverEnter(tabBarSession, nullptr);
 }
 
