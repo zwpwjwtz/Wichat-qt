@@ -7,6 +7,7 @@
 #include <QScrollBar>
 #include <QColorDialog>
 #include <QMenu>
+#include <QFileDialog>
 
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
@@ -37,6 +38,11 @@
 #define WICHAT_MAIN_MENU_FRIEND_OPEN "open"
 #define WICHAT_MAIN_MENU_FRIEND_REMOVE "remove"
 #define WICHAT_MAIN_MENU_FRIEND_INFO "info"
+
+#define WICHAT_MAIN_FILE_FILTER_ALL "All (*.*)(*.*)"
+#define WICHAT_MAIN_FILE_FILTER_GIF "GIF file (*.gif)(*.gif)"
+#define WICHAT_MAIN_FILE_FILTER_JPG "JPEG file (*.jpg *.jpeg)(*.jpg *.jpeg)"
+#define WICHAT_MAIN_FILE_FILTER_PNG "PNG file (*.png)(*.png)"
 
 #define WICHAT_MAIN_TIME_FORMAT "yyyy-MM-dd hh:mm:ss"
 
@@ -489,7 +495,6 @@ void MainWindow::loadSessionContent(QString ID)
             receivedMsg = true;
         }
     }
-
     if (receivedMsg && ID != userID)
     {
         int queryID;
@@ -544,11 +549,11 @@ void MainWindow::syncSessionContent(QString ID, bool closeSession)
     }
 }
 
-QByteArray MainWindow::renderHTML(const QByteArray& content)
+QString MainWindow::renderHTML(const QByteArray& content)
 {
     int p1, p2, p3, p4;
-    QByteArray temp;
-    QByteArray result = content;
+    QString temp;
+    QString result = content;
 
     // Deal with emoticon
     p2 = 0;
@@ -569,13 +574,13 @@ QByteArray MainWindow::renderHTML(const QByteArray& content)
     p2 = 0;
     while(true)
     {
-        p1 = result.indexOf("<image>", p2);
-        p2 = result.indexOf("</image>", p1);
+        p1 = result.indexOf("<file><type>i</type><name>", p2);
+        p2 = result.indexOf("</name></file>", p1);
         if (p1 < 0 || p2 < 0)
             break;
-        QString fileName = result.mid(p1 + 6, p2 - p1 - 6);
-        temp = QByteArray("<img src=""file://")
-                    .append(fileName.toLatin1())
+        QString fileName = result.mid(p1 + 26, p2 - p1 - 26);
+        temp = QString("<img src=""file://")
+                    .append(fileName)
                     .append(""" />");
 
         result.replace(p1, p2 - p1, temp);
@@ -585,30 +590,27 @@ QByteArray MainWindow::renderHTML(const QByteArray& content)
     p2 = 0;
     while(true)
     {
-        p1 = result.indexOf("<file>", p2);
-        p2 = result.indexOf("</file>", p1);
+        p1 = result.indexOf("<file><type>f</type><name>", p2);
+        p2 = result.indexOf("</name></file>", p1);
         if (p1 < 0 || p2 < 0)
             break;
-        QString fileName = result.mid(p1 + 6, p2 - p1 - 6);
+        QString fileName = result.mid(p1 + 26, p2 - p1 - 26);
 
         QString noteText;
         p3 = result.lastIndexOf("<div class=s", p1 - 1);
         p4 = result.lastIndexOf("<div class=r", p1 - 1);
         if (p3 >= 0 && p4  < p3)
             noteText = QString("You sent file ""%1"" to him/her.")
-                              .arg(fileName);
+                              .arg(getFileNameFromPath(fileName));
         else
             noteText = QString("He/she sent file ""%1"" to you.")
-                              .arg(fileName);
-        temp = QByteArray("<div style=""width:300px;border:1px solid;"">"
+                              .arg(getFileNameFromPath(fileName));
+        temp = QString("<div style=""width:300px;border:1px solid;"">"
                           "<div style=""float:right"">")
-                    .append(noteText.toLatin1())
-                    .append("<a href=""file://")
-                    .append("<img src=""file://")
-                    .append(fileName.toLatin1())
-                    .append(""" />")
+                    .append(noteText)
+                    .append("<a href=\"file://")
                     .append(fileName)
-                    .append(""" target=_blank>View the file</a></div></div>");
+                    .append("\" target=_blank>View the file</a></div></div>");
 
         result.replace(p1, p2 - p1, temp);
     }
@@ -799,6 +801,45 @@ void MainWindow::getMessageList()
     globalConversation.getMessageList();
 }
 
+bool MainWindow::sendMessage(QString content, QString sessionID)
+{
+#ifndef QT_DEBUG
+    if (globalAccount.state() == Account::OnlineState::None ||
+        globalAccount.state() == Account::OnlineState::Offline)
+    {
+        QMessageBox::warning(this, "Please log in first",
+                             "You are off-line now. "
+                             "Please log in to send messages.");
+        return false;
+    }
+#endif
+
+    int sessionIndex = getSessionIndex(sessionID);
+    if (sessionIndex < 0)
+        return false;
+
+    int queryID;
+    QByteArray buffer(content.toUtf8());
+    if (sessionID != userID)
+    {
+        conversationLogin();
+        if (!globalConversation.sendMessage(sessionID,
+                                            buffer,
+                                            queryID))
+        {
+            QMessageBox::warning(this, "Cannot send message",
+                                 "Wichat is currently unable to send message.");
+            return false;
+        }
+        else
+            queryList[queryID] = sessionID;
+    }
+
+    browserList[sessionIndex]->append(renderHTML(buffer));
+    userSessionList.getSession(sessionID).cache.append(content);
+    return true;
+}
+
 void MainWindow::showNotification()
 {
 
@@ -926,6 +967,18 @@ QString MainWindow::stateToImagePath(int stateNumber, bool displayHide)
     }
     path.append(".ico");
     return path;
+}
+
+QString MainWindow::getFileNameFromPath(QString filePath)
+{
+    char pathSep;
+    if (filePath.indexOf('/') >= 0)
+        pathSep  = '/';
+    else if (filePath.indexOf('\\') >= 0)
+        pathSep  = '\\';
+    else
+        return filePath;
+    return filePath.mid(filePath.lastIndexOf(pathSep) + 1);
 }
 
 void MainWindow::onChangeSessionFinished(int queryID, bool successful)
@@ -1372,43 +1425,13 @@ void MainWindow::on_comboTextSize_currentTextChanged(const QString &arg1)
 
 void MainWindow::on_buttonSend_clicked()
 {
-#ifndef QT_DEBUG
-    if (globalAccount.state() == Account::OnlineState::None ||
-        globalAccount.state() == Account::OnlineState::Offline)
-    {
-        QMessageBox::warning(this, "Please log in first",
-                             "You are off-line now. "
-                             "Please log in to send messages.");
-        return;
-    }
-#endif
-
-    QString sessionID = lastConversation;
-    int sessionIndex = getSessionIndex(sessionID);
-    if (sessionIndex < 0)
-        return;
-
-    int queryID;
-    QByteArray content;
+    QString content;
+    int sessionIndex = getSessionIndex(lastConversation);
     content = addSenderInfo(extractHTMLTag(editorList[sessionIndex]->toHtml(),
                                            "body"),
-                            userID).toUtf8();
-    if (sessionID != userID)
-    {
-        if (!globalConversation.sendMessage(sessionID, content, queryID))
-        {
-            QMessageBox::warning(this, "Cannot send message",
-                                 "Wichat is currently unable to send message.");
-            return;
-        }
-        else
-            queryList[queryID] = sessionID;
-    }
-
-    browserList[sessionIndex]->append(content);
-    editorList[sessionIndex]->clear();
-
-    userSessionList.getSession(sessionID).cache.append(renderHTML(content));
+                            userID);
+    if (sendMessage(content, lastConversation))
+        editorList[sessionIndex]->clear();
 }
 
 void MainWindow::on_buttonSendOpt_clicked()
@@ -1502,4 +1525,37 @@ void MainWindow::on_listFriend_customContextMenuRequested(const QPoint &pos)
         menuFriendOption->addAction(action);
     }
     menuFriendOption->popup(this->pos() + QPoint(430, 50) + pos);
+}
+
+void MainWindow::on_buttonImage_clicked()
+{
+    QString path = QFileDialog::getOpenFileName(this,
+                         "Send image(s)",
+                         lastFilePath,
+                         QString(WICHAT_MAIN_FILE_FILTER_GIF).append(";;")
+                         .append(WICHAT_MAIN_FILE_FILTER_JPG).append(";;")
+                         .append(WICHAT_MAIN_FILE_FILTER_PNG),
+                         &lastImageFilter);
+    if (path.isEmpty())
+        return;
+
+    QString content("<file><type>i</type><name>%FILE%</name></file>");
+    content.replace("%FILE%", path);
+    sendMessage(addSenderInfo(content, userID), lastConversation);
+    lastFilePath = path;
+}
+
+void MainWindow::on_buttonFile_clicked()
+{
+    QString path = QFileDialog::getOpenFileName(this,
+                         "Send image(s)",
+                         lastFilePath,
+                         QString(WICHAT_MAIN_FILE_FILTER_ALL));
+    if (path.isEmpty())
+        return;
+
+    QString content("<file><type>f</type><name>%FILE%</name></file>");
+    content.replace("%FILE%", path);
+    sendMessage(addSenderInfo(content, userID), lastConversation);
+    lastFilePath = path;
 }

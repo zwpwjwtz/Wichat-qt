@@ -88,6 +88,8 @@ private:
     PeerSession peerSessionList;
     QString userID;
     QString lastConversation;
+    QString lastFilePath;
+    QString lastImageFilter;
     QQueue<TaskType> taskList;
     QQueue<QString> brokenConnectionList;
     QMap<int, QString> queryList;
@@ -106,7 +108,7 @@ private:
     void loadSession(QString ID, bool setTabActive = true);
     void loadSessionContent(QString ID);
     void syncSessionContent(QString ID, bool closeSession = false);
-    QByteArray renderHTML(const QByteArray& content);
+    QString renderHTML(const QByteArray& content);
     void addTab(QString ID);
     void loadTab();
     void refreshTab();
@@ -120,11 +122,13 @@ private:
     QString getStateImagePath(QString ID);
     void conversationLogin();
     void getMessageList();
+    bool sendMessage(QString content, QString sessionID);
     void showNotification();
     void fixBrokenConnection();
     static QString addSenderInfo(const QString& content, QString ID);
     static QString extractHTMLTag(const QString& rawHTML, QString tagName);
     static QString stateToImagePath(int stateNumber, bool displayHide = false);
+    static QString getFileNameFromPath(QString filePath);
 
 private slots:
     // Slots for asynchronous request
@@ -170,6 +174,8 @@ private slots:
     void on_tabSession_currentChanged(int index);
     void on_listFriend_doubleClicked(const QModelIndex &index);
     void on_listFriend_customContextMenuRequested(const QPoint &pos);
+    void on_buttonImage_clicked();
+    void on_buttonFile_clicked();
 };
 
 #endif // MAINWINDOW_H

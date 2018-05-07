@@ -1,4 +1,5 @@
 #include <QFile>
+#include <QDir>
 #include "common.h"
 #include "conversation.h"
 #include "Private/conversation_p.h"
@@ -302,13 +303,15 @@ void Conversation::dispatchQueryRespone(int requestID)
                 {
                     // Try to query resource with multiple request
                     if (transaction->multiPart)
+                    {
                         emit queryError(requestID, QueryError::UnknownError);
+                        d->removeTransaction(transaction);
+                    }
                     else
                     {
                         transaction->multiPart = true;
                         d->processReceiveList();
                     }
-                    d->removeTransaction(transaction);
                     break;
                 }
                 if (data[0] != char(WICHAT_SERVER_RESPONSE_RES_OK) &&
@@ -454,7 +457,7 @@ bool ConversationPrivate::processSendList()
     else
     {
         transaction.multiPart = true;
-        if (dataLength < transaction.pos + sendLength)
+        if (dataLength > transaction.pos + MaxMsgBlock)
         {
             sendLength = MaxMsgBlock;
             isEOF = false;
@@ -476,7 +479,7 @@ bool ConversationPrivate::processSendList()
         bufferIn.append(char(1));
     else
         bufferIn.append(char(0));
-    bufferIn.append(*(transaction.data));
+    bufferIn.append(transaction.data->mid(transaction.pos, sendLength));
 
     if (server->sendData(bufferIn, bufferOut,
                          RequestManager::RecordServer,
@@ -507,7 +510,10 @@ bool ConversationPrivate::processReceiveList()
         bufferIn.append(char(2));
     bufferIn.append(formatID(transaction.target));
     bufferIn.append(QByteArray::fromRawData((const char*)(&receiveLength), 4));
-    bufferIn.append(char(1)).append(char(0));
+    if (transaction.multiPart)
+        bufferIn.append(char(0)).append(char(transaction.pos / MaxMsgBlock));
+    else
+        bufferIn.append(char(1)).append(char(0));
 
     if (server->sendData(bufferIn, bufferOut,
                          RequestManager::RecordServer,
@@ -548,7 +554,7 @@ ConversationPrivate::getTransactionByQueryID(int queryID)
     for (int i=0; i<receivingList.length(); i++)
     {
         if (receivingList[i].queryID == queryID)
-            return &(sendingList[i]);
+            return &(receivingList[i]);
     }
     return nullptr;
 }
@@ -609,6 +615,7 @@ void ConversationPrivate::dataXMLize(const QByteArray& src, QByteArray& dest)
     int p, p1, p2, p3, p4;
     QFile file;
     QString fileName;
+    QFileInfo fileInfo;
     p = 0;
     dest.clear();
 
@@ -621,8 +628,8 @@ void ConversationPrivate::dataXMLize(const QByteArray& src, QByteArray& dest)
         dest.append(src.mid(p, p1 - p)); // Previous data before <D>
 
         // Parse file name
-        p3 = src.indexOf("</name>", p1);
-        p4 = src.indexOf("<name>");
+        p3 = src.indexOf("<name>", p1);
+        p4 = src.indexOf("</name>");
         if (p3 >= 0 && p4 >= 0)
             fileName = src.mid(p3 + 6, p4 - p3 - 6);
         else
@@ -630,11 +637,12 @@ void ConversationPrivate::dataXMLize(const QByteArray& src, QByteArray& dest)
         file.setFileName(fileName); // File Info
 
         // Parse file type
-        p3 = src.indexOf("</type>", p1);
-        p4 = src.indexOf("<type>");
+        p3 = src.indexOf("<type>", p1);
+        p4 = src.indexOf("</type>");
         if (p3 < 0 || p4 < 0)
         {
             // Incomplet file tag, skip it
+            p = p2 + 7;
             continue;
         }
         switch (src.mid(p3 + 6, p4 - p3 - 6).at(0))
@@ -659,10 +667,11 @@ void ConversationPrivate::dataXMLize(const QByteArray& src, QByteArray& dest)
                     dest.append("<D t=f l=-1 >");
                 else
                 {
+                    fileInfo.setFile(file);
                     dest.append("<D t=f l=")
                         .append(QString::number(file.size()))
                         .append(" n=")
-                        .append(file.fileName().toLatin1())
+                        .append(fileInfo.fileName().toLatin1())
                         .append(char(0)).append(" >");
                     file.open(QFile::ReadOnly);
                     dest.append(file.readAll());
@@ -693,39 +702,47 @@ void ConversationPrivate::dataUnxmlize(const QByteArray& src,
         p2 = src.indexOf('>', p1);
         if (p1 < 0 || p2 < 0)
             break;
+        dest.append(src.mid(p, p1 - p)); // Previous data before <D>
 
         // Parse file length
         p3 = src.indexOf("l=", p1);
         if (p3 > 0)
             fileLength = QString(src.mid(p3 + 2,
-                                         src.indexOf(' ', p3 + 2) - p3 + 2))
+                                         src.indexOf(' ', p3 + 2) - p3 - 2))
                                 .toInt();
         else
             fileLength = -1;
         if (fileLength <= 0)
         {
             // Incomplet file info, skip it
+            p = p2 + 1;
             continue;
         }
 
         // Parse file name
         p3 = src.indexOf("n=", p1);
-        if (p3 > 0)
+        if (p3 > 0 && p3 < p2)
             fileName = src.mid(p3 + 2, src.indexOf(' ', p3 + 2));
         else
             fileName.clear();
 
-        switch (src.at(p3 + 2))
+        QDir fileDir(cacheDir);
+        if (!fileDir.exists())
+            fileDir.mkpath(cacheDir);
+
+        switch (src.at(p1 + 5))
         {
             case 'i':
                 fileContent = src.mid(p2 + 1, fileLength);
-                fileName = QString(encoder.getSHA256(fileContent, true))
+                fileName = QString(encoder.getSHA256(fileContent).toHex())
                                   .prepend('/').prepend(cacheDir);
                 file.setFileName(fileName);
                 file.open(QFile::WriteOnly);
                 file.write(fileContent);
                 file.close();
-                dest.append("<img>").append(fileName).append("</img>");
+                dest.append("<file><type>i</type><name>")
+                    .append(fileName)
+                    .append("</name></file>");
                 break;
             case 'f':
             default:
@@ -735,10 +752,16 @@ void ConversationPrivate::dataUnxmlize(const QByteArray& src,
                 file.open(QFile::WriteOnly);
                 file.write(src.mid(p2 + 1, fileLength));
                 file.close();
-                dest.append("<file>").append(fileName).append("</file>");
+                dest.append("<file><type>f</type><name>")
+                    .append(fileName)
+                    .append("</name></file>");
         }
-        p3 = src.indexOf("</D>", p2 + fileLength);
-        p = p3 + 4;
+        p = p2 + fileLength;
+        p3 = src.indexOf("</D>", p);
+        if (p3 < 0)
+            break;
+        else
+            p = p3 + 4;
     }
     dest.append(src.mid(p));
 }

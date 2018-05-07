@@ -12,5 +12,7 @@
         <file>Icons/format-justify-center.png</file>
         <file>Icons/format-justify-right.png</file>
         <file>Icons/remove.ico</file>
+        <file>Icons/insert-image.png</file>
+        <file>Icons/insert-file.png</file>
     </qresource>
 </RCC>
