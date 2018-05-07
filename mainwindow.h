@@ -123,6 +123,7 @@ private:
     void conversationLogin();
     void getMessageList();
     bool sendMessage(QString content, QString sessionID);
+    bool receiveMessage(QString sessionID);
     void showNotification();
     void fixBrokenConnection();
     static QString addSenderInfo(const QString& content, QString ID);

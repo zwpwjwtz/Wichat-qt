@@ -46,6 +46,9 @@
 
 #define WICHAT_MAIN_TIME_FORMAT "yyyy-MM-dd hh:mm:ss"
 
+#define WICHAT_MAIN_TIMER_INTERVAL_GETMSG 10
+#define WICHAT_MAIN_TIMER_INTERVAL_SHOWNOTE 2
+
 
 Account::OnlineState Wichat_stateList[4] = {
         Account::OnlineState::Online,
@@ -115,6 +118,7 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->textEdit->hide();
     ui->tabSession->removeTab(0);
     ui->frameFont->hide();
+    ui->frameMsg->hide();
     ui->frameTextGroup->setLayout(new QStackedLayout);
     ui->frameTextGroup->layout()->setMargin(0);
     ui->listFriend->setModel(&listFriendModel);
@@ -354,9 +358,7 @@ void MainWindow::doTask()
             addTask(taskGetMsgList);
             break;
         case taskGetMsgList:
-            QCoreApplication::processEvents();
             getMessageList();
-            showNotification();
             break;
         case taskReloadMsg:
             loadSessionContent(lastConversation);
@@ -443,6 +445,24 @@ void MainWindow::loadSession(QString ID, bool setTabActive)
         addTab(ID);
     }
 
+    // Clear possible notifications of in-coming messages
+    bool receivedMsg = false;
+    QList<Notification::Note> notes = noteList.getAll();
+    for (int i=0; i<notes.count(); i++)
+    {
+        if (notes[i].source == ID && notes[i].type == Notification::GotMsg)
+        {
+            noteList.remove(notes[i].ID);
+            receivedMsg = true;
+        }
+    }
+    if (receivedMsg && ID != userID)
+    {
+        int queryID;
+        globalConversation.receiveMessage(ID, queryID);
+        queryList[queryID] = ID;
+    }
+
     index = getSessionTabIndex(ID);
     if (setTabActive)
     {
@@ -483,24 +503,6 @@ void MainWindow::loadSessionContent(QString ID)
 {
     UserSession::SessionData& session = userSessionList.getSession(ID);
     session.active = true;
-
-    // Clear possible notifications of in-coming messages
-    bool receivedMsg = false;
-    QList<Notification::Note> notes = noteList.getAll();
-    for (int i=0; i<notes.count(); i++)
-    {
-        if (notes[i].source == ID && notes[i].type == Notification::GotMsg)
-        {
-            noteList.remove(notes[i].ID);
-            receivedMsg = true;
-        }
-    }
-    if (receivedMsg && ID != userID)
-    {
-        int queryID;
-        globalConversation.receiveMessage(ID, queryID);
-        queryList[queryID] = ID;
-    }
 
     // Load cached session content from session data
     int tabIndex = getSessionTabIndex(ID);
@@ -545,7 +547,7 @@ void MainWindow::syncSessionContent(QString ID, bool closeSession)
     {
         // Store content in input box to session cache
         session.input = editorList[index]->toHtml().toLatin1();
-        session.active = closeSession;
+        session.active = !closeSession;
     }
 }
 
@@ -647,7 +649,10 @@ void MainWindow::loadTab()
     ui->tabSession->clear();
 
     for (int i=0; i<sessionIdList.count(); i++)
-        addTab(sessionIdList[i]);
+    {
+        if (userSessionList.getSession(sessionIdList[i]).active)
+            addTab(sessionIdList[i]);
+    }
 }
 
 void MainWindow::refreshTab()
@@ -840,9 +845,44 @@ bool MainWindow::sendMessage(QString content, QString sessionID)
     return true;
 }
 
+bool MainWindow::receiveMessage(QString sessionID)
+{
+    int queryID;
+    globalConversation.receiveMessage(sessionID, queryID);
+    queryList[queryID] = sessionID;
+    return true;
+}
+
 void MainWindow::showNotification()
 {
+    if (noteList.count() < 1)
+        return;
 
+    bool clearNote;
+    QList<Notification::Note> tempNoteList = noteList.getAll();
+    for (int i=0; i<tempNoteList.count(); i++)
+    {
+        clearNote = true; // The read note is removed by default
+        switch (tempNoteList[i].type)
+        {
+            case Notification::FriendAdd:
+
+                break;
+            case Notification::FriendDelete:
+
+                break;
+            case Notification::GotMsg:
+                if (tempNoteList[i].source == lastConversation)
+                    receiveMessage(tempNoteList[i].source);
+                else
+                    clearNote = false;
+                break;
+            default:
+                break;
+        }
+        if (clearNote)
+            noteList.remove(tempNoteList[i].ID);
+    }
 }
 
 void MainWindow::fixBrokenConnection()
@@ -1124,6 +1164,14 @@ void MainWindow::onReceiveMessageFinished(int queryID, QByteArray& content)
 
 void MainWindow::onTimerTimeout()
 {
+    static int count;
+    count++;
+
+    if (count % WICHAT_MAIN_TIMER_INTERVAL_GETMSG == 0)
+        addTask(taskGetMsgList);
+    if (count % WICHAT_MAIN_TIMER_INTERVAL_SHOWNOTE == 0)
+        addTask(taskShowNotification);
+
     doTask();
 }
 
