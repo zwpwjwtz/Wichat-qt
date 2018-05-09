@@ -310,7 +310,7 @@ bool Account::removeFriend(QString ID, int& queryID)
 
     QByteArray bufferIn, bufferOut;
     bufferIn.append(char(3)).append(char(qrand() * 256));
-    bufferIn.append("<IDList><ID>>")
+    bufferIn.append("<IDList><ID>")
             .append(d->formatID(ID))
             .append("</ID></IDList>");
     if (RequestManager::Ok !=
@@ -444,6 +444,12 @@ void Account::dispatchQueryRespone(int requestID)
             case AccountPrivate::RequestType::GetFriendList:
             {
                 QList<AccountListEntry> idList;
+                d->parseAccountList(data, "b", idList);
+                for (int i=0; i<idList.count(); i++)
+                    emit friendRemoved(idList[i].ID);
+                d->parseAccountList(data, "w", idList);
+                for (int i=0; i<idList.count(); i++)
+                    emit friendRequest(idList[i].ID);
                 d->parseAccountList(data, "c", idList);
                 emit queryFriendListFinished(requestID, idList);
                 break;
@@ -592,14 +598,16 @@ void AccountPrivate::parseAccountList(QByteArray& data,
     int p1, p2, p3, pS, pE;
     unsigned char accountState;
     Account::AccountListEntry account;
+
+    list.clear();
     if (listType.isEmpty())
         p1 = data.indexOf("<IDList>");
     else
         p1 = data.indexOf(QByteArray("<IDList t=")
                           .append(listType)
                           .append(">"));
-    pE = data.indexOf("</IDList>");
-    if (p1 >= 0 && pE > 16)
+    pE = data.indexOf("</IDList>", p1);
+    if (p1 >= 0 && pE >= 0)
     {
         p3 = p2 = p1;
         while (true)

@@ -94,6 +94,8 @@ signals:
     void queryFriendRemarksFinished(int queryID, QList<QString> remarks);
     void setFriendRemarksFinished(int queryID, bool successful);
     void queryFriendInfoFinished(int queryID, QList<AccountInfoEntry> infos);
+    void friendRequest(QString ID);
+    void friendRemoved(QString ID);
 
 private:
     void dispatchQueryRespone(int requestID);

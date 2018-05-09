@@ -46,9 +46,13 @@
 
 #define WICHAT_MAIN_TIME_FORMAT "yyyy-MM-dd hh:mm:ss"
 
+#define WICHAT_MAIN_TIMER_INTERVAL_GETFRIEND 30
 #define WICHAT_MAIN_TIMER_INTERVAL_GETMSG 10
+#ifdef QT_DEBUG
+#define WICHAT_MAIN_TIMER_INTERVAL_SHOWNOTE 10
+#else
 #define WICHAT_MAIN_TIMER_INTERVAL_SHOWNOTE 2
-
+#endif
 
 Account::OnlineState Wichat_stateList[4] = {
         Account::OnlineState::Online,
@@ -116,6 +120,7 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->setupUi(this);
     ui->textBrowser->hide();
     ui->textEdit->hide();
+    ui->labelFriendSearch->setAttribute(Qt::WA_TransparentForMouseEvents);
     ui->tabSession->removeTab(0);
     ui->frameFont->hide();
     ui->frameMsg->hide();
@@ -148,11 +153,27 @@ MainWindow::MainWindow(QWidget *parent) :
             SLOT(onUpdateFriendListFinished(int,
                                             QList<AccountListEntry>)));
     connect(&globalAccount,
+            SIGNAL(addFriendFinished(int, bool)),
+            this,
+            SLOT(onAddFriendFinished(int, bool)));
+    connect(&globalAccount,
+            SIGNAL(removeFriendFinished(int, bool)),
+            this,
+            SLOT(onRemoveFriendFinished(int, bool)));
+    connect(&globalAccount,
             SIGNAL(queryFriendInfoFinished(int,
                                            QList<AccountInfoEntry>)),
             this,
             SLOT(onGetFriendInfoFinished(int,
                                          QList<AccountInfoEntry>)));
+    connect(&globalAccount,
+            SIGNAL(friendRequest(QString)),
+            this,
+            SLOT(onFriendRequest(QString)));
+    connect(&globalAccount,
+            SIGNAL(friendRemoved(QString)),
+            this,
+            SLOT(onFriendRemoved(QString)));
     connect(&globalConversation,
             SIGNAL(connectionBroken(QString)),
             this,
@@ -179,10 +200,6 @@ MainWindow::MainWindow(QWidget *parent) :
             SIGNAL(receiveMessageFinished(int, QByteArray&)),
             this,
             SLOT(onReceiveMessageFinished(int, QByteArray&)));
-    connect(&globalConversation,
-            SIGNAL(verifyFinished(int, Conversation::VerifyError)),
-            &conversationLock,
-            SLOT(quit()));
     connect(buttonTabClose,
             SIGNAL(clicked(bool)),
             this,
@@ -246,6 +263,7 @@ void MainWindow::init()
     globalConversation.setPeerSession(peerSessionList);
     globalConversation.setUserDirectory(globalConfig.userDirectory(userID));
 
+    resizeEvent(0); // Trigger resizing manually
     sysTrayIcon->show();
     updateSysTrayMenu();
 
@@ -316,6 +334,11 @@ void MainWindow::resizeEvent(QResizeEvent* event)
     Q_UNUSED(event);
     ui->tabSession->resize(ui->tabSession->width(),
                            ui->frameTextCtrl->y() - ui->tabSession->y());
+    ui->textFriendSearch->resize(ui->frameFriendSearch->width(),
+                                 ui->textFriendSearch->height());
+    ui->labelFriendSearch->resize(ui->textFriendSearch->width() - 5,
+                                  ui->labelFriendSearch->height());
+
 }
 
 void MainWindow::showEvent(QShowEvent * event)
@@ -345,8 +368,6 @@ void MainWindow::doTask()
             refreshTab();
         break;
         case taskShowNotification:
-            updateFriendList();
-            refreshTab();
             showNotification();
             break;
         case taskUpdateFriList:
@@ -406,7 +427,7 @@ void MainWindow::applyFont()
 
 void MainWindow::applyUserSettings()
 {
-    applyFont();
+    //applyFont();
 }
 
 int MainWindow::getSessionIndex(QString ID)
@@ -477,11 +498,9 @@ void MainWindow::loadSession(QString ID, bool setTabActive)
     if (!oldSession.ID.isEmpty())
     {
         int oldIndex = getSessionIndex(oldSession.ID);
-        if (oldIndex >= 0 && oldIndex != ui->tabSession->currentIndex())
+        if (oldIndex >= 0)// && oldIndex != ui->tabSession->currentIndex())
         {
             syncSessionContent(oldSession.ID);
-            browserList[oldIndex]->setVisible(false);
-            editorList[oldIndex]->setVisible(false);
         }
     }
 
@@ -491,8 +510,7 @@ void MainWindow::loadSession(QString ID, bool setTabActive)
         loadSessionContent(ID);
         browserList[index]->setProperty("Initialized", true);
     }
-    browserList[index]->setVisible(true);
-    editorList[index]->setVisible(true);
+    ((QStackedLayout*)(ui->frameTextGroup->layout()))->setCurrentIndex(index);
     lastConversation = ID;
 
     showNotification();
@@ -518,6 +536,7 @@ void MainWindow::loadSessionContent(QString ID)
     buffer.append(session.input);
     //Wichat_addHTMLFooter(buffer, 1);
     editorList[tabIndex]->setHtml(buffer);
+    applyFont();
 
     // Process possible events (redrawing etc.)
     QCoreApplication::processEvents();
@@ -628,8 +647,8 @@ void MainWindow::addTab(QString ID)
     newBrowser->setProperty("ID", ID);
     newBrowser->setProperty("Initialized", false);
     newEditor->setProperty("ID", ID);
-    newBrowser->resize(ui->textBrowser->size());
-    newEditor->resize(ui->textEdit->size());
+    newBrowser->setGeometry(ui->textBrowser->geometry());
+    newEditor->setGeometry(ui->textEdit->geometry());
 
     browserList.push_back(newBrowser);
     editorList.push_back(newEditor);
@@ -667,6 +686,7 @@ void MainWindow::refreshTab()
 void MainWindow::removeTab(QString ID)
 {
     syncSessionContent(ID, true);
+    lastConversation.clear();
 
     // Actually close the tab
     int index = getSessionIndex(ID);
@@ -711,7 +731,7 @@ void MainWindow::updateState()
 void MainWindow::updateCaption()
 {
     QString title;
-    if (lastConversation == userID)
+    if (lastConversation == userID || lastConversation.isEmpty())
     {
         title.append('[')
              .append(Wichat_stateToString(globalAccount.state()))
@@ -757,6 +777,9 @@ void MainWindow::updateSysTrayMenu()
 
 void MainWindow::updateFriendList()
 {
+    if (!ui->textFriendSearch->text().isEmpty())
+        return;
+
     int queryID;
     globalAccount.queryFriendList(queryID);
 }
@@ -783,6 +806,20 @@ QString MainWindow::getStateImagePath(QString ID)
     return image;
 }
 
+bool MainWindow::isFriend(QString ID)
+{
+    bool found = false;
+    for (int i=0; i<listFriendModel.rowCount(); i++)
+    {
+        if (listFriendModel.item(i, WICHAT_MAIN_FRILIST_FIELD_ID)->text() == ID)
+        {
+            found = true;
+            break;
+        }
+    }
+    return found;
+}
+
 void MainWindow::conversationLogin()
 {
     switch (conversationLoginState)
@@ -792,7 +829,7 @@ void MainWindow::conversationLogin()
                                   globalAccount.sessionKey());
             conversationLoginState = 1;
         case 1: // Waiting for server response
-            conversationLock.exec();
+            // Do not use QEventloop here, as it might provoke deadlook
             break;
         case 2: // Logged in successfully
         default:
@@ -827,6 +864,15 @@ bool MainWindow::sendMessage(QString content, QString sessionID)
     QByteArray buffer(content.toUtf8());
     if (sessionID != userID)
     {
+        if (!isFriend(sessionID))
+        {
+            QMessageBox::warning(this, "Unable send message",
+                                 QString("You are not friend to %1.\n"
+                                 "Please add %1 to your friend list before "
+                                 "sending any message.")
+                                 .arg(sessionID).arg(sessionID));
+            return false;
+        }
         conversationLogin();
         if (!globalConversation.sendMessage(sessionID,
                                             buffer,
@@ -848,6 +894,7 @@ bool MainWindow::sendMessage(QString content, QString sessionID)
 bool MainWindow::receiveMessage(QString sessionID)
 {
     int queryID;
+    conversationLogin();
     globalConversation.receiveMessage(sessionID, queryID);
     queryList[queryID] = sessionID;
     return true;
@@ -1073,6 +1120,33 @@ void MainWindow::onUpdateFriendListFinished(int queryID,
     }
 }
 
+void MainWindow::onAddFriendFinished(int queryID, bool successful)
+{
+    QString ID = queryList[queryID];
+    if (ID.isEmpty())
+        return;
+    if (successful)
+        QMessageBox::information(this, "Friend request sent",
+                                 QString("Your friend request has been sent.\n"
+                                         "Please wait respose from %1.")
+                                 .arg(ID));
+    else
+        QMessageBox::warning(this, "Adding friend failed",
+                             QString("Cannot add %1 to your friend list.")
+                             .arg(ID));
+}
+
+void MainWindow::onRemoveFriendFinished(int queryID, bool successful)
+{
+    QString ID = queryList[queryID];
+    if (ID.isEmpty())
+        return;
+    if (!successful)
+        QMessageBox::warning(this, "Removing friend failed",
+                             QString("Cannot remove %1 from your friend list.")
+                             .arg(ID));
+}
+
 void MainWindow::onGetFriendInfoFinished(int queryID,
                                      QList<Account::AccountInfoEntry> infoList)
 {
@@ -1091,6 +1165,28 @@ void MainWindow::onGetFriendInfoFinished(int queryID,
     accountInfo->ID = infoList[0].ID;
     accountInfo->offlineMsg = infoList[0].offlineMsg;
     accountInfo->show();
+}
+
+void MainWindow::onFriendRequest(QString ID)
+{
+    int queryID;
+    if (QMessageBox::question(this, "New friend request",
+                              QString("%1 wants to add you as friend. "
+                              "Do you accept this request?").arg(ID),
+                              QMessageBox::Yes | QMessageBox::No)
+            == QMessageBox::Yes)
+        globalAccount.addFriend(ID, queryID);
+    else
+        globalAccount.removeFriend(ID, queryID);
+}
+
+void MainWindow::onFriendRemoved(QString ID)
+{
+    int queryID;
+    QMessageBox::information(this, "Friend removed",
+                             QString("%1 remove you from his/her friend list.")
+                             .arg(ID));
+    globalAccount.removeFriend(ID, queryID);
 }
 
 void MainWindow::onConnectionBroken(QString ID)
@@ -1167,6 +1263,8 @@ void MainWindow::onTimerTimeout()
     static int count;
     count++;
 
+    if (count % WICHAT_MAIN_TIMER_INTERVAL_GETFRIEND == 0)
+        addTask(taskUpdateFriList);
     if (count % WICHAT_MAIN_TIMER_INTERVAL_GETMSG == 0)
         addTask(taskGetMsgList);
     if (count % WICHAT_MAIN_TIMER_INTERVAL_SHOWNOTE == 0)
@@ -1217,6 +1315,8 @@ void MainWindow::onKeyRelease(QObject* watched, QKeyEvent* event)
     if (event->key() == Qt::Key_Return ||
         event->key() == Qt::Key_Enter)
     {
+        if (lastConversation.isEmpty())
+            return;
         if (editorList[getSessionIndex(lastConversation)]->hasFocus())
         {
             if ((globalConfig.prefSendKey(userID) ==
@@ -1293,6 +1393,7 @@ void MainWindow::onListFriendMenuClicked(QAction *action)
             return;
         int queryID;
         globalAccount.removeFriend(firstID, queryID);
+        queryList[queryID] = firstID;
     }
     else if (actionType == WICHAT_MAIN_MENU_FRIEND_INFO)
     {
@@ -1572,7 +1673,7 @@ void MainWindow::on_listFriend_customContextMenuRequested(const QPoint &pos)
         action->setData(WICHAT_MAIN_MENU_FRIEND_INFO);
         menuFriendOption->addAction(action);
     }
-    menuFriendOption->popup(this->pos() + QPoint(430, 50) + pos);
+    menuFriendOption->popup(QCursor::pos());
 }
 
 void MainWindow::on_buttonImage_clicked()
@@ -1606,4 +1707,44 @@ void MainWindow::on_buttonFile_clicked()
     content.replace("%FILE%", path);
     sendMessage(addSenderInfo(content, userID), lastConversation);
     lastFilePath = path;
+}
+
+void MainWindow::on_textFriendSearch_textChanged(const QString &arg1)
+{
+    if (arg1.isEmpty())
+    {
+        ui->labelFriendSearch->show();
+        for (int i=0; i<listFriendModel.rowCount(); i++)
+            ui->listFriend->setRowHidden(i ,false);
+    }
+    else
+    {
+        ui->labelFriendSearch->hide();
+        for (int i=0; i<listFriendModel.rowCount(); i++)
+        {
+            if (listFriendModel.item(i, WICHAT_MAIN_FRILIST_FIELD_ID)->text()
+                               .indexOf(arg1) >= 0)
+                ui->listFriend->setRowHidden(i, false);
+            else
+                ui->listFriend->setRowHidden(i, true);
+        }
+    }
+}
+
+void MainWindow::on_buttonFriendAdd_clicked()
+{
+    QString ID = ui->textFriendSearch->text();
+    if (ID.isEmpty())
+        return;
+
+    int queryID;
+    if (QMessageBox::question(this, "Add friend",
+                              QString("Do you want to add %1 as friend?")
+                              .arg(ID),
+                              QMessageBox::Yes | QMessageBox::No)
+            == QMessageBox::Yes)
+    {
+        globalAccount.addFriend(ID, queryID);
+        queryList[queryID] = ID;
+    }
 }

@@ -5,7 +5,6 @@
 #include <QStandardItemModel>
 #include <QQueue>
 #include <QTimer>
-#include <QEventLoop>
 #include <QSystemTrayIcon>
 
 #include "account.h"
@@ -83,7 +82,6 @@ private:
     QList<QTextEdit*> editorList;
     QStandardItemModel listFriendModel;
     QTimer timer;
-    QEventLoop conversationLock;
     UserSession userSessionList;
     PeerSession peerSessionList;
     QString userID;
@@ -120,6 +118,7 @@ private:
     void updateSysTrayMenu();
     void updateFriendList();
     QString getStateImagePath(QString ID);
+    bool isFriend(QString ID);
     void conversationLogin();
     void getMessageList();
     bool sendMessage(QString content, QString sessionID);
@@ -139,8 +138,12 @@ private slots:
                                OnlineState newState);
     void onUpdateFriendListFinished(int queryID,
                                     QList<AccountListEntry> friends);
+    void onAddFriendFinished(int queryID, bool successful);
+    void onRemoveFriendFinished(int queryID, bool successful);
     void onGetFriendInfoFinished(int queryID,
                                  QList<AccountInfoEntry> infoList);
+    void onFriendRequest(QString ID);
+    void onFriendRemoved(QString ID);
     void onConnectionBroken(QString ID);
     void onConversationVerifyFinished(int queryID,
                                       Conversation::VerifyError errorCode);
@@ -177,6 +180,8 @@ private slots:
     void on_listFriend_customContextMenuRequested(const QPoint &pos);
     void on_buttonImage_clicked();
     void on_buttonFile_clicked();
+    void on_textFriendSearch_textChanged(const QString &arg1);
+    void on_buttonFriendAdd_clicked();
 };
 
 #endif // MAINWINDOW_H
