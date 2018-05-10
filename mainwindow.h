@@ -19,8 +19,8 @@ class QColorDialog;
 class QTextBrowser;
 class QTextEdit;
 class QActionGroup;
-class QSystemTrayIcon;
 class AccountInfoDialog;
+class SystrayNotification;
 
 namespace Ui {
 class MainWindow;
@@ -67,6 +67,7 @@ private:
 
     Ui::MainWindow *ui;
     AccountInfoDialog* accountInfo;
+    SystrayNotification* sysTrayNoteList;
     QPushButton* buttonTabClose;
     QColorDialog* dialogColor;
     QMenu* menuFontStyle;
@@ -80,10 +81,9 @@ private:
     QTabBar* tabBarSession;
     QList<QTextBrowser*> browserList;
     QList<QTextEdit*> editorList;
+
     QStandardItemModel listFriendModel;
     QTimer timer;
-    UserSession userSessionList;
-    PeerSession peerSessionList;
     QString userID;
     QString lastConversation;
     QString lastFilePath;
@@ -91,10 +91,13 @@ private:
     QQueue<TaskType> taskList;
     QQueue<QString> brokenConnectionList;
     QMap<int, QString> queryList;
+    UserSession userSessionList;
+    PeerSession peerSessionList;
     Notification noteList;
     bool manualExit;
     int conversationLoginState;
     int lastHoveredTab;
+    int notificationState;
     static const int MaxEmotion = 66;
 
     void addTask(TaskType task);
@@ -110,6 +113,7 @@ private:
     void addTab(QString ID);
     void loadTab();
     void refreshTab();
+    void highlightSession(QString ID, bool highlight);
     void removeTab(QString ID);
     void changeSession();
     void changeState(Account::OnlineState state);
@@ -160,7 +164,9 @@ private slots:
     void onMouseHoverLeave(QObject* watched, QHoverEvent* event);
     void onKeyRelease(QObject* watched, QKeyEvent* event);
     void onSessionTabClose(bool checked);
+    void onSysTrayNoteClicked(const Notification::Note &note);
     void onSysTrayIconClicked(QSystemTrayIcon::ActivationReason reason);
+    void onSysTrayMenuShowed();
     void onSysTrayMenuClicked(QAction* action);
     void onListFriendMenuClicked(QAction* action);
     void onFriendRemarksChanged(QString ID, QString remarks);

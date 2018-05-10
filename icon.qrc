@@ -15,5 +15,7 @@
         <file>Icons/insert-image.png</file>
         <file>Icons/insert-file.png</file>
         <file>Icons/add.ico</file>
+        <file>Icons/conversation.png</file>
+        <file>Icons/notification.png</file>
     </qresource>
 </RCC>

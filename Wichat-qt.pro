@@ -42,7 +42,8 @@ SOURCES += main.cpp\
     global_objects.cpp \
     accountinfodialog.cpp \
     requestmanager.cpp \
-    conversation.cpp
+    conversation.cpp \
+    systraynotification.cpp
 
 HEADERS  += mainwindow.h \
     loginwindow.h \
@@ -76,12 +77,14 @@ HEADERS  += mainwindow.h \
     requestmanager.h \
     Private/requestmanager_p.h \
     conversation.h \
-    Private/conversation_p.h
+    Private/conversation_p.h \
+    systraynotification.h
 
 FORMS    += mainwindow.ui \
     loginwindow.ui \
     serverconfigdialog.ui \
-    accountinfodialog.ui
+    accountinfodialog.ui \
+    systraynotification.ui
 
 RESOURCES += \
     icon.qrc

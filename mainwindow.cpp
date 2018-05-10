@@ -12,6 +12,7 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include "accountinfodialog.h"
+#include "systraynotification.h"
 #include "global_objects.h"
 #include "account.h"
 #include "conversation.h"
@@ -132,6 +133,7 @@ MainWindow::MainWindow(QWidget *parent) :
     menuSysTray = new QMenu();
     sysTrayIcon = new QSystemTrayIcon(this);
     sysTrayIcon->setContextMenu(menuSysTray);
+    sysTrayNoteList = new SystrayNotification;
     buttonTabClose = new QPushButton(QIcon(":/Icons/remove.ico"),
                                      "");
     buttonTabClose->setGeometry(0, 0, 10, 10);
@@ -212,6 +214,14 @@ MainWindow::MainWindow(QWidget *parent) :
             SIGNAL(activated(QSystemTrayIcon::ActivationReason)),
             this,
             SLOT(onSysTrayIconClicked(QSystemTrayIcon::ActivationReason)));
+    connect(sysTrayNoteList,
+            SIGNAL(noteClicked(const Notification::Note&)),
+            this,
+            SLOT(onSysTrayNoteClicked(const Notification::Note&)));
+    connect(menuSysTray,
+            SIGNAL(aboutToShow()),
+            this,
+            SLOT(onSysTrayMenuShowed()));
     connect(menuSysTray,
             SIGNAL(triggered(QAction*)),
             this,
@@ -235,6 +245,8 @@ MainWindow::MainWindow(QWidget *parent) :
     timer.setInterval(1000);
     manualExit = false;
     lastHoveredTab = 0;
+    conversationLoginState = 0;
+    notificationState = 0;
 }
 
 MainWindow::~MainWindow()
@@ -265,7 +277,6 @@ void MainWindow::init()
 
     resizeEvent(0); // Trigger resizing manually
     sysTrayIcon->show();
-    updateSysTrayMenu();
 
     addTask(taskUpdateAll);
     timer.start();
@@ -303,6 +314,7 @@ void MainWindow::closeEvent(QCloseEvent* event)
     if (accountInfo)
         accountInfo->close();
     sysTrayIcon->hide();
+    sysTrayNoteList->close();
 
     syncSessionContent("");
     userSessionList.saveToFile(globalConfig.userDirectory(userID));
@@ -375,6 +387,7 @@ void MainWindow::doTask()
             refreshTab();
             break;
         case taskUpdateAll:
+            addTask(taskUpdateState);
             addTask(taskUpdateFriList);
             addTask(taskGetMsgList);
             break;
@@ -490,6 +503,7 @@ void MainWindow::loadSession(QString ID, bool setTabActive)
         ui->tabSession->setCurrentIndex(index);
         return;
     }
+    highlightSession(ID, false);
 
     if (lastConversation == ID)
         return;
@@ -683,6 +697,24 @@ void MainWindow::refreshTab()
     }
 }
 
+void MainWindow::highlightSession(QString ID, bool highlight)
+{
+    int index = getSessionTabIndex(ID);
+    if (index < 0)
+        return;
+    if (highlight)
+    {
+        tabBarSession->setTabTextColor(index, QColor("#FFA07A"));
+        setWindowTitle(QString("Message from %1").arg(ID));
+        QApplication::alert(this);
+    }
+    else
+    {
+        tabBarSession->setTabTextColor(index, QColor(""));
+        updateCaption();
+    }
+}
+
 void MainWindow::removeTab(QString ID)
 {
     syncSessionContent(ID, true);
@@ -715,6 +747,8 @@ void MainWindow::updateState()
     ui->tabSession->setTabIcon(getSessionTabIndex(userID),
                                QIcon(stateToImagePath(
                                             int(globalAccount.state()), true)));
+    sysTrayIcon->setIcon(QIcon(stateToImagePath(
+                                   int(globalAccount.state()), true)));
     for (int i=0; i<listFriendModel.rowCount(); i++)
     {
         if (listFriendModel.item(i, WICHAT_MAIN_FRILIST_FIELD_ID)
@@ -747,7 +781,8 @@ void MainWindow::updateCaption()
 
 void MainWindow::updateSysTrayMenu()
 {
-    if (menuSysTray->actions().isEmpty())
+    QList<QAction*> actionList = menuSysTray->actions();
+    if (actionList.isEmpty())
     {
         // Add a title in the tray menu
         QAction* action = new QAction(userID, menuSysTray);
@@ -772,6 +807,8 @@ void MainWindow::updateSysTrayMenu()
         action = new QAction("Quit", menuSysTray);
         action->setData(-1);
         menuSysTray->addAction(action);
+
+        actionList = menuSysTray->actions();
     }
 }
 
@@ -906,29 +943,48 @@ void MainWindow::showNotification()
         return;
 
     bool clearNote;
-    QList<Notification::Note> tempNoteList = noteList.getAll();
+    static QList<Notification::Note> tempNoteList;
+    tempNoteList = noteList.getAll();
     for (int i=0; i<tempNoteList.count(); i++)
     {
         clearNote = true; // The read note is removed by default
         switch (tempNoteList[i].type)
         {
             case Notification::FriendAdd:
-
-                break;
             case Notification::FriendDelete:
-
+                sysTrayNoteList->addNote(tempNoteList[i]);
                 break;
             case Notification::GotMsg:
                 if (tempNoteList[i].source == lastConversation)
                     receiveMessage(tempNoteList[i].source);
                 else
-                    clearNote = false;
+                {
+                    int index = getSessionIndex(tempNoteList[i].source);
+                    if (index >= 0) // Session exists, highlight it
+                    {
+                        clearNote = false;
+                        highlightSession(tempNoteList[i].source, true);
+                    }
+                    else // Otherwise, show notification only
+                        sysTrayNoteList->addNote(tempNoteList[i]);
+                }
                 break;
             default:
                 break;
         }
         if (clearNote)
             noteList.remove(tempNoteList[i].ID);
+    }
+
+    if (sysTrayNoteList->countNote() > 0)
+    {
+        // Check static indicator to avoid unnecessary operations
+        // as this function is called frequently by timer
+        if (notificationState == 0)
+        {
+            sysTrayIcon->setIcon(QIcon(":/Icons/notification.png"));
+            notificationState = 1;
+        }
     }
 }
 
@@ -1085,7 +1141,7 @@ void MainWindow::onChangeStateFinished(int queryID,
         QMessageBox::critical(this, "Wichat error",
                               "Cannot set online state.");
     else
-        updateState();
+        addTask(taskUpdateState);
 }
 
 void MainWindow::onUpdateFriendListFinished(int queryID,
@@ -1169,24 +1225,22 @@ void MainWindow::onGetFriendInfoFinished(int queryID,
 
 void MainWindow::onFriendRequest(QString ID)
 {
-    int queryID;
-    if (QMessageBox::question(this, "New friend request",
-                              QString("%1 wants to add you as friend. "
-                              "Do you accept this request?").arg(ID),
-                              QMessageBox::Yes | QMessageBox::No)
-            == QMessageBox::Yes)
-        globalAccount.addFriend(ID, queryID);
-    else
-        globalAccount.removeFriend(ID, queryID);
+    Notification::Note note;
+    note.ID = noteList.getNewID();
+    note.source = ID;
+    note.destination = userID;
+    note.type = Notification::FriendAdd;
+    noteList.append(note);
 }
 
 void MainWindow::onFriendRemoved(QString ID)
 {
-    int queryID;
-    QMessageBox::information(this, "Friend removed",
-                             QString("%1 remove you from his/her friend list.")
-                             .arg(ID));
-    globalAccount.removeFriend(ID, queryID);
+    Notification::Note note;
+    note.ID = noteList.getNewID();
+    note.source = ID;
+    note.destination = userID;
+    note.type = Notification::FriendDelete;
+    noteList.append(note);
 }
 
 void MainWindow::onConnectionBroken(QString ID)
@@ -1342,6 +1396,46 @@ void MainWindow::onSessionTabClose(bool checked)
                                            QTabBar::RightSide,
                                            nullptr);
     removeTab(ui->tabSession->widget(index)->property("ID").toString());
+    updateCaption();
+}
+
+void MainWindow::onSysTrayNoteClicked(const Notification::Note& note)
+{
+    int queryID;
+    switch (note.type)
+    {
+        case Notification::FriendAdd:
+            if (QMessageBox::question(this, "New friend request",
+                                      QString("%1 wants to add you as friend. "
+                                      "Do you accept this request?")
+                                      .arg(note.source),
+                                      QMessageBox::Yes | QMessageBox::No)
+                    == QMessageBox::Yes)
+                globalAccount.addFriend(note.source, queryID);
+            else
+                globalAccount.removeFriend(note.source, queryID);
+            break;
+        case Notification::FriendDelete:
+            QMessageBox::information(this, "Friend removed",
+                                     QString("%1 remove you from his/hers "
+                                             "friend list.")
+                                     .arg(note.source));
+            globalAccount.removeFriend(note.source, queryID);
+            break;
+        case Notification::GotMsg:
+            loadSession(note.source, true);
+            setWindowState(Qt::WindowActive);
+            break;
+        default:;
+    }
+    sysTrayNoteList->removeNote(note.ID);
+
+    if (sysTrayNoteList->countNote() < 1)
+    {
+        notificationState = 0;
+        sysTrayNoteList->hide();
+        addTask(taskUpdateState);
+    }
 }
 
 void MainWindow::onSysTrayIconClicked(QSystemTrayIcon::ActivationReason reason)
@@ -1349,14 +1443,31 @@ void MainWindow::onSysTrayIconClicked(QSystemTrayIcon::ActivationReason reason)
     switch (reason)
     {
         case QSystemTrayIcon::Context:
-            updateSysTrayMenu();
+            // This does not work
+            // updateSysTrayMenu();
             break;
         case QSystemTrayIcon::DoubleClick:
         case QSystemTrayIcon::Trigger:
-            setWindowState(Qt::WindowActive);
+            if (sysTrayNoteList->countNote() > 0)
+            {
+                sysTrayNoteList->show();
+                sysTrayNoteList->activate();
+                QRect iconPos = sysTrayIcon->geometry();
+                sysTrayNoteList->move(iconPos.x() -
+                                      sysTrayNoteList->width() / 2,
+                                      iconPos.y() -
+                                      sysTrayNoteList->height());
+            }
+            else
+                setWindowState(Qt::WindowActive);
             break;
         default:;
     }
+}
+
+void MainWindow::onSysTrayMenuShowed()
+{
+    updateSysTrayMenu();
 }
 
 void MainWindow::onSysTrayMenuClicked(QAction* action)
@@ -1656,6 +1767,7 @@ void MainWindow::on_listFriend_doubleClicked(const QModelIndex &index)
 
 void MainWindow::on_listFriend_customContextMenuRequested(const QPoint &pos)
 {
+    Q_UNUSED(pos)
     if (menuFriendOption->actions().count() < 1)
     {
         QAction* action = new QAction(menuFriendOption);
