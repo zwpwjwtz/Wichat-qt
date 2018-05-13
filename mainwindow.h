@@ -21,6 +21,7 @@ class QTextEdit;
 class QActionGroup;
 class AccountInfoDialog;
 class SystrayNotification;
+class EmoticonChooser;
 
 namespace Ui {
 class MainWindow;
@@ -68,6 +69,7 @@ private:
     Ui::MainWindow *ui;
     AccountInfoDialog* accountInfo;
     SystrayNotification* sysTrayNoteList;
+    EmoticonChooser* emoticonList;
     QPushButton* buttonTabClose;
     QColorDialog* dialogColor;
     QMenu* menuFontStyle;
@@ -168,6 +170,7 @@ private slots:
     void onSysTrayIconClicked(QSystemTrayIcon::ActivationReason reason);
     void onSysTrayMenuShowed();
     void onSysTrayMenuClicked(QAction* action);
+    void onEmoticonClicked(const QByteArray& emoticon);
     void onListFriendMenuClicked(QAction* action);
     void onFriendRemarksChanged(QString ID, QString remarks);
 
@@ -188,6 +191,7 @@ private slots:
     void on_buttonFile_clicked();
     void on_textFriendSearch_textChanged(const QString &arg1);
     void on_buttonFriendAdd_clicked();
+    void on_buttonEmotion_clicked();
 };
 
 #endif // MAINWINDOW_H

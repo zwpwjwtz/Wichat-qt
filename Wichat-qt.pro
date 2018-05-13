@@ -43,7 +43,9 @@ SOURCES += main.cpp\
     accountinfodialog.cpp \
     requestmanager.cpp \
     conversation.cpp \
-    systraynotification.cpp
+    systraynotification.cpp \
+    emoticonchooser.cpp \
+    emojispecparser.cpp
 
 HEADERS  += mainwindow.h \
     loginwindow.h \
@@ -78,19 +80,27 @@ HEADERS  += mainwindow.h \
     Private/requestmanager_p.h \
     conversation.h \
     Private/conversation_p.h \
-    systraynotification.h
+    systraynotification.h \
+    emoticonchooser.h \
+    emojispecparser.h \
+    Private/emojispecparserprivate.h
 
 FORMS    += mainwindow.ui \
     loginwindow.ui \
     serverconfigdialog.ui \
     accountinfodialog.ui \
-    systraynotification.ui
+    systraynotification.ui \
+    emoticonchooser.ui
 
 RESOURCES += \
-    icon.qrc
+    icon.qrc \
+    emoticons.qrc
 
 DISTFILES +=
 
 target.path = $${PREFIX}/bin/
 
-INSTALLS += target
+emoticons.files = Emoticon/Twemoji/2/72x72/*
+emoticons.path = $${PREFIX}/share/emoticons/Twemoji/72x72/
+
+INSTALLS += target emoticons

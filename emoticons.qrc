@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/">
+        <file>Emoticon/Unicode/5.0/emoji-test.txt</file>
+    </qresource>
+</RCC>

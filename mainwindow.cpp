@@ -13,6 +13,7 @@
 #include "ui_mainwindow.h"
 #include "accountinfodialog.h"
 #include "systraynotification.h"
+#include "emoticonchooser.h"
 #include "global_objects.h"
 #include "account.h"
 #include "conversation.h"
@@ -35,6 +36,8 @@
 #define WICHAT_MAIN_EDITOR_TEXTBOX_NAME "tC"
 #define WICHAT_MAIN_EDITOR_SENDKEY_ENTER 0x01000004
 #define WICHAT_MAIN_EDITOR_SENDKEY_CTRLENTER 0x01000004 + 0x04000000
+
+#define WICHAT_MAIN_RESOURCE_DIR "/usr/share"
 
 #define WICHAT_MAIN_MENU_FRIEND_OPEN "open"
 #define WICHAT_MAIN_MENU_FRIEND_REMOVE "remove"
@@ -134,6 +137,8 @@ MainWindow::MainWindow(QWidget *parent) :
     sysTrayIcon = new QSystemTrayIcon(this);
     sysTrayIcon->setContextMenu(menuSysTray);
     sysTrayNoteList = new SystrayNotification;
+    emoticonList = new EmoticonChooser(this);
+    emoticonList->hide();
     buttonTabClose = new QPushButton(QIcon(":/Icons/remove.ico"),
                                      "");
     buttonTabClose->setGeometry(0, 0, 10, 10);
@@ -218,6 +223,10 @@ MainWindow::MainWindow(QWidget *parent) :
             SIGNAL(noteClicked(const Notification::Note&)),
             this,
             SLOT(onSysTrayNoteClicked(const Notification::Note&)));
+    connect(emoticonList,
+            SIGNAL(emoticonClicked(QByteArray)),
+            this,
+            SLOT(onEmoticonClicked(QByteArray)));
     connect(menuSysTray,
             SIGNAL(aboutToShow()),
             this,
@@ -277,6 +286,8 @@ void MainWindow::init()
 
     resizeEvent(0); // Trigger resizing manually
     sysTrayIcon->show();
+    emoticonList->setResourceDir(QDir::current()
+                                 .absoluteFilePath(WICHAT_MAIN_RESOURCE_DIR));
 
     addTask(taskUpdateAll);
     timer.start();
@@ -315,6 +326,7 @@ void MainWindow::closeEvent(QCloseEvent* event)
         accountInfo->close();
     sysTrayIcon->hide();
     sysTrayNoteList->close();
+    emoticonList->hide();
 
     syncSessionContent("");
     userSessionList.saveToFile(globalConfig.userDirectory(userID));
@@ -1329,8 +1341,8 @@ void MainWindow::onTimerTimeout()
 
 void MainWindow::onMouseButtonRelease()
 {
-    if (!ui->frameFont->hasFocus())
     ui->frameFont->hide();
+    emoticonList->hide();
 }
 
 void MainWindow::onMouseHoverEnter(QObject* watched, QHoverEvent* event)
@@ -1477,6 +1489,16 @@ void MainWindow::onSysTrayMenuClicked(QAction* action)
         close();
     else if (state > 0)
         changeState(Account::OnlineState(action->data().toInt()));
+}
+
+void MainWindow::onEmoticonClicked(const QByteArray &emoticon)
+{
+    const uint* unicode = (const uint*)(emoticon.constData());
+    int unicodeLength = emoticon.length() / sizeof(uint) +
+                        (emoticon.length() % sizeof(uint) > 0);
+    editorList[getSessionIndex(lastConversation)]->insertHtml(
+                                            QString::fromUcs4(unicode,
+                                                              unicodeLength));
 }
 
 void MainWindow::onListFriendMenuClicked(QAction *action)
@@ -1858,5 +1880,18 @@ void MainWindow::on_buttonFriendAdd_clicked()
     {
         globalAccount.addFriend(ID, queryID);
         queryList[queryID] = ID;
+    }
+}
+
+void MainWindow::on_buttonEmotion_clicked()
+{
+    if (emoticonList->isVisible())
+        emoticonList->hide();
+    else
+    {
+        emoticonList->move(ui->frameTextCtrl->pos() +
+                           ui->buttonEmotion->pos() -
+                           QPoint(0, emoticonList->height()));
+        emoticonList->show();
     }
 }
