@@ -19,10 +19,6 @@ public:
         AES = 3
     };
 
-    static const int MinSeedLength = 8;
-    static const int MinKeyLength = 16;
-    static const int MaxKeyLength = 128;
-
     explicit Encryptor();
 
     static QByteArray getCRC32(const QByteArray &source);
@@ -39,7 +35,8 @@ public:
                         const QByteArray& source,
                         const QByteArray& key,
                         QByteArray& result);
-    static QByteArray genKey(QString seed, bool hex = false);
+    static QByteArray genKey(int length, bool toDec = false);
+
     static QByteArray fuse(const QByteArray& str, QByteArray delta, int base = 128);
     static QByteArray fuse_R(const QByteArray &str, QByteArray delta, int base = 128);
     static QByteArray byteXOR(const QByteArray& array1, const QByteArray& array2);

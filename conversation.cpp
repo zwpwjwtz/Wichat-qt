@@ -64,7 +64,7 @@ bool Conversation::verify(QByteArray sessionID, QByteArray sessionKey)
     int queryID;
     QByteArray bufferIn, bufferOut;
     d->server->setSessionInfo(sessionID, sessionKey);
-    d->tempLoginKey = d->encoder.genKey("", true).left(KeyLen);
+    d->tempLoginKey = d->encoder.genKey(KeyLen);
     bufferIn.append(d->tempLoginKey);
     if (d->server->sendData(bufferIn, bufferOut,
                             RequestManager::RecordServer,
@@ -116,8 +116,7 @@ bool Conversation::sendMessage(QString ID, QByteArray &content, int& queryID)
     if (!d->sessionList->exists(ID))
     {
         d->sessionList->add(ID);
-        d->sessionList->getSession(ID).sendersKey = d->encoder.genKey("")
-                                                              .left(KeyLen);
+        d->sessionList->getSession(ID).sendersKey = d->encoder.genKey(KeyLen);
     }
 
     QByteArray* bufferIn = new QByteArray;

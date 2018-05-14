@@ -515,7 +515,7 @@ bool AccountPrivate::processLogin(int requestID)
     // Build pre-login request
     loginPassword = encoder.getHMAC(loginPassword, loginID.toLatin1())
                            .left(Account::KeyLen);
-    loginKey = encoder.genKey("", true).left(Account::KeyLen);
+    loginKey = encoder.genKey(Account::KeyLen);
 
     encoder.encrypt(Encryptor::AES,
                     loginKey,

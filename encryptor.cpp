@@ -37,7 +37,7 @@ QByteArray Encryptor::getSHA256(const QByteArray& source, bool toDec)
     if (toDec)
     {
         for (unsigned int i=0; i<size; i++)
-            result[i] = char(int(result[i]) + 48);
+            result[i] = char(int(result[i]) % 10 + 48);
     }
 
     return QByteArray(result, size);
@@ -79,7 +79,7 @@ QByteArray Encryptor::getHMAC(const QByteArray& source,
     if (toDec)
     {
         for (int i=0; i<result.size(); i++)
-            result[i] = char(int(result[i]) + 48);
+            result[i] = char(int(result[i]) % 10 + 48);
     }
 
     return result;
@@ -238,67 +238,31 @@ QByteArray Encryptor::byteXOR(const QByteArray& array1, const QByteArray& array2
     return temp;
 }
 
-QByteArray Encryptor::genKey(QString seed, bool hex)
+QByteArray Encryptor::genKey(int length, bool toDec)
 {
-    if (seed.length() < MinKeyLength)
+    int seedLength = 0;
+    qsrand(QDateTime::currentDateTime().toTime_t());
+    while (seedLength < length ||
+           EncryptorPrivate::factorNumber(seedLength) > 4)
+        seedLength = qrand() % 128 + 1;
+
+    QByteArray seed;
+    while(seed.length() < seedLength)
         seed.append(EncryptorPrivate::charVectorToQByteArray(
                         EncryptorPrivate::randGenerator->getRandomBytes(
-                                                                MinKeyLength)));
+                                                                seedLength)));
 
-    int keyLength = 0;
-    qsrand(QDateTime::currentDateTime().toTime_t());
-    while (keyLength < MinKeyLength ||
-           EncryptorPrivate::factorNumber(keyLength) > 4)
-        keyLength = qrand() % MaxKeyLength + 1;
-
-    int p = 0;
     QByteArray key;
-    if (hex)
+    int truncPosition = float(qrand()) / INT_MAX
+                        * (seed.length() - length);
+    key = seed.mid(truncPosition, length);
+
+    if (toDec)
     {
-        for (int i=1; i<=keyLength; i++)
-        {
-            switch (int(qrand() % 4))
-            {
-                case 0:
-                    key.append(char(int(seed[p].toLatin1()) + qrand() % 10));
-                    break;
-                case 1:
-                    key.append(char(int(seed[p].toLatin1()) - qrand() % 10));
-                    break;
-                case 2:
-                    key.append(char(int(seed[p].toLatin1()) * qrand() % 10));
-                    break;
-                case 3:
-                    key.append(char(int(seed[p].toLatin1()) % qrand() % 10));
-                    break;
-                default:;
-            }
-            p = qrand() % seed.length();
-        }
+        for (int i=0; i<key.size(); i++)
+            key[i] = char(int(key[i]) % 10 + 48);
     }
-    else
-    {
-        for (int i=1; i<=keyLength; i++)
-        {
-            switch (int(qrand() % 4))
-            {
-                case 0:
-                    key.append(char((int(seed[p].toLatin1()) + qrand() % 10 + 1) % 10 + 40));
-                    break;
-                case 1:
-                    key.append(char((int(seed[p].toLatin1()) - qrand() % 10 + 1) % 10 + 40));
-                    break;
-                case 2:
-                    key.append(char((int(seed[p].toLatin1()) * qrand() % 10 + 1) % 10 + 40));
-                    break;
-                case 3:
-                    key.append(char((int(seed[p].toLatin1()) % qrand() % 10 + 1) % 10 + 40));
-                    break;
-                default:;
-            }
-            p = qrand() % seed.length();
-        }
-    }
+
     return key;
 }
 
