@@ -69,91 +69,17 @@ bool Account::checkPassword(QString password)
     return true;
 }
 
-// TODO: make login requests asynchronous
-Account::VerifyError Account::verify(QString ID, QString password)
+bool Account::verify(QString ID, QString password)
 {
     Q_D(Account);
     if (!checkID(ID))
-        return VerifyError::IDFormatError;
+        emit verifyFinished(VerifyError::IDFormatError);
     if (!checkPassword(password))
-        return VerifyError::PasswordFormatError;
+        emit verifyFinished(VerifyError::PasswordFormatError);
 
-    // Build pre-login request
-    QByteArray bufferIn, bufferOut;
-    QByteArray hashedPassword = d->encoder.getSHA256(password.toLatin1())
-                                          .left(KeyLen);
-    QByteArray tempKey = d->encoder.genKey("", true).left(KeyLen);
-    QByteArray tempKey2;
-    d->encoder.encrypt(Encryptor::AES,
-                       tempKey,
-                       hashedPassword,
-                       tempKey2);
-    bufferIn.append(char(WICHAT_CLIENT_DEVICE)).append(char(1));
-    bufferIn.append(d->encoder.fuse(d->formatID(ID), tempKey2));
-    bufferIn.append(tempKey2);
-
-    // Send pre-login request
-    RequestManager::RequestError errCode =
-       d->server->sendRawData(bufferIn, bufferOut,
-                              RequestManager::AccountServer,
-                              d->serverObjectToPath(
-                                AccountPrivate::ServerObject::AccountLogin));
-    if (errCode == RequestManager::CannotConnect)
-        return VerifyError::NetworkError;
-    if (errCode == RequestManager::VersionTooOld)
-        return VerifyError::VersionNotSupported;
-    if (errCode != RequestManager::Ok)
-        return VerifyError::UnknownError;
-
-    // Extract pre-encryption key
-    bufferOut.remove(0, 1);
-    d->encoder.decrypt(Encryptor::AES,
-                       bufferOut,
-                       hashedPassword,
-                       tempKey2);
-    tempKey = d->encoder.byteXOR(tempKey, tempKey2);
-
-
-    // Build login request
-    bufferIn.clear();
-    bufferIn.append(hashedPassword);
-    bufferIn.append(char(OnlineState::Online));
-    d->encoder.encrypt(Encryptor::AES, bufferIn, tempKey, bufferOut);
-    bufferIn.clear();
-    bufferIn.append(char(WICHAT_CLIENT_DEVICE)).append(char(2));
-    bufferIn.append(d->encoder.getHMAC(d->formatID(ID), tempKey)
-                              .left(MaxIDLen));
-    bufferIn.append(bufferOut);
-
-    // Send login request
-    errCode =
-       d->server->sendRawData(bufferIn, bufferOut,
-                              RequestManager::AccountServer,
-                              d->serverObjectToPath(
-                                AccountPrivate::ServerObject::AccountLogin));
-    if (errCode == RequestManager::CannotConnect)
-        return VerifyError::NetworkError;
-    if (errCode != RequestManager::Ok)
-        return VerifyError::VerificationFailed;
-
-    d->encoder.decrypt(Encryptor::AES,
-                       bufferOut.mid(1 + SessionLen),
-                       tempKey,
-                       bufferIn);
-    if (bufferIn.left(4) != d->encoder.getCRC32(bufferIn.mid(4)))
-        return VerifyError::UnknownError;
-
-    // Extract session and account information
-    d->currentSession = bufferOut.mid(1, SessionLen);
-    bufferIn.remove(0, 4);
-    d->currentState = d->intToOnlineState(bufferIn.at(1));
-    d->sessionValidTime = *((qint16*)(bufferIn.mid(2, 2).data()));
-    d->sessionKey = bufferIn.mid(4, KeyLen);
-    d->currentOfflineMsg = QString(bufferIn.mid(4 + KeyLen)).trimmed();
-    d->currentID = ID;
-
-    d->server->setSessionInfo(d->currentSession, d->sessionKey);
-    return VerifyError::Ok;
+    d->loginID = ID;
+    d->loginPassword = ID.toLatin1();
+    return d->processLogin(0);
 }
 
 QString Account::ID()
@@ -400,8 +326,16 @@ void Account::dispatchQueryRespone(int requestID)
     bool successful;
     QByteArray data;
     QList<QByteArray> tempList;
+
     int requestIndex = d->getRequestIndexByID(requestID);
     AccountPrivate::RequestType requestType = d->requestList[requestIndex].type;
+    if (requestType == AccountPrivate::RequestType::Login)
+    {
+        d->processLogin(requestID);
+        d->requestList.removeAt(requestIndex);
+        return;
+    }
+
     RequestManager::RequestError errCode = d->server->getData(requestID, data);
     if (errCode == RequestManager::Ok)
     {
@@ -564,6 +498,123 @@ void AccountPrivate::addRequest(int requestID, RequestType type)
     request.ID = requestID;
     request.type = type;
     requestList.append(request);
+}
+
+
+bool AccountPrivate::processLogin(int requestID)
+{
+    Q_Q(Account);
+
+    static int loginState = 0;
+    QByteArray bufferIn, bufferOut;
+    QByteArray tempKey;
+    RequestManager::RequestError errCode;
+
+    if (loginState == 0 || loginState == 3) // Not logged in | logged in
+    {
+    // Build pre-login request
+    loginPassword = encoder.getHMAC(loginPassword, loginID.toLatin1())
+                           .left(Account::KeyLen);
+    loginKey = encoder.genKey("", true).left(Account::KeyLen);
+
+    encoder.encrypt(Encryptor::AES,
+                    loginKey,
+                    loginPassword,
+                    tempKey);
+    bufferIn.append(char(WICHAT_CLIENT_DEVICE)).append(char(1));
+    bufferIn.append(encoder.fuse(formatID(loginID), tempKey));
+    bufferIn.append(tempKey);
+
+    // Send pre-login reques
+    if (server->sendRawData(bufferIn, bufferOut,
+                            RequestManager::AccountServer,
+                            serverObjectToPath(
+                                AccountPrivate::ServerObject::AccountLogin),
+                            false, &requestID)
+             != RequestManager::Ok)
+         return false;
+
+    addRequest(requestID, AccountPrivate::RequestType::Login);
+    loginState = 1;
+    }
+    else if (loginState == 1) // Stage 1 finished
+    {
+    errCode = server->getData(requestID, bufferOut);
+    if (errCode == RequestManager::CannotConnect)
+        emit q->verifyFinished(Account::VerifyError::NetworkError);
+    if (errCode == RequestManager::VersionTooOld)
+        emit q->verifyFinished(Account::VerifyError::VersionNotSupported);
+    if (errCode != RequestManager::Ok)
+        return false;
+
+    // Extract pre-encryption key
+    bufferOut.remove(0, 1);
+    encoder.decrypt(Encryptor::AES,
+                    bufferOut,
+                    loginPassword,
+                    tempKey);
+    loginKey = encoder.byteXOR(loginKey, tempKey);
+
+
+    // Build login request
+    bufferIn.clear();
+    bufferIn.append(loginPassword);
+    bufferIn.append(char(Account::OnlineState::Online));
+    encoder.encrypt(Encryptor::AES, bufferIn, loginKey, bufferOut);
+    bufferIn.clear();
+    bufferIn.append(char(WICHAT_CLIENT_DEVICE)).append(char(2));
+    bufferIn.append(encoder.getHMAC(formatID(loginID), loginKey)
+                           .left(Account::MaxIDLen));
+    bufferIn.append(bufferOut);
+
+    // Send login request
+    if (server->sendRawData(bufferIn, bufferOut,
+                            RequestManager::AccountServer,
+                            serverObjectToPath(
+                                AccountPrivate::ServerObject::AccountLogin),
+                            false, &requestID)
+            != RequestManager::Ok)
+        return false;
+
+    addRequest(requestID, AccountPrivate::RequestType::Login);
+    loginState = 2;
+    }
+    else if (loginState == 2) // Stage 2 finished
+    {
+    errCode = server->getData(requestID, bufferOut);
+    if (errCode == RequestManager::CannotConnect)
+    {
+        emit q->verifyFinished(Account::VerifyError::NetworkError);
+        return false;
+    }
+    if (errCode != RequestManager::Ok)
+    {
+        emit q->verifyFinished(Account::VerifyError::VerificationFailed);
+        return false;
+    }
+
+    encoder.decrypt(Encryptor::AES,
+                    bufferOut.mid(1 + Account::SessionLen),
+                    loginKey,
+                    bufferIn);
+    if (bufferIn.left(4) != encoder.getCRC32(bufferIn.mid(4)))
+        emit q->verifyFinished(Account::VerifyError::UnknownError);
+
+    // Extract session and account information
+    currentSession = bufferOut.mid(1, Account::SessionLen);
+    bufferIn.remove(0, 4);
+    currentState = intToOnlineState(bufferIn.at(1));
+    sessionValidTime = *((qint16*)(bufferIn.mid(2, 2).data()));
+    sessionKey = bufferIn.mid(4, Account::KeyLen);
+    currentOfflineMsg = QString(bufferIn.mid(4 + Account::KeyLen)).trimmed();
+    currentID = loginID;
+
+    server->setSessionInfo(currentSession, sessionKey);
+    loginState = 3;
+    emit q->verifyFinished(Account::VerifyError::Ok);
+    }
+
+    return true;
 }
 
 bool AccountPrivate::processReplyData(RequestType type, QByteArray& data)

@@ -22,6 +22,11 @@ LoginWindow::LoginWindow(QWidget *parent) :
 
     move((QApplication::desktop()->width() - width()) / 2,
          (QApplication::desktop()->height() - height()) / 2);
+
+    connect(&globalAccount,
+            SIGNAL(verifyFinished(VerifyError)),
+            this,
+            SLOT(onAccountVerifyFinished(VerifyError)));
 }
 
 LoginWindow::~LoginWindow()
@@ -38,17 +43,8 @@ void LoginWindow::keyPressEvent(QKeyEvent * event)
         ui->buttonLogin->animateClick();
 }
 
-void LoginWindow::on_buttonLogin_clicked()
+void LoginWindow::onAccountVerifyFinished(VerifyError errorCode)
 {
-    globalConfig.setLastID(ui->textID->text());
-
-    QList<QString> rootServer = globalConfig.rootServer().split(',')
-                                                         .toVector().toList();
-    if (rootServer.count() >= 2)
-        globalConnection.setRootServer(rootServer[0], rootServer[1].toInt());
-
-    Account::VerifyError errorCode =
-            globalAccount.verify(ui->textID->text(), ui->textPassword->text());
     switch (errorCode)
     {
         case Account::VerifyError::Ok:
@@ -91,6 +87,30 @@ void LoginWindow::on_buttonLogin_clicked()
                                   "Wichat encountered an unknown error.\n"
                                   "You may need to check program integrity, or "
                                   "report this error to the developper.");
+    }
+
+    ui->buttonLogin->setEnabled(true);
+    ui->buttonLogin->setText("Login");
+}
+
+void LoginWindow::on_buttonLogin_clicked()
+{
+    globalConfig.setLastID(ui->textID->text());
+
+    QList<QString> rootServer = globalConfig.rootServer().split(',')
+                                                         .toVector().toList();
+    if (rootServer.count() >= 2)
+        globalConnection.setRootServer(rootServer[0], rootServer[1].toInt());
+
+    if (!globalAccount.verify(ui->textID->text(), ui->textPassword->text()))
+    {
+        // Assuming network problem
+        onAccountVerifyFinished(Account::VerifyError::NetworkError);
+    }
+    else
+    {
+        ui->buttonLogin->setEnabled(false);
+        ui->buttonLogin->setText("Logging in...");
     }
 }
 

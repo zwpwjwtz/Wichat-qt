@@ -35,7 +35,8 @@ public:
         RemoveFriend = 7,
         GetFriendRemarks = 8,
         SetFriendRemarks = 9,
-        GetFriendInfo = 10
+        GetFriendInfo = 10,
+        Login = 11
     };
 
     struct RequestInfo
@@ -43,6 +44,10 @@ public:
         int ID;
         RequestType type;
     };
+
+    QString loginID;
+    QByteArray loginPassword;
+    QByteArray loginKey;
 
     QString currentID;
     QByteArray currentSession;
@@ -58,6 +63,7 @@ public:
     ~AccountPrivate();
     int getRequestIndexByID(int requestID);
     void addRequest(int requestID, RequestType type);
+    bool processLogin(int requestID);
     bool processReplyData(RequestType type, QByteArray& data);
     static void parseAccountList(QByteArray& data,
                                  QByteArray listType,

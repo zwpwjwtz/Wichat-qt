@@ -63,7 +63,7 @@ public:
     static bool checkID(QString ID);
     static bool checkPassword(QString password);
 
-    VerifyError verify(QString ID, QString password);
+    bool verify(QString ID, QString password);
     bool resetSession(int& queryID);
 
     QString ID();
@@ -84,6 +84,7 @@ public:
 
 signals:
     void queryError(int queryID, QueryError errorCode);
+    void verifyFinished(VerifyError errorCode);
     void resetSessionFinished(int queryID, bool successful);
     void setPasswordFinished(int queryID, bool successful);
     void setStateFinished(int queryID, bool successful, OnlineState newState);
