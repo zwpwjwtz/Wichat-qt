@@ -175,7 +175,7 @@ bool Account::setOfflineMsg(QString newMessage, int &queryID)
     QByteArray bufferIn, bufferOut;
     bufferIn.append(char(7)).append(char(qrand() * 256));
     bufferIn.append("<MSG>")
-            .append(newMessage.toLatin1())
+            .append(newMessage.toUtf8())
             .append("</MSG>");
     if (RequestManager::Ok !=
         d->server->sendData(bufferIn, bufferOut,
@@ -282,10 +282,11 @@ bool Account::setFriendRemarks(QString ID, QString remarks, int &queryID)
     Q_D(Account);
 
     QByteArray bufferIn, bufferOut;
-    qint16 remarksLength = remarks.length();
+    qint16 remarksLength = remarks.toUtf8().length() + 1;
     bufferIn.append(char(12)).append(char(qrand() * 256));
-    bufferIn.append((char*)(&remarksLength))
-            .append(d->formatID(ID));
+    bufferIn.append(d->formatID(ID))
+            .append(QByteArray::fromRawData((char*)(&remarksLength), 2))
+            .append(remarks.toUtf8()).append(char(0));
     if (RequestManager::Ok !=
         d->server->sendData(bufferIn, bufferOut,
                             RequestManager::AccountServer,

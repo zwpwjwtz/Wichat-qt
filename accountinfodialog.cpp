@@ -6,6 +6,9 @@ AccountInfoDialog::AccountInfoDialog(QWidget *parent) :
     ui(new Ui::AccountInfoDialog)
 {
     ui->setupUi(this);
+
+    remarksVisible = true;
+    offlineMsgReadOnly = false;
 }
 
 AccountInfoDialog::~AccountInfoDialog()
@@ -17,12 +20,19 @@ void AccountInfoDialog::showEvent(QShowEvent* event)
 {
     Q_UNUSED(event)
     ui->labelID->setText(ID);
+
     if (state == Account::OnlineState::Offline)
         ui->labelOnlineState->setText("Not online");
     else
         ui->labelOnlineState->setText("Online");
-    ui->labelOfflineMsg->setText(offlineMsg);
+
+    ui->textOfflineMsg->setText(offlineMsg);
+    ui->textOfflineMsg->setTextEditable(!offlineMsgReadOnly);
+
     ui->textRemarks->setText(remarks);
+    ui->textRemarks->setVisible(remarksVisible);
+    ui->textRemarks->setTextEditable(!remarksReadOnly);
+
     setWindowTitle(QString("Friend Info - ").append(ID));
 }
 
@@ -33,5 +43,10 @@ void AccountInfoDialog::closeEvent(QCloseEvent* event)
     {
         remarks = ui->textRemarks->text();
         emit remarksChanged(ID, remarks);
+    }
+    if (ui->textOfflineMsg->text() != offlineMsg)
+    {
+        offlineMsg = ui->textOfflineMsg->text();
+        emit offlineMsgChanged(ID, offlineMsg);
     }
 }

@@ -3,6 +3,8 @@
 
 #include <QDialog>
 #include "account.h"
+#include "editablelabel.h"
+
 
 namespace Ui {
 class AccountInfoDialog;
@@ -19,10 +21,14 @@ public:
     QString ID;
     Account::OnlineState state;
     QString remarks;
+    bool remarksVisible;
+    bool remarksReadOnly;
     QString offlineMsg;
+    bool offlineMsgReadOnly;
 
 signals:
     void remarksChanged(QString ID, QString remarks);
+    void offlineMsgChanged(QString ID, QString remarks);
 
 protected:
     void showEvent(QShowEvent* event);

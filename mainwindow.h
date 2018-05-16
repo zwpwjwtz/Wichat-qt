@@ -1,4 +1,4 @@
-#ifndef MAINWINDOW_H
+﻿#ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
 #include <QMainWindow>
@@ -57,13 +57,21 @@ private:
         taskChangeSession = 2,
         taskLogOut = 3,
         taskLogIn = 4,
-        taskUpdateFriList = 5,
+        taskUpdateFriendList = 5,
         taskShowNotification = 6,
         taskUpdateAll = 7,
         taskGetMsgList = 8,
         taskReloadMsg = 9,
         taskRebuildConnection = 10,
-        taskConversationLogin = 11
+        taskConversationLogin = 11,
+        taskUpdateFriendInfo = 12,
+        taskRefreshFriendList = 13
+    };
+
+    struct FriendInfoEntry
+    {
+        QString remarks;
+        Account::OnlineState state;
     };
 
     Ui::MainWindow *ui;
@@ -93,6 +101,7 @@ private:
     QQueue<TaskType> taskList;
     QQueue<QString> brokenConnectionList;
     QMap<int, QString> queryList;
+    QMap<QString, FriendInfoEntry> friendInfoList;
     UserSession userSessionList;
     PeerSession peerSessionList;
     Notification noteList;
@@ -114,7 +123,6 @@ private:
     QString renderHTML(const QByteArray& content);
     void addTab(QString ID);
     void loadTab();
-    void refreshTab();
     void highlightSession(QString ID, bool highlight);
     void removeTab(QString ID);
     void changeSession();
@@ -123,8 +131,11 @@ private:
     void updateCaption();
     void updateSysTrayMenu();
     void updateFriendList();
+    void updateFriendInfo();
     QString getStateImagePath(QString ID);
     bool isFriend(QString ID);
+    bool refreshFriendList();
+    void showFriendInfo(const AccountInfoEntry& info);
     void conversationLogin();
     void getMessageList();
     bool sendMessage(QString content, QString sessionID);
@@ -144,6 +155,7 @@ private slots:
                                OnlineState newState);
     void onUpdateFriendListFinished(int queryID,
                                     QList<AccountListEntry> friends);
+    void onUpdateFriendRemarksFinished(int queryID, QList<QString> remarks);
     void onAddFriendFinished(int queryID, bool successful);
     void onRemoveFriendFinished(int queryID, bool successful);
     void onGetFriendInfoFinished(int queryID,
@@ -173,6 +185,7 @@ private slots:
     void onEmoticonClicked(const QByteArray& emoticon);
     void onListFriendMenuClicked(QAction* action);
     void onFriendRemarksChanged(QString ID, QString remarks);
+    void onOfflineMsgChanged(QString ID, QString offlineMsg);
 
     // Auto-connected slots for UI events
     void on_buttonFont_clicked();
