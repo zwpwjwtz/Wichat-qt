@@ -12,6 +12,7 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include "accountinfodialog.h"
+#include "preferencedialog.h"
 #include "systraynotification.h"
 #include "emoticonchooser.h"
 #include "global_objects.h"
@@ -42,6 +43,7 @@
 #define WICHAT_MAIN_MENU_FRIEND_OPEN 0
 #define WICHAT_MAIN_MENU_FRIEND_REMOVE 1
 #define WICHAT_MAIN_MENU_FRIEND_INFO 2
+#define WICHAT_MAIN_MENU_APP_PREFERENCE 3
 
 #define WICHAT_MAIN_FILE_FILTER_ALL "All (*.*)(*.*)"
 #define WICHAT_MAIN_FILE_FILTER_GIF "GIF file (*.gif)(*.gif)"
@@ -1611,12 +1613,14 @@ void MainWindow::onListFriendMenuClicked(QAction *action)
                                             WICHAT_MAIN_FRILIST_FIELD_ID)
                                      ->text();
 
-    int actionType = action->data().toInt();
-    if (actionType == WICHAT_MAIN_MENU_FRIEND_OPEN)
+    switch(action->data().toInt())
+    {
+    case WICHAT_MAIN_MENU_FRIEND_OPEN:
     {
         on_listFriend_doubleClicked(index[0]);
+        break;
     }
-    else if (actionType == WICHAT_MAIN_MENU_FRIEND_REMOVE)
+    case WICHAT_MAIN_MENU_FRIEND_REMOVE:
     {
         if (QMessageBox::information(this, "Remove a friend",
                                      QString("Do you really want to remove %1 "
@@ -1628,8 +1632,9 @@ void MainWindow::onListFriendMenuClicked(QAction *action)
         int queryID;
         globalAccount.removeFriend(firstID, queryID);
         queryList[queryID] = firstID;
+        break;
     }
-    else if (actionType == WICHAT_MAIN_MENU_FRIEND_INFO)
+    case WICHAT_MAIN_MENU_FRIEND_INFO:
     {
         if (firstID == userID)
         {
@@ -1644,6 +1649,16 @@ void MainWindow::onListFriendMenuClicked(QAction *action)
             int queryID;
             globalAccount.queryFriendInfo(firstID, queryID);
         }
+        break;
+    }
+    case WICHAT_MAIN_MENU_APP_PREFERENCE:
+    {
+        if (!globalPreference)
+            globalPreference = new PreferenceDialog;
+        globalPreference->exec();
+        break;
+    }
+    default:;
     }
 }
 
@@ -1930,6 +1945,14 @@ void MainWindow::on_listFriend_customContextMenuRequested(const QPoint &pos)
         action = new QAction(menuFriendOption);
         action->setText("View information");
         action->setData(WICHAT_MAIN_MENU_FRIEND_INFO);
+        menuFriendOption->addAction(action);
+
+        menuFriendOption->addSeparator();
+
+        // Action: WICHAT_MAIN_MENU_APP_PREFERENCE
+        action = new QAction(menuFriendOption);
+        action->setText("Wichat settings");
+        action->setData(WICHAT_MAIN_MENU_APP_PREFERENCE);
         menuFriendOption->addAction(action);
 
         actionList = menuFriendOption->actions();

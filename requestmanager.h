@@ -29,8 +29,8 @@ public:
         NotAvailable = 3,
         VersionTooOld = 4,
         ReplyIncomplete = 128,
-        CannotDecrypt = 128,
-        DecryptError = 129,
+        RequestInvalid = 129,
+        DecryptError = 130,
         UnknownError = 255,
     };
 

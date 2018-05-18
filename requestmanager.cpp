@@ -116,20 +116,7 @@ RequestManager::sendRawData(const QByteArray& data,
                                                   result);
     if (errCode != ServerConnection::Ok)
         return RequestError(errCode);
-    switch (int(result[0]))
-    {
-        case WICHAT_SERVER_RESPONSE_SUCCESS:
-            return Ok;
-        case WICHAT_SERVER_RESPONSE_BUSY:
-        case WICHAT_SERVER_RESPONSE_IN_MAINTANANCE:
-            return NotAvailable;
-        case WICHAT_SERVER_RESPONSE_INVALID:
-            return UnknownError;
-        case WICHAT_SERVER_RESPONSE_DEVICE_UNSUPPORTED:
-            return VersionTooOld;
-        default:
-            return UnknownError;
-    }
+    return Ok;
 }
 
 RequestManager::RequestError
@@ -167,7 +154,22 @@ RequestManager::getData(int requestID, QByteArray& buffer)
     else
     {
         buffer = data.mid(4);
-        return Ok;
+        if (buffer.length() < 1)
+            return Ok;
+        switch (int(buffer[0]))
+        {
+            case WICHAT_SERVER_RESPONSE_SUCCESS:
+                return Ok;
+            case WICHAT_SERVER_RESPONSE_BUSY:
+            case WICHAT_SERVER_RESPONSE_IN_MAINTANANCE:
+                return NotAvailable;
+            case WICHAT_SERVER_RESPONSE_INVALID:
+                return RequestInvalid;
+            case WICHAT_SERVER_RESPONSE_DEVICE_UNSUPPORTED:
+                return VersionTooOld;
+            default:
+                return UnknownError;
+        }
     }
 }
 

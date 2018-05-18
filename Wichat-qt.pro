@@ -46,7 +46,8 @@ SOURCES += main.cpp\
     systraynotification.cpp \
     emoticonchooser.cpp \
     emojispecparser.cpp \
-    editablelabel.cpp
+    editablelabel.cpp \
+    preferencedialog.cpp
 
 HEADERS  += mainwindow.h \
     loginwindow.h \
@@ -85,7 +86,8 @@ HEADERS  += mainwindow.h \
     emoticonchooser.h \
     emojispecparser.h \
     Private/emojispecparserprivate.h \
-    editablelabel.h
+    editablelabel.h \
+    preferencedialog.h
 
 FORMS    += mainwindow.ui \
     loginwindow.ui \
@@ -93,7 +95,8 @@ FORMS    += mainwindow.ui \
     accountinfodialog.ui \
     systraynotification.ui \
     emoticonchooser.ui \
-    editablelabel.ui
+    editablelabel.ui \
+    preferencedialog.ui
 
 RESOURCES += \
     icon.qrc \

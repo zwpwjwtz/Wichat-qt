@@ -26,6 +26,7 @@ public:
     void setLastID(QString userID);
     QString recordPath();
     void setRecordPath(QString path);
+    bool isDefaultRecordPath();
 
     // User configuration
     QString userDirectory(QString userID);

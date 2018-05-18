@@ -1,4 +1,4 @@
-#include "common.h"
+﻿#include "common.h"
 #include "account.h"
 #include "Private/account_p.h"
 
@@ -11,6 +11,9 @@
 //#define WICHAT_ACCOUNT_STATE_LOGOUT 3
 #define WICHAT_ACCOUNT_STATE_BUSY 4
 #define WICHAT_ACCOUNT_STATE_HIDE 5
+
+#define WICHAT_ACCOUNT_PASSWORD_OK 1
+#define WICHAT_ACCOUNT_PASSWORD_INCORRECT 1
 
 #define WICHAT_RELATION_STATE_NONE 0
 #define WICHAT_RELATION_STATE_WAITING 1
@@ -78,7 +81,7 @@ bool Account::verify(QString ID, QString password)
         emit verifyFinished(VerifyError::PasswordFormatError);
 
     d->loginID = ID;
-    d->loginPassword = ID.toLatin1();
+    d->loginPassword = d->encoder.getSHA256(password.toLatin1());
     return d->processLogin(0);
 }
 
@@ -105,16 +108,21 @@ bool Account::setPassword(QString oldPassword, QString newPassword)
     Q_D(Account);
     if (!checkPassword(oldPassword) || !checkPassword(newPassword))
         return false;
+
+    int queryID;
     QByteArray bufferIn, bufferOut;
     bufferIn.append(char(9)).append(char(qrand() * 256));
-    bufferIn.append(d->encoder.getSHA256(oldPassword.toLatin1()).left(KeyLen));
-    bufferIn.append(d->encoder.getSHA256(newPassword.toLatin1()).left(KeyLen));
+    bufferIn.append(oldPassword.toLatin1()).append(char(0));
+    bufferIn.append(newPassword.toLatin1()).append(char(0));
     if (RequestManager::Ok !=
         d->server->sendData(bufferIn, bufferOut,
                             RequestManager::AccountServer,
                             d->serverObjectToPath(
-                                AccountPrivate::ServerObject::AccountAction)))
+                                AccountPrivate::ServerObject::AccountAction),
+                            false, &queryID))
         return false;
+
+    d->addRequest(queryID, AccountPrivate::RequestType::SetPassword);
     return true;
 }
 
@@ -514,17 +522,17 @@ bool AccountPrivate::processLogin(int requestID)
     if (loginState == 0 || loginState == 3) // Not logged in | logged in
     {
     // Build pre-login request
-    loginPassword = encoder.getHMAC(loginPassword, loginID.toLatin1())
+    tempKey = encoder.getHMAC(loginPassword, loginID.toLatin1())
                            .left(Account::KeyLen);
     loginKey = encoder.genKey(Account::KeyLen);
 
     encoder.encrypt(Encryptor::AES,
                     loginKey,
-                    loginPassword,
-                    tempKey);
+                    tempKey,
+                    bufferOut);
     bufferIn.append(char(WICHAT_CLIENT_DEVICE)).append(char(1));
-    bufferIn.append(encoder.fuse(formatID(loginID), tempKey));
-    bufferIn.append(tempKey);
+    bufferIn.append(encoder.fuse(formatID(loginID), bufferOut));
+    bufferIn.append(bufferOut);
 
     // Send pre-login reques
     if (server->sendRawData(bufferIn, bufferOut,
@@ -540,6 +548,7 @@ bool AccountPrivate::processLogin(int requestID)
     }
     else if (loginState == 1) // Stage 1 finished
     {
+    loginState = 0;
     errCode = server->getData(requestID, bufferOut);
     if (errCode == RequestManager::CannotConnect)
         emit q->verifyFinished(Account::VerifyError::NetworkError);
@@ -548,18 +557,26 @@ bool AccountPrivate::processLogin(int requestID)
     if (errCode != RequestManager::Ok)
         return false;
 
+    if (bufferOut.length() < Account::KeyLen)
+    {
+        emit q->verifyFinished(Account::VerifyError::VerificationFailed);
+        return false;
+    }
+
     // Extract pre-encryption key
     bufferOut.remove(0, 1);
+    tempKey = encoder.getHMAC(loginPassword, loginID.toLatin1())
+                           .left(Account::KeyLen);
     encoder.decrypt(Encryptor::AES,
                     bufferOut,
-                    loginPassword,
-                    tempKey);
-    loginKey = encoder.byteXOR(loginKey, tempKey);
+                    tempKey,
+                    bufferIn);
+    loginKey = encoder.byteXOR(loginKey, bufferIn);
 
 
     // Build login request
     bufferIn.clear();
-    bufferIn.append(loginPassword);
+    bufferIn.append(loginPassword.left(Account::KeyLen));
     bufferIn.append(char(Account::OnlineState::Online));
     encoder.encrypt(Encryptor::AES, bufferIn, loginKey, bufferOut);
     bufferIn.clear();
@@ -582,13 +599,14 @@ bool AccountPrivate::processLogin(int requestID)
     }
     else if (loginState == 2) // Stage 2 finished
     {
+    loginState = 0;
     errCode = server->getData(requestID, bufferOut);
     if (errCode == RequestManager::CannotConnect)
     {
         emit q->verifyFinished(Account::VerifyError::NetworkError);
         return false;
     }
-    if (errCode != RequestManager::Ok)
+    if (errCode != RequestManager::Ok || bufferOut.length() < Account::KeyLen)
     {
         emit q->verifyFinished(Account::VerifyError::VerificationFailed);
         return false;
@@ -624,11 +642,13 @@ bool AccountPrivate::processReplyData(RequestType type, QByteArray& data)
         return false;
     switch (type)
     {
+        case RequestType::SetPassword:
+            if (data[1] != char(WICHAT_ACCOUNT_PASSWORD_OK))
+                return false;
         case RequestType::SetState:
             data.remove(0, 1);
             break;
         case RequestType::ResetSession:
-        case RequestType::SetPassword:
         case RequestType::SetOfflineMsg:
         case RequestType::GetFriendList:
         case RequestType::AddFriend:

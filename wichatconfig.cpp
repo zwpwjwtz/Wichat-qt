@@ -114,6 +114,13 @@ void WichatConfig::setRecordPath(QString path)
     d->appConfig.setValue(WICHAT_CONFIG_KEY_RECORD_PATH, path);
 }
 
+bool WichatConfig::isDefaultRecordPath()
+{
+    Q_D(WichatConfig);
+    return (d->appConfig.value(WICHAT_CONFIG_KEY_RECORD_PATH)
+                        .toString().isEmpty());
+}
+
 QString WichatConfig::userDirectory(QString userID)
 {
     Q_D(WichatConfig);
