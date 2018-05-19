@@ -333,7 +333,10 @@ int ServerConnectionPrivate::httpRequest(QString strHostName,
     }
 
     // Deal with redirect (when scheme is changed)
-    QNetworkReply* newReply = dealHttpRedirect(reply, strMethod, bytePostData);
+    QNetworkReply* newReply = dealHttpRedirect(reply,
+                                               strMethod,
+                                               bytePostData,
+                                               boolSync);
     if (newReply != reply)
     {
         reply->deleteLater();
@@ -380,7 +383,8 @@ int ServerConnectionPrivate::waitHttpRequest(QNetworkReply* reply,
     else
     {
         QEventLoop loop;
-        connect(reply, SIGNAL(finished()), &loop, SLOT(quit()));
+        connect(&network, SIGNAL(finished(QNetworkReply*)),
+                &loop, SLOT(quit()));
         loop.exec();
         return 0;
     }
