@@ -1,9 +1,10 @@
-﻿#include "common.h"
+#include "common.h"
 #include "account.h"
 #include "Private/account_p.h"
 
 #define WICHAT_SERVER_PATH_ACCOUNT_LOGIN "/Account/log/login.php"
 #define WICHAT_SERVER_PATH_ACCOUNT_ACTION "/Account/acc/action.php"
+#define WICHAT_SERVER_PATH_ACCOUNT_FRIEND "/Account/acc/friend.php"
 
 #define WICHAT_ACCOUNT_STATE_DEFAULT 0
 #define WICHAT_ACCOUNT_STATE_ONLINE 1
@@ -12,14 +13,32 @@
 #define WICHAT_ACCOUNT_STATE_BUSY 4
 #define WICHAT_ACCOUNT_STATE_HIDE 5
 
-#define WICHAT_ACCOUNT_PASSWORD_OK 1
-#define WICHAT_ACCOUNT_PASSWORD_INCORRECT 1
-
 #define WICHAT_RELATION_STATE_NONE 0
 #define WICHAT_RELATION_STATE_WAITING 1
 #define WICHAT_RELATION_STATE_ESTABLISHED 2
 #define WICHAT_RELATION_STATE_BREAKING 3
 //#define WICHAT_RELATION_STATE_REFUSED 4
+
+#define WICHAT_ACCOUNT_INFO_SESSION_CHANGE 5
+#define WICHAT_ACCOUNT_INFO_MSG_GET 6
+#define WICHAT_ACCOUNT_INFO_MSG_SET 7
+#define WICHAT_ACCOUNT_INFO_STATE_SET 8
+#define WICHAT_ACCOUNT_INFO_PW_CHANGE 9
+
+#define WICHAT_ACCOUNT_FRIEND_GETLIST 1
+#define WICHAT_ACCOUNT_FRIEND_ADD 2
+#define WICHAT_ACCOUNT_FRIEND_DEL 3
+#define WICHAT_ACCOUNT_FRIEND_CHECK 4
+#define WICHAT_ACCOUNT_FRIEND_GETINFO 10
+#define WICHAT_ACCOUNT_FRIEND_GETNOTE 11
+#define WICHAT_ACCOUNT_FRIEND_SETNOTE 12
+
+#define WICHAT_ACCOUNT_FRIEND_OPTION_NORMAL 0
+#define WICHAT_ACCOUNT_FRIEND_OPTION_GETDATE 1
+#define WICHAT_ACCOUNT_FRIEND_OPTION_GETSTATE 2
+
+#define WICHAT_ACCOUNT_RESPONSE_PASSWORD_OK 1
+#define WICHAT_ACCOUNT_RESPONSE_PASSWORD_INCORRECT 2
 
 #define WICHAT_ACCOUNT_EVENT_REQUEST_FINISHED 1
 
@@ -111,7 +130,8 @@ bool Account::setPassword(QString oldPassword, QString newPassword)
 
     int queryID;
     QByteArray bufferIn, bufferOut;
-    bufferIn.append(char(9)).append(char(qrand() * 256));
+    bufferIn.append(char(WICHAT_ACCOUNT_INFO_PW_CHANGE))
+            .append(char(qrand() * 256));
     bufferIn.append(oldPassword.toLatin1()).append(char(0));
     bufferIn.append(newPassword.toLatin1()).append(char(0));
     if (RequestManager::Ok !=
@@ -130,7 +150,8 @@ bool Account::resetSession(int& queryID)
 {
     Q_D(Account);
     QByteArray bufferIn, bufferOut;
-    bufferIn.append(char(5)).append(char(qrand() * 256));
+    bufferIn.append(char(WICHAT_ACCOUNT_INFO_SESSION_CHANGE))
+            .append(char(qrand() * 256));
     if (RequestManager::Ok !=
         d->server->sendData(bufferIn, bufferOut,
                             RequestManager::AccountServer,
@@ -156,7 +177,8 @@ bool Account::setState(OnlineState newState, int& queryID)
         return false;
 
     QByteArray bufferIn, bufferOut;
-    bufferIn.append(char(8)).append(char(newState));
+    bufferIn.append(char(WICHAT_ACCOUNT_INFO_STATE_SET))
+            .append(char(newState));
     if (RequestManager::Ok !=
         d->server->sendData(bufferIn, bufferOut,
                             RequestManager::AccountServer,
@@ -181,7 +203,8 @@ bool Account::setOfflineMsg(QString newMessage, int &queryID)
     newMessage.truncate(MaxOfflineMsgLen - 2);
 
     QByteArray bufferIn, bufferOut;
-    bufferIn.append(char(7)).append(char(qrand() * 256));
+    bufferIn.append(char(WICHAT_ACCOUNT_INFO_MSG_SET))
+            .append(char(qrand() * 256));
     bufferIn.append("<MSG>")
             .append(newMessage.toUtf8())
             .append("</MSG>");
@@ -204,12 +227,13 @@ bool Account::queryFriendList(int& queryID)
     Q_D(Account);
 
     QByteArray bufferIn, bufferOut;
-    bufferIn.append(char(1)).append(char(2));
+    bufferIn.append(char(WICHAT_ACCOUNT_FRIEND_GETLIST))
+            .append(char(WICHAT_ACCOUNT_FRIEND_OPTION_GETSTATE));
     if (RequestManager::Ok !=
         d->server->sendData(bufferIn, bufferOut,
                             RequestManager::AccountServer,
                             d->serverObjectToPath(
-                                AccountPrivate::ServerObject::AccountAction),
+                                AccountPrivate::ServerObject::FriendAction),
                             false, &queryID))
         return false;
 
@@ -222,7 +246,8 @@ bool Account::addFriend(QString ID, int &queryID)
     Q_D(Account);
 
     QByteArray bufferIn, bufferOut;
-    bufferIn.append(char(2)).append(char(qrand() * 256));
+    bufferIn.append(char(WICHAT_ACCOUNT_FRIEND_ADD))
+            .append(char(qrand() * 256));
     bufferIn.append("<IDList><ID>")
             .append(d->formatID(ID))
             .append("</ID></IDList>");
@@ -230,7 +255,7 @@ bool Account::addFriend(QString ID, int &queryID)
         d->server->sendData(bufferIn, bufferOut,
                             RequestManager::AccountServer,
                             d->serverObjectToPath(
-                                  AccountPrivate::ServerObject::AccountAction),
+                                  AccountPrivate::ServerObject::FriendAction),
                             false, &queryID))
         return false;
 
@@ -243,7 +268,8 @@ bool Account::removeFriend(QString ID, int& queryID)
     Q_D(Account);
 
     QByteArray bufferIn, bufferOut;
-    bufferIn.append(char(3)).append(char(qrand() * 256));
+    bufferIn.append(char(WICHAT_ACCOUNT_FRIEND_DEL))
+            .append(char(qrand() * 256));
     bufferIn.append("<IDList><ID>")
             .append(d->formatID(ID))
             .append("</ID></IDList>");
@@ -251,7 +277,7 @@ bool Account::removeFriend(QString ID, int& queryID)
         d->server->sendData(bufferIn, bufferOut,
                             RequestManager::AccountServer,
                             d->serverObjectToPath(
-                                AccountPrivate::ServerObject::AccountAction),
+                                AccountPrivate::ServerObject::FriendAction),
                             false, &queryID))
         return false;
 
@@ -264,7 +290,8 @@ bool Account::queryFriendRemarks(QList<QString> IDs, int &queryID)
     Q_D(Account);
 
     QByteArray bufferIn, bufferOut;
-    bufferIn.append(char(11)).append(char(qrand() * 256));
+    bufferIn.append(char(WICHAT_ACCOUNT_FRIEND_GETNOTE))
+            .append(char(qrand() * 256));
     bufferIn.append("<IDList>");
     for (int i=0; i<IDs.count(); i++)
     {
@@ -277,7 +304,7 @@ bool Account::queryFriendRemarks(QList<QString> IDs, int &queryID)
         d->server->sendData(bufferIn, bufferOut,
                             RequestManager::AccountServer,
                             d->serverObjectToPath(
-                                AccountPrivate::ServerObject::AccountAction),
+                                AccountPrivate::ServerObject::FriendAction),
                             false, &queryID))
         return false;
 
@@ -291,7 +318,8 @@ bool Account::setFriendRemarks(QString ID, QString remarks, int &queryID)
 
     QByteArray bufferIn, bufferOut;
     qint16 remarksLength = remarks.toUtf8().length() + 1;
-    bufferIn.append(char(12)).append(char(qrand() * 256));
+    bufferIn.append(char(WICHAT_ACCOUNT_FRIEND_SETNOTE))
+            .append(char(qrand() * 256));
     bufferIn.append(d->formatID(ID))
             .append(QByteArray::fromRawData((char*)(&remarksLength), 2))
             .append(remarks.toUtf8()).append(char(0));
@@ -299,7 +327,7 @@ bool Account::setFriendRemarks(QString ID, QString remarks, int &queryID)
         d->server->sendData(bufferIn, bufferOut,
                             RequestManager::AccountServer,
                             d->serverObjectToPath(
-                                AccountPrivate::ServerObject::AccountAction),
+                                AccountPrivate::ServerObject::FriendAction),
                             false, &queryID))
         return false;
 
@@ -312,7 +340,8 @@ bool Account::queryFriendInfo(QString ID, int& queryID)
     Q_D(Account);
 
     QByteArray bufferIn, bufferOut;
-    bufferIn.append(char(10)).append(char(1));
+    bufferIn.append(char(WICHAT_ACCOUNT_FRIEND_GETINFO))
+            .append(char(WICHAT_ACCOUNT_FRIEND_OPTION_GETDATE));
     bufferIn.append("<IDList><ID>")
             .append(d->formatID(ID))
             .append("</ID></IDList>");
@@ -320,7 +349,7 @@ bool Account::queryFriendInfo(QString ID, int& queryID)
         d->server->sendData(bufferIn, bufferOut,
                             RequestManager::AccountServer,
                             d->serverObjectToPath(
-                                AccountPrivate::ServerObject::AccountAction),
+                                AccountPrivate::ServerObject::FriendAction),
                             false, &queryID))
         return false;
 
@@ -643,7 +672,7 @@ bool AccountPrivate::processReplyData(RequestType type, QByteArray& data)
     switch (type)
     {
         case RequestType::SetPassword:
-            if (data[1] != char(WICHAT_ACCOUNT_PASSWORD_OK))
+            if (data[1] != char(WICHAT_ACCOUNT_RESPONSE_PASSWORD_OK))
                 return false;
         case RequestType::SetState:
             data.remove(0, 1);
@@ -762,8 +791,10 @@ QString AccountPrivate::serverObjectToPath(ServerObject objectID)
             return WICHAT_SERVER_PATH_ACCOUNT_LOGIN;
             break;
         case ServerObject::AccountAction:
-        case ServerObject::FriendAction:
             return WICHAT_SERVER_PATH_ACCOUNT_ACTION;
+            break;
+        case ServerObject::FriendAction:
+            return WICHAT_SERVER_PATH_ACCOUNT_FRIEND;
             break;
         default:
             return "";
