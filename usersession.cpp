@@ -1,10 +1,14 @@
 #include <QDir>
+#include <QDataStream>
 
 #include "usersession.h"
 #include "Private/usersession_p.h"
 #include "common.h"
+#include "sessionmessagelist.h"
 
 #define WICHAT_SESSION_CACHE_FILENAME "session.dat"
+#define WICHAT_SESSION_CACHE_SERIAL_MAGIC "WichatSesnList"
+#define WICHAT_SESSION_CACHE_SERIAL_VER "\x02\x00"
 
 #define WICHAT_SESSION_CACHE_FLAG_ACTIVE '\x01'
 #define WICHAT_SESSION_CACHE_FLAG_INACTIVE '\x02'
@@ -29,13 +33,36 @@ bool UserSession::loadFromFile(QString userDir)
                                         WICHAT_SESSION_CACHE_FILENAME));
     if (sessionFile.isReadable())
         return false;
+    sessionFile.open(QFile::ReadOnly);
 
+    // Read and verify file header
     QByteArray temp;
+    qint16 sessionFileVersion = 1;
+    temp = sessionFile.read(strlen(WICHAT_SESSION_CACHE_SERIAL_MAGIC));
+    if (temp == WICHAT_SESSION_CACHE_SERIAL_MAGIC)
+    {
+        temp = sessionFile.read(strlen(WICHAT_SESSION_CACHE_SERIAL_VER));
+        if (temp != WICHAT_SESSION_CACHE_SERIAL_VER)
+        {
+            // Unknown file version
+            sessionFile.close();
+            return false;
+        }
+        else
+        {
+            sessionFileVersion = *((qint16*)(temp.constData()));
+        }
+    }
+
+    // Read each session
     SessionData newSession;
     d->sessionList.clear();
-    sessionFile.open(QFile::ReadOnly);
-    while (!sessionFile.atEnd())
+
+    if (sessionFileVersion == 1) // Old, headerless session file
     {
+        sessionFile.seek(0);
+        while (!sessionFile.atEnd())
+        {
         // Read session ID
         temp = sessionFile.read(WICHAT_ACCOUNT_ID_MAXLEN).trimmed();
         if (sessionFile.atEnd())
@@ -56,10 +83,42 @@ bool UserSession::loadFromFile(QString userDir)
         // Read input area and message display area
         newSession.input = d->readUntil(sessionFile,
                                         WICHAT_SESSION_CACHE_DELIMITER);
-        newSession.cache = d->readUntil(sessionFile,
-                                        WICHAT_SESSION_CACHE_DELIMITER);
+        newSession.messageList = new SessionMessageList;
+        temp = d->readUntil(sessionFile,
+                            WICHAT_SESSION_CACHE_DELIMITER);
+        if (temp.length() > 0)
+        {
+            SessionMessageList::MessageEntry newMessage;
+            newMessage.type = SessionMessageList::TextMessage;
+            newMessage.content = temp;
+            newSession.messageList->addMessage(newMessage);
+        }
 
         d->sessionList.push_back(newSession);
+        }
+    }
+    else // New types of session file
+    {
+        int listCount;
+        QDataStream buffer(&sessionFile);
+        buffer.setByteOrder(QDataStream::LittleEndian);
+        buffer >> listCount;
+        for (int i=0; i<listCount; i++)
+        {
+            buffer >> newSession.ID;
+
+            buffer >> temp;
+            if (temp.at(0) == WICHAT_SESSION_CACHE_FLAG_ACTIVE)
+                newSession.active = true;
+            else
+                newSession.active = false;
+
+            buffer >> newSession.input;
+            newSession.messageList = new SessionMessageList;
+            buffer >> *(newSession.messageList);
+
+            d->sessionList.push_back(newSession);
+        }
     }
     sessionFile.close();
 
@@ -75,18 +134,26 @@ bool UserSession::saveToFile(QString userDir)
     if (sessionFile.isWritable())
         return false;
 
-    QByteArray temp;
     sessionFile.open(QFile::WriteOnly);
+
+    // Write file header
+    sessionFile.write(WICHAT_SESSION_CACHE_SERIAL_MAGIC,
+                      strlen(WICHAT_SESSION_CACHE_SERIAL_MAGIC));
+    sessionFile.write(WICHAT_SESSION_CACHE_SERIAL_VER,
+                      strlen(WICHAT_SESSION_CACHE_SERIAL_VER));
+
+    // Write each session
+    QByteArray temp;
+    QDataStream buffer(&sessionFile);
+    buffer.setByteOrder(QDataStream::LittleEndian);
+    buffer << d->sessionList.count();
     for (int i=0; i<d->sessionList.count(); i++)
     {
         if (d->sessionList[i].ID.isEmpty())
             continue;
 
         // Write session ID
-        temp = d->sessionList[i].ID
-                .leftJustified(WICHAT_ACCOUNT_ID_MAXLEN, '\0')
-                .toLocal8Bit();
-        sessionFile.write(temp);
+        buffer << d->sessionList[i].ID;
 
         // Write active state
         temp.clear();
@@ -95,13 +162,11 @@ bool UserSession::saveToFile(QString userDir)
         else
             temp.append(WICHAT_SESSION_CACHE_FLAG_INACTIVE);
         temp.append('\0');
-        sessionFile.write(temp);
+        buffer << temp;
 
         // Write input and message display area
-        sessionFile.write(d->sessionList[i].input);
-        sessionFile.write(WICHAT_SESSION_CACHE_DELIMITER);
-        sessionFile.write(d->sessionList[i].cache);
-        sessionFile.write(WICHAT_SESSION_CACHE_DELIMITER);
+        buffer << d->sessionList[i].input;
+        buffer << *(d->sessionList[i].messageList);
     }
     sessionFile.close();
 
@@ -130,6 +195,7 @@ void UserSession::add(QString sessionID)
         return;
     SessionData newSession;
     newSession.ID = sessionID;
+    newSession.messageList = new SessionMessageList;
     d->sessionList.push_back(newSession);
 }
 

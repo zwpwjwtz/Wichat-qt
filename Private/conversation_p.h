@@ -50,7 +50,9 @@ public:
     {
         QString target;
         QByteArray* data;
+        QList<Conversation::MessageEntry>* messages;
         qint32 pos;
+        qint32 currentMessageLength;
         bool multiPart;
         int queryID;    // For high-level callbacks; constant
         int requestID;  // For low-level callbacks; variable
@@ -93,6 +95,10 @@ public:
     static void parseAccountList(QByteArray& data,
                                  QByteArray listType,
                                  QList<Conversation::MessageListEntry> &list);
+    static void parseMixedList(QByteArray& data,
+                               QByteArray fieldName,
+                               QList<QByteArray>& list,
+                               int* parsedLength = 0);
     static QByteArray formatID(QString ID);
     static QString serverObjectToPath(ServerObject objectID);
 

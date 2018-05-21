@@ -8,6 +8,7 @@
 #include <QColorDialog>
 #include <QMenu>
 #include <QFileDialog>
+#include <QDateTime>
 
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
@@ -90,7 +91,7 @@ QString Wichat_stateToString(Account::OnlineState state)
     return stateString;
 }
 
-void Wichat_addHTMLHeader(QByteArray& buffer, int docType)
+void Wichat_addHTMLHeader(QString& buffer, int docType)
 {
     // docType: 0=Content Window; 1=Input Window
     buffer.append("<!DOCTYPE html PUBLIC ""-//W3C//DTD HTML 4.01 Transitional//EN"" ""http://www.w3.org/TR/html4/loose.dtd""><html xmlns=""http://www.w3.org/1999/xhtml""><head><meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"" /><title></title>");
@@ -106,7 +107,7 @@ void Wichat_addHTMLHeader(QByteArray& buffer, int docType)
     }
 }
 
-void Wichat_addHTMLFooter(QByteArray& buffer,int docType)
+void Wichat_addHTMLFooter(QString& buffer,int docType)
 {
     switch (docType)
     {
@@ -189,6 +190,10 @@ MainWindow::MainWindow(QWidget *parent) :
             this,
             SLOT(onFriendRemoved(QString)));
     connect(&globalConversation,
+            SIGNAL(queryError(int, Conversation::QueryError)),
+            this,
+            SLOT(onConversationQueryError(int, Conversation::QueryError)));
+    connect(&globalConversation,
             SIGNAL(connectionBroken(QString)),
             this,
             SLOT(onConnectionBroken(QString)));
@@ -206,14 +211,15 @@ MainWindow::MainWindow(QWidget *parent) :
             SLOT(onSendMessageFinished(int, bool)));
     connect(&globalConversation,
             SIGNAL(getMessageListFinished(int,
-                                          QList<MessageListEntry>)),
+                                          QList<Conversation::MessageListEntry>&)),
             this,
             SLOT(onGetMessageListFinished(int,
-                                          QList<MessageListEntry>)));
+                                          QList<Conversation::MessageListEntry>&)));
     connect(&globalConversation,
-            SIGNAL(receiveMessageFinished(int, QByteArray&)),
+            SIGNAL(receiveMessageFinished(int,
+                                          QList<Conversation::MessageEntry>&)),
             this,
-            SLOT(onReceiveMessageFinished(int, QByteArray&)));
+            SLOT(onReceiveMessageFinished(int, QList<Conversation::MessageEntry>&)));
     connect(buttonTabClose,
             SIGNAL(clicked(bool)),
             this,
@@ -562,11 +568,14 @@ void MainWindow::loadSessionContent(QString ID)
 
     // Load cached session content from session data
     int tabIndex = getSessionTabIndex(ID);
-    QByteArray buffer;
+    QString buffer;
+    QList<SessionMessageList::MessageEntry> messages =
+                                    session.messageList->getAll();
     Wichat_addHTMLHeader(buffer, 0);
-    buffer.append(session.cache);
+    for (int i=0; i<messages.count(); i++)
+        buffer.append(renderMessage(messages[i]));
     Wichat_addHTMLFooter(buffer, 0);
-    browserList[tabIndex]->setHtml(renderHTML(buffer));
+    browserList[tabIndex]->setHtml(buffer);
 
     // Load text input area from session data
     buffer.clear();
@@ -608,74 +617,6 @@ void MainWindow::syncSessionContent(QString ID, bool closeSession)
     }
 }
 
-QString MainWindow::renderHTML(const QByteArray& content)
-{
-    int p1, p2, p3, p4;
-    QString temp;
-    QString result = content;
-
-    // Deal with emoticon
-    p2 = 0;
-    while(true)
-    {
-        p1 = result.indexOf("<emotion>", p2);
-        p2 = result.indexOf("</emotion>", p1);
-        if (p1 < 0 || p2 < 0)
-            break;
-        int emotionIndex = int(QString(result.mid(p1 + 9, p2 - p1 - 9))
-                                      .toInt());
-        // TODO: parse emoticon
-
-        result.replace(p1, p2 - p1, temp);
-    }
-
-    // Deal with image
-    p2 = 0;
-    while(true)
-    {
-        p1 = result.indexOf("<file><type>i</type><name>", p2);
-        p2 = result.indexOf("</name></file>", p1);
-        if (p1 < 0 || p2 < 0)
-            break;
-        QString fileName = result.mid(p1 + 26, p2 - p1 - 26);
-        temp = QString("<img src=""file://")
-                    .append(fileName)
-                    .append(""" />");
-
-        result.replace(p1, p2 - p1, temp);
-    }
-
-    // Deal with file
-    p2 = 0;
-    while(true)
-    {
-        p1 = result.indexOf("<file><type>f</type><name>", p2);
-        p2 = result.indexOf("</name></file>", p1);
-        if (p1 < 0 || p2 < 0)
-            break;
-        QString fileName = result.mid(p1 + 26, p2 - p1 - 26);
-
-        QString noteText;
-        p3 = result.lastIndexOf("<div class=s", p1 - 1);
-        p4 = result.lastIndexOf("<div class=r", p1 - 1);
-        if (p3 >= 0 && p4  < p3)
-            noteText = QString("You sent file ""%1"" to him/her.")
-                              .arg(getFileNameFromPath(fileName));
-        else
-            noteText = QString("He/she sent file ""%1"" to you.")
-                              .arg(getFileNameFromPath(fileName));
-        temp = QString("<div style=""width:300px;border:1px solid;"">"
-                          "<div style=""float:right"">")
-                    .append(noteText)
-                    .append("<a href=\"file://")
-                    .append(fileName)
-                    .append("\" target=_blank>View the file</a></div></div>");
-
-        result.replace(p1, p2 - p1, temp);
-    }
-
-    return result;
-}
 
 void MainWindow::addTab(QString ID)
 {
@@ -989,7 +930,7 @@ bool MainWindow::sendMessage(QString content, QString sessionID)
         return false;
 
     int queryID;
-    QByteArray buffer(content.toUtf8());
+    QByteArray buffer(addSenderInfo(content, userID).toUtf8());
     if (sessionID != userID)
     {
         if (!isFriend(sessionID))
@@ -1014,8 +955,16 @@ bool MainWindow::sendMessage(QString content, QString sessionID)
             queryList[queryID] = sessionID;
     }
 
-    browserList[sessionIndex]->append(renderHTML(buffer));
-    userSessionList.getSession(sessionID).cache.append(content);
+    SessionMessageList::MessageEntry sessionMessage;
+    sessionMessage.time = QDateTime::currentDateTime();
+    sessionMessage.type = SessionMessageList::TextMessage;
+    sessionMessage.source = userID;
+    sessionMessage.content = buffer;
+    userSessionList.getSession(sessionID).messageList
+                                         ->addMessage(sessionMessage);
+
+    browserList[sessionIndex]->append(renderMessage(sessionMessage));
+
     return true;
 }
 
@@ -1093,7 +1042,6 @@ QString MainWindow::addSenderInfo(const QString& content, QString ID)
 {
     QString configString;
     QString styleStringHeader, styleStringFooter;
-    QString result("<div class=s><b>%ID%</b>&nbsp;&nbsp;%TIME%</div>");
 
     // Set up <font> tag
     configString = globalConfig.prefFontFamily(ID);
@@ -1154,12 +1102,83 @@ QString MainWindow::addSenderInfo(const QString& content, QString ID)
 
     styleStringHeader.prepend("<div class=c");
     styleStringFooter.append("</div>");
-    result.replace("%ID%", ID);
-    result.replace("%TIME%", QDateTime::currentDateTime()
-                                           .toString(WICHAT_MAIN_TIME_FORMAT));
-    result.append(styleStringHeader).append(content).append(styleStringFooter);
 
-    return result;
+    return styleStringHeader.append(content).append(styleStringFooter);
+}
+
+QString MainWindow::renderMessage(const SessionMessageList::MessageEntry& message)
+{
+    int p1, p2;
+    QString temp;
+    QString header("<div class=%SENDER%><b>%ID%</b>&nbsp;&nbsp;%TIME%</div>");
+    QString result(message.content);
+
+    if (message.source == userID)
+        header.replace("%SENDER%", "s");
+    else
+        header.replace("%SENDER%", "r");
+    header.replace("%ID%", message.source);
+    header.replace("%TIME%", message.time.toString(WICHAT_MAIN_TIME_FORMAT));
+
+    // Deal with emoticon
+    p2 = 0;
+    while(true)
+    {
+        p1 = result.indexOf("<emotion>", p2);
+        p2 = result.indexOf("</emotion>", p1);
+        if (p1 < 0 || p2 < 0)
+            break;
+        int emotionIndex = int(QString(result.mid(p1 + 9, p2 - p1 - 9))
+                                      .toInt());
+        // TODO: parse emoticon
+
+        result.replace(p1, p2 - p1, temp);
+    }
+
+    // Deal with image
+    p2 = 0;
+    while(true)
+    {
+        p1 = result.indexOf("<file><type>i</type><name>", p2);
+        p2 = result.indexOf("</name></file>", p1);
+        if (p1 < 0 || p2 < 0)
+            break;
+        QString fileName = result.mid(p1 + 26, p2 - p1 - 26);
+        temp = QString("<img src=""file://")
+                    .append(fileName)
+                    .append(""" />");
+
+        result.replace(p1, p2 - p1, temp);
+    }
+
+    // Deal with file
+    p2 = 0;
+    while(true)
+    {
+        p1 = result.indexOf("<file><type>f</type><name>", p2);
+        p2 = result.indexOf("</name></file>", p1);
+        if (p1 < 0 || p2 < 0)
+            break;
+        QString fileName = result.mid(p1 + 26, p2 - p1 - 26);
+
+        QString noteText;
+        if (message.source == userID)
+            noteText = QString("You sent file ""%1"" to him/her.")
+                              .arg(getFileNameFromPath(fileName));
+        else
+            noteText = QString("He/she sent file ""%1"" to you.")
+                              .arg(getFileNameFromPath(fileName));
+        temp = QString("<div style=""width:300px;border:1px solid;"">"
+                          "<div style=""float:right"">")
+                    .append(noteText)
+                    .append("<a href=\"file://")
+                    .append(fileName)
+                    .append("\" target=_blank>View the file</a></div></div>");
+
+        result.replace(p1, p2 - p1, temp);
+    }
+
+    return result.prepend(header);
 }
 
 QString MainWindow::extractHTMLTag(const QString& rawHTML, QString tagName)
@@ -1356,6 +1375,14 @@ void MainWindow::onFriendRemoved(QString ID)
     noteList.append(note);
 }
 
+void MainWindow::onConversationQueryError(int queryID,
+                                          Conversation::QueryError errCode)
+{
+    Q_UNUSED(queryID)
+    Q_UNUSED(errCode)
+    conversationLoginState = 0;
+}
+
 void MainWindow::onConnectionBroken(QString ID)
 {
     brokenConnectionList.enqueue(ID);
@@ -1398,7 +1425,7 @@ void MainWindow::onSendMessageFinished(int queryID, bool successful)
 }
 
 void MainWindow::onGetMessageListFinished(int queryID,
-                                          QList<MessageListEntry> msgList)
+                                          QList<Conversation::MessageListEntry>& msgList)
 {
     Q_UNUSED(queryID)
     Notification::Note newNote;
@@ -1413,16 +1440,29 @@ void MainWindow::onGetMessageListFinished(int queryID,
     }
 }
 
-void MainWindow::onReceiveMessageFinished(int queryID, QByteArray& content)
+void MainWindow::onReceiveMessageFinished(int queryID,
+                                          QList<Conversation::MessageEntry>& messages)
 {
     QString sourceID = queryList.value(queryID);
     if (sourceID.isEmpty())
         return;
     queryList.remove(queryID);
 
-    content.replace("<div class=s>", "<div class=r>");
-    userSessionList.getSession(sourceID).cache.append(content);
-    browserList[getSessionIndex(sourceID)]->append(renderHTML(content));
+    QByteArray htmlBuffer;
+    SessionMessageList::MessageEntry sessionMessage;
+    SessionMessageList* messageList =
+                            userSessionList.getSession(sourceID).messageList;
+    for (int i=0; i<messages.count(); i++)
+    {
+        sessionMessage.source = messages[i].source;
+        sessionMessage.time = messages[i].time;
+        sessionMessage.type = SessionMessageList::TextMessage;
+        sessionMessage.content = messages[i].content;
+        messageList->addMessage(sessionMessage);
+
+        htmlBuffer.append(renderMessage(sessionMessage));
+    }
+    browserList[getSessionIndex(sourceID)]->append(htmlBuffer);
 }
 
 void MainWindow::onTimerTimeout()
@@ -1844,9 +1884,7 @@ void MainWindow::on_buttonSend_clicked()
 {
     QString content;
     int sessionIndex = getSessionIndex(lastConversation);
-    content = addSenderInfo(extractHTMLTag(editorList[sessionIndex]->toHtml(),
-                                           "body"),
-                            userID);
+    content = editorList[sessionIndex]->toPlainText();
     if (sendMessage(content, lastConversation))
         editorList[sessionIndex]->clear();
 }
@@ -1986,7 +2024,7 @@ void MainWindow::on_buttonImage_clicked()
 
     QString content("<file><type>i</type><name>%FILE%</name></file>");
     content.replace("%FILE%", path);
-    sendMessage(addSenderInfo(content, userID), lastConversation);
+    sendMessage(content, lastConversation);
     lastFilePath = path;
 }
 
@@ -2001,7 +2039,7 @@ void MainWindow::on_buttonFile_clicked()
 
     QString content("<file><type>f</type><name>%FILE%</name></file>");
     content.replace("%FILE%", path);
-    sendMessage(addSenderInfo(content, userID), lastConversation);
+    sendMessage(content, lastConversation);
     lastFilePath = path;
 }
 

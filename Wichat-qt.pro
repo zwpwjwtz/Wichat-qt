@@ -47,7 +47,8 @@ SOURCES += main.cpp\
     emoticonchooser.cpp \
     emojispecparser.cpp \
     editablelabel.cpp \
-    preferencedialog.cpp
+    preferencedialog.cpp \
+    sessionmessagelist.cpp
 
 HEADERS  += mainwindow.h \
     loginwindow.h \
@@ -87,7 +88,9 @@ HEADERS  += mainwindow.h \
     emojispecparser.h \
     Private/emojispecparserprivate.h \
     editablelabel.h \
-    preferencedialog.h
+    preferencedialog.h \
+    sessionmessagelist.h \
+    Private/sessionemessagelist_p.h
 
 FORMS    += mainwindow.ui \
     loginwindow.ui \

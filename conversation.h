@@ -2,6 +2,7 @@
 #define CONVERSATION_H
 
 #include <QObject>
+#include <QDateTime>
 
 
 class PeerSession;
@@ -37,6 +38,13 @@ public:
     {
         QString ID;
     };
+    struct MessageEntry
+    {
+        QString source;
+        QDateTime time;
+        int length;
+        QByteArray content;
+    };
 
     static const int MaxIDLen = 8;
     static const int SessionLen = 16;
@@ -56,13 +64,15 @@ public:
     bool fixBrokenConnection(QString ID, int& queryID);
 
 signals:
-    void queryError(int queryID, QueryError errorCode);
+    void queryError(int queryID, Conversation::QueryError errorCode);
     void connectionBroken(QString ID);
     void verifyFinished(int queryID, Conversation::VerifyError errorCode);
     void resetSessionFinished(int queryID, bool successful);
     void sendMessageFinished(int queryID, bool successful);
-    void getMessageListFinished(int queryID, QList<MessageListEntry> msgList);
-    void receiveMessageFinished(int queryID, QByteArray& content);
+    void getMessageListFinished(int queryID,
+                                QList<Conversation::MessageListEntry>& msgList);
+    void receiveMessageFinished(int queryID,
+                                QList<Conversation::MessageEntry>& messages);
     void fixBrokenConnectionFinished(int queryID, bool successful);
 
 private:

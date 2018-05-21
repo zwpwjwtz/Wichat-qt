@@ -4,6 +4,8 @@
 #include "abstractsession.h"
 
 
+class SessionMessageList;
+
 class UserSessionPrivate;
 
 class UserSession : public AbstractSession
@@ -18,7 +20,7 @@ public:
     {
         QString ID;
         bool active;
-        QByteArray cache;
+        SessionMessageList* messageList;
         QByteArray input;
     };
 

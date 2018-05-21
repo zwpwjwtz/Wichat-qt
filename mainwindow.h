@@ -12,6 +12,7 @@
 #include "usersession.h"
 #include "peersession.h"
 #include "notification.h"
+#include "sessionmessagelist.h"
 
 
 class QPushButton;
@@ -48,6 +49,7 @@ private:
     typedef Account::OnlineState OnlineState;
     typedef Account::AccountListEntry AccountListEntry;
     typedef Account::AccountInfoEntry AccountInfoEntry;
+    typedef Conversation::MessageEntry MessageEntry;
     typedef Conversation::MessageListEntry MessageListEntry;
 
     enum TaskType
@@ -120,7 +122,6 @@ private:
     void loadSession(QString ID, bool setTabActive = true);
     void loadSessionContent(QString ID);
     void syncSessionContent(QString ID, bool closeSession = false);
-    QString renderHTML(const QByteArray& content);
     void addTab(QString ID);
     void loadTab();
     void highlightSession(QString ID, bool highlight);
@@ -142,7 +143,8 @@ private:
     bool receiveMessage(QString sessionID);
     void showNotification();
     void fixBrokenConnection();
-    static QString addSenderInfo(const QString& content, QString ID);
+    QString addSenderInfo(const QString& content, QString ID);
+    QString renderMessage(const SessionMessageList::MessageEntry& message);
     static QString extractHTMLTag(const QString& rawHTML, QString tagName);
     static QString stateToImagePath(int stateNumber, bool displayHide = false);
     static QString getFileNameFromPath(QString filePath);
@@ -162,14 +164,17 @@ private slots:
                                  QList<AccountInfoEntry> infoList);
     void onFriendRequest(QString ID);
     void onFriendRemoved(QString ID);
+    void onConversationQueryError(int queryID,
+                                  Conversation::QueryError errCode);
     void onConnectionBroken(QString ID);
     void onConversationVerifyFinished(int queryID,
                                       Conversation::VerifyError errorCode);
     void onResetSessionFinished(int queryID, bool successful);
     void onSendMessageFinished(int queryID, bool successful);
     void onGetMessageListFinished(int queryID,
-                                  QList<MessageListEntry> msgList);
-    void onReceiveMessageFinished(int queryID, QByteArray& content);
+                                  QList<Conversation::MessageListEntry>& msgList);
+    void onReceiveMessageFinished(int queryID,
+                                  QList<Conversation::MessageEntry>& messages);
 
     // Customized slots for UI events
     void onTimerTimeout();

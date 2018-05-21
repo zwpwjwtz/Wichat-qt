@@ -1,4 +1,4 @@
-#include <QFile>
+﻿#include <QFile>
 #include <QDir>
 #include "common.h"
 #include "conversation.h"
@@ -9,6 +9,7 @@
 #define WICHAT_SERVER_PATH_RECORD_GET "/Record/query/get.php"
 
 #define WICHAT_SERVER_RECORD_OBJID_SERVER "10000"
+#define WICHAT_SERVER_RECORD_TIME_FORMAT "yyyy/MM/dd,HH:mm:ss"
 
 #define WICHAT_SERVER_RESPONSE_RES_OK 0
 #define WICHAT_SERVER_RESPONSE_RES_NOT_EXIST 1
@@ -137,7 +138,9 @@ bool Conversation::sendMessage(QString ID, QByteArray &content, int& queryID)
     ConversationPrivate::MessageTransaction transaction;
     transaction.target = ID;
     transaction.data = bufferIn;
+    transaction.messages = nullptr;
     transaction.pos = 0;
+    transaction.currentMessageLength = 0;
     transaction.queryID = d->getAvailableQueryID();
     d->sendingList.enqueue(transaction);
 
@@ -177,8 +180,10 @@ bool Conversation::receiveMessage(QString ID, int& queryID)
 
     ConversationPrivate::MessageTransaction transaction;
     transaction.target = ID;
-    transaction.data = new QByteArray;
+    transaction.data = nullptr;
+    transaction.messages = new QList<MessageEntry>;
     transaction.pos = 0;
+    transaction.currentMessageLength = 0;
     transaction.multiPart = false;
     transaction.queryID = d->getAvailableQueryID();
     d->receivingList.enqueue(transaction);
@@ -320,7 +325,66 @@ void Conversation::dispatchQueryRespone(int requestID)
                     d->removeTransaction(transaction);
                     break;
                 }
-                transaction->data->append(data.mid(1));
+
+                int i, pos;
+                int readLength;
+                QList<QByteArray> tempList;
+                d->parseMixedList(data, "SRC", tempList, &pos);
+                pos += 1;
+                if (tempList.length() > 0)
+                {
+                    // Append the remaining content to the last record
+                    // Create a empty record if necessary
+                    if (transaction->messages->count() > 0)
+                    {
+                        readLength = transaction->currentMessageLength -
+                                    transaction->messages->last()
+                                                         .content.length();
+                        transaction->messages->last().content.append(
+                                                    data.mid(pos, readLength));
+                        pos += readLength;
+                    }
+
+                    // Then create new records for the rest content
+                    QList<MessageEntry> newMessageList;
+                    for (i=0; i<tempList.count(); i++)
+                    {
+                        newMessageList.push_back(MessageEntry());
+                        newMessageList[i].source = tempList[i];
+                        newMessageList[i].length = 0;
+                    }
+
+                    // Then parse records' time and length
+                    d->parseMixedList(data, "TIME", tempList, &pos);
+                    for (i=0; i<tempList.count(); i++)
+                        newMessageList[i].time =
+                                    QDateTime::fromString(QString(tempList[i]),
+                                            WICHAT_SERVER_RECORD_TIME_FORMAT);
+                    d->parseMixedList(data, "LEN", tempList, &pos);
+                    for (i=0; i<tempList.count(); i++)
+                        newMessageList[i].length = QString(tempList[i]).toInt();
+
+                    // Finally parse records' content
+                    for (i=0; i<newMessageList.count(); i++)
+                    {
+                        if (pos + newMessageList[i].length >= data.length())
+                            readLength = data.length() - pos;
+                        else
+                            readLength = newMessageList[i].length;
+                        newMessageList[i].content = data.mid(pos, readLength);
+                        pos += readLength;
+                        if (pos >= data.length())
+                            break;
+                    }
+                    transaction->messages->append(newMessageList);
+                }
+                else
+                {
+                    // Simply append content to the last record
+                    transaction->messages->last().content.append(data.mid(pos));
+                    transaction->currentMessageLength += data.length() - pos;
+
+                }
                 transaction->pos += data.length() - 1;
                 if (transaction->multiPart &&
                     data[0] != char(WICHAT_SERVER_RESPONSE_RES_EOF))
@@ -339,8 +403,13 @@ void Conversation::dispatchQueryRespone(int requestID)
                 */
                 QString cacheDir(d->userDir);
                 cacheDir.append('/').append(WICHAT_SESSION_FILE_CACHE_DIR);
-                d->dataUnxmlize(*transaction->data, data, cacheDir);
-                emit receiveMessageFinished(transaction->queryID, data);
+                for (i=0; i<transaction->messages->count(); i++)
+                {
+                    d->dataUnxmlize((*transaction->messages)[i].content, data, cacheDir);
+                    (*transaction->messages)[i].content = data;
+                }
+                emit receiveMessageFinished(transaction->queryID,
+                                            *(transaction->messages));
                 d->removeTransaction(transaction);
                 break;
             }
@@ -470,11 +539,11 @@ bool ConversationPrivate::processSendList()
     bufferIn.append(char(2)).append(char(2));
     bufferIn.append(formatID(transaction.target));
     bufferIn.append(QByteArray::fromRawData((const char*)(&sendLength), 4));
-    if (transaction.multiPart)
+    if (isEOF)
         bufferIn.append(char(1));
     else
         bufferIn.append(char(0));
-    if (isEOF)
+    if (transaction.multiPart)
         bufferIn.append(char(1));
     else
         bufferIn.append(char(0));
@@ -579,7 +648,10 @@ void ConversationPrivate::removeTransaction(MessageTransaction* transaction)
     if (!transaction)
         return;
 
-    delete transaction->data;
+    if (transaction->data)
+        delete transaction->data;
+    if (transaction->messages)
+        delete transaction->messages;
 
     int i;
     for (i=0; i< sendingList.count(); i++)
@@ -792,6 +864,44 @@ void ConversationPrivate::parseAccountList(QByteArray& data,
             account.ID = QString(data.mid(p2 + 1, p3 - p2 - 1)).trimmed();
             list.append(account);
         }
+    }
+}
+
+void ConversationPrivate::parseMixedList(QByteArray& data,
+                                         QByteArray fieldName,
+                                         QList<QByteArray>& list,
+                                         int* parsedLength)
+{
+    int p1, p2, pE, length;
+    QByteArray fieldBegin, fieldEnd;
+    p1 = data.indexOf("<MList>");
+    pE = data.indexOf("</MList>");
+    fieldBegin.append('<').append(fieldName).append('>');
+    fieldEnd.append("</").append(fieldName).append('>');
+    list.clear();
+    if (p1 >= 0 && pE > 13)
+    {
+        p2 = p1;
+        while (true)
+        {
+            p1 = data.indexOf(fieldBegin, p1 + 1);
+            p2 = data.indexOf(fieldEnd, p2 + 1);
+            if (p1 < 0 || p2 < 0)
+                break;
+
+            length = p2 - p1 - fieldBegin.length();
+            if (length > 0)
+                list.append(data.mid(p1 + fieldBegin.length(), length));
+            else
+                list.append(QByteArray());
+        }
+        if (parsedLength)
+            *parsedLength = pE - data.indexOf("<MList>") + 9;
+    }
+    else
+    {
+        if (parsedLength)
+            *parsedLength = 0;
     }
 }
 
