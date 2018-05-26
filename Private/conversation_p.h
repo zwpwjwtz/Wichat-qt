@@ -49,6 +49,7 @@ public:
     struct MessageTransaction
     {
         QString target;
+        QByteArray messageID;
         QByteArray* data;
         QList<Conversation::MessageEntry>* messages;
         qint32 pos;

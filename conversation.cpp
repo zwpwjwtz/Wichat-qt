@@ -10,6 +10,7 @@
 
 #define WICHAT_SERVER_RECORD_OBJID_SERVER "10000"
 #define WICHAT_SERVER_RECORD_TIME_FORMAT "yyyy/MM/dd,HH:mm:ss"
+#define WICHAT_SERVER_RECORD_ID_LEN 16
 
 #define WICHAT_SERVER_RESPONSE_RES_OK 0
 #define WICHAT_SERVER_RESPONSE_RES_NOT_EXIST 1
@@ -274,6 +275,12 @@ void Conversation::dispatchQueryRespone(int requestID)
                     emit queryError(requestID, QueryError::UnknownError);
                     break;
                 }
+                if (transaction->pos == 0)
+                {
+                    // Store message ID assigned by server
+                    transaction->messageID =
+                                    data.left(WICHAT_SERVER_RECORD_ID_LEN);
+                }
                 if (transaction->pos + d->MaxMsgBlock <
                     transaction->data->length())
                 {
@@ -536,6 +543,9 @@ bool ConversationPrivate::processSendList()
             isEOF = true;
         }
     }
+    if (transaction.pos == 0)
+        transaction.messageID = QByteArray::fromRawData("\x00", 1)
+                                        .repeated(WICHAT_SERVER_RECORD_ID_LEN);
     bufferIn.append(char(2)).append(char(2));
     bufferIn.append(formatID(transaction.target));
     bufferIn.append(QByteArray::fromRawData((const char*)(&sendLength), 4));
@@ -547,6 +557,7 @@ bool ConversationPrivate::processSendList()
         bufferIn.append(char(1));
     else
         bufferIn.append(char(0));
+    bufferIn.append(transaction.messageID);
     bufferIn.append(transaction.data->mid(transaction.pos, sendLength));
 
     if (server->sendData(bufferIn, bufferOut,
