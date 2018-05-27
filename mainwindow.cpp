@@ -95,10 +95,14 @@ QString Wichat_stateToString(Account::OnlineState state)
     return stateString;
 }
 
-void Wichat_addHTMLHeader(QString& buffer, int docType)
+const QString Wichat_getHTMLHeader(int docType)
 {
     // docType: 0=Content Window; 1=Input Window
-    buffer.append("<!DOCTYPE html PUBLIC ""-//W3C//DTD HTML 4.01 Transitional//EN"" ""http://www.w3.org/TR/html4/loose.dtd""><html xmlns=""http://www.w3.org/1999/xhtml""><head><meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"" /><title></title>");
+    QString buffer("<!DOCTYPE html PUBLIC ""-//W3C//DTD HTML 4.01 Transitional//EN"" ""http://www.w3.org/TR/html4/loose.dtd"">"
+                   "<html xmlns=""http://www.w3.org/1999/xhtml"">"
+                   "<head>"
+                   "<meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"" />"
+                   "<title></title>");
     switch (docType)
     {
         case 0:
@@ -109,10 +113,12 @@ void Wichat_addHTMLHeader(QString& buffer, int docType)
             break;
         default:;
     }
+    return buffer;
 }
 
-void Wichat_addHTMLFooter(QString& buffer,int docType)
+const QString Wichat_getHTMLFooter(int docType)
 {
+    QString buffer;
     switch (docType)
     {
         case 0:
@@ -123,6 +129,7 @@ void Wichat_addHTMLFooter(QString& buffer,int docType)
             break;
         default:;
     }
+    return buffer;
 }
 
 MainWindow::MainWindow(QWidget *parent) :
@@ -296,15 +303,14 @@ void MainWindow::init()
         loadTab();
         loadSession(userSessionList.currentSession().ID);
     }
-    applyUserSettings();
-
     globalConversation.setPeerSession(peerSessionList);
-    globalConversation.setUserDirectory(globalConfig.userDirectory(userID));
 
     resizeEvent(0); // Trigger resizing manually
     sysTrayIcon->show();
     emoticonList->setResourceDir(QDir::current()
                                  .absoluteFilePath(WICHAT_MAIN_RESOURCE_DIR));
+
+    applyUserSettings();
 
     addTask(taskUpdateAll);
     timer.start();
@@ -456,8 +462,13 @@ void MainWindow::applyFont()
         font.setStrikeOut(true);
     if (temp.contains(WICHAT_MAIN_FONT_STYLE_OVERLINE))
         font.setOverline(true);
-    font.setFamily(globalConfig.prefFontFamily(userID));
+
+    temp = globalConfig.prefFontFamily(userID);
+    if (!temp.isEmpty())
+        font.setFamily(globalConfig.prefFontFamily(userID));
+
     font.setPointSize(globalConfig.prefFontSize(userID).toInt());
+
     for (int i=0; i<editorList.count(); i++)
     {
         editorList[i]->setFont(font);
@@ -474,7 +485,10 @@ void MainWindow::applyFont()
 
 void MainWindow::applyUserSettings()
 {
-    //applyFont();
+    globalConversation.setUserDirectory(globalConfig.userDirectory(userID));
+
+    if (globalConfig.prefSendKey(userID) == -1)
+        globalConfig.setPrefSendKey(userID, WICHAT_MAIN_EDITOR_SENDKEY_ENTER);
 }
 
 int MainWindow::getSessionIndex(QString ID)
@@ -575,17 +589,15 @@ void MainWindow::loadSessionContent(QString ID)
     QString buffer;
     QList<SessionMessageList::MessageEntry> messages =
                                     session.messageList->getAll();
-    Wichat_addHTMLHeader(buffer, 0);
+    buffer.append(Wichat_getHTMLHeader(0));
     for (int i=0; i<messages.count(); i++)
         buffer.append(renderMessage(messages[i]));
-    Wichat_addHTMLFooter(buffer, 0);
+    buffer.append(Wichat_getHTMLFooter(0));
     browserList[tabIndex]->setHtml(buffer);
 
     // Load text input area from session data
     buffer.clear();
-    //Wichat_addHTMLHeader(buffer, 1);
     buffer.append(session.input);
-    //Wichat_addHTMLFooter(buffer, 1);
     editorList[tabIndex]->setHtml(buffer);
     applyFont();
 
@@ -967,8 +979,7 @@ bool MainWindow::sendMessage(QString content, QString sessionID)
     userSessionList.getSession(sessionID).messageList
                                          ->addMessage(sessionMessage);
 
-    browserList[sessionIndex]->append(renderMessage(sessionMessage));
-
+    browserList[sessionIndex]->append(renderMessage(sessionMessage, true));
     return true;
 }
 
@@ -1062,43 +1073,43 @@ QString MainWindow::addSenderInfo(const QString& content, QString ID)
     if (!configString.isEmpty())
         styleStringHeader.append("style=\"font-size:")
                         .append(configString)
-                        .append("\"");
+                        .append("pt\"");
     if (!styleStringHeader.isEmpty())
     {
         styleStringHeader.prepend("<font ").append('>');
         styleStringFooter = "</font>";
     }
     configString = globalConfig.prefFontStyle(ID);
-    if (configString == WICHAT_MAIN_FONT_STYLE_BOLD)
+    if (configString.contains(WICHAT_MAIN_FONT_STYLE_BOLD))
     {
         styleStringHeader.append("<b>");
-        styleStringFooter.append("</b>");
+        styleStringFooter.prepend("</b>");
     }
-    else if (configString == WICHAT_MAIN_FONT_STYLE_ITALIC)
+    if (configString.contains(WICHAT_MAIN_FONT_STYLE_ITALIC))
     {
         styleStringHeader.append("<i>");
-        styleStringFooter.append("</i>");
+        styleStringFooter.prepend("</i>");
     }
-    else if (configString == WICHAT_MAIN_FONT_STYLE_UNDERLINE)
+    if (configString.contains(WICHAT_MAIN_FONT_STYLE_UNDERLINE))
     {
         styleStringHeader.append("<u>");
-        styleStringFooter.append("</u>");
+        styleStringFooter.prepend("</u>");
     }
-    else if (configString == WICHAT_MAIN_FONT_STYLE_STRIKEOUT)
+    if (configString.contains(WICHAT_MAIN_FONT_STYLE_STRIKEOUT))
     {
         styleStringHeader.append("<del>");
-        styleStringFooter.append("</del>");
+        styleStringFooter.prepend("</del>");
     }
-    else if (configString == WICHAT_MAIN_FONT_STYLE_OVERLINE)
+    if (configString.contains(WICHAT_MAIN_FONT_STYLE_OVERLINE))
     {
         styleStringHeader.append("<span style=\"text-decoration:overline\">");
-        styleStringFooter.append("</span>");
+        styleStringFooter.prepend("</span>");
     }
 
     // Set up alignment tag
-    configString = globalConfig.prefFontStyle(ID);
+    configString = globalConfig.prefTextAlign(ID);
     if (configString == WICHAT_MAIN_TEXT_ALIGN_CENTER)
-        styleStringHeader.prepend(" align=left>");
+        styleStringHeader.prepend(" align=center>");
     else if (configString == WICHAT_MAIN_TEXT_ALIGN_RIGHT)
         styleStringHeader.prepend(" align=right>");
     else
@@ -1110,7 +1121,8 @@ QString MainWindow::addSenderInfo(const QString& content, QString ID)
     return styleStringHeader.append(content).append(styleStringFooter);
 }
 
-QString MainWindow::renderMessage(const SessionMessageList::MessageEntry& message)
+QString MainWindow::renderMessage(const SessionMessageList::MessageEntry& message,
+                                  bool fullHTML)
 {
     int p1, p2;
     QString temp;
@@ -1182,7 +1194,13 @@ QString MainWindow::renderMessage(const SessionMessageList::MessageEntry& messag
         result.replace(p1, p2 - p1, temp);
     }
 
-    return result.prepend(header);
+    result.prepend(header);
+    if (fullHTML)
+    {
+        result.prepend(Wichat_getHTMLHeader(0));
+        result.append(Wichat_getHTMLFooter(0));
+    }
+    return result;
 }
 
 QString MainWindow::extractHTMLTag(const QString& rawHTML, QString tagName)
@@ -1452,7 +1470,7 @@ void MainWindow::onReceiveMessageFinished(int queryID,
         return;
     queryList.remove(queryID);
 
-    QByteArray htmlBuffer;
+    QString htmlBuffer(Wichat_getHTMLHeader(0));
     SessionMessageList::MessageEntry sessionMessage;
     SessionMessageList* messageList =
                             userSessionList.getSession(sourceID).messageList;
@@ -1466,6 +1484,7 @@ void MainWindow::onReceiveMessageFinished(int queryID,
 
         htmlBuffer.append(renderMessage(sessionMessage));
     }
+    htmlBuffer.append(Wichat_getHTMLFooter(0));
     browserList[getSessionIndex(sourceID)]->append(htmlBuffer);
 }
 
@@ -1648,6 +1667,46 @@ void MainWindow::onEmoticonClicked(const QByteArray &emoticon)
                                                               unicodeLength));
 }
 
+void MainWindow::onFontStyleMenuClicked(QAction* action)
+{
+    // Store new style to user config
+    QStringList fontStyleArgs(globalConfig.prefFontStyle(userID)
+                              .split(',', QString::SkipEmptyParts)
+                              .toVector().toList());
+    QString arg(action->data().toString());
+    if (action->isChecked())
+    {
+        if (!fontStyleArgs.contains(arg))
+            fontStyleArgs.push_back(arg);
+    }
+    else
+    {
+        if (fontStyleArgs.contains(arg))
+            fontStyleArgs.removeAll(arg);
+    }
+    globalConfig.setPrefFontStyle(userID, fontStyleArgs.join(","));
+    applyFont();
+}
+
+void MainWindow::onTextAlignMenuClicked(QAction* action)
+{
+    // Store new style to user config
+    QString alignMode;
+    if (action->isChecked())
+        alignMode = action->data().toString();
+    globalConfig.setPrefTextAlign(userID, alignMode);
+    applyFont();
+}
+
+void MainWindow::onSendOptionMenuClicked(QAction* action)
+{
+    // Store new style to user config
+    int keyCode = WICHAT_MAIN_EDITOR_SENDKEY_ENTER;
+    if (action->isChecked())
+        keyCode = action->data().toInt();
+    globalConfig.setPrefSendKey(userID, keyCode);
+}
+
 void MainWindow::onListFriendMenuClicked(QAction *action)
 {
     QModelIndexList index = ui->listFriend->selectionModel()->selectedIndexes();
@@ -1785,33 +1844,27 @@ void MainWindow::on_buttonTextStyle_clicked()
         fontStyle.setOverline(true);
         actionList[4]->setFont(fontStyle);
         fontStyle.setOverline(false);
+
+        connect(menuFontStyle,
+                SIGNAL(triggered(QAction*)),
+                this,
+                SLOT(onFontStyleMenuClicked(QAction*)));
     }
-    else
-    {
+
         // Parse font style arguments from user config
         fontStyleArgs = globalConfig.prefFontStyle(userID)
-                                    .split(',').toVector().toList();
+                                    .split(',', QString::SkipEmptyParts)
+                                    .toVector().toList();
         actionList = menuFontStyle->actions();
         for (int i=0; i<actionList.count(); i++)
         {
             if (fontStyleArgs.contains(actionList[i]->data().toString()))
-                actionList[0]->setChecked(true);
+                actionList[i]->setChecked(true);
             else
-                actionList[0]->setChecked(false);
+                actionList[i]->setChecked(false);
         }
-    }
 
     menuFontStyle->popup(QCursor::pos());
-
-    // Store new style to user config
-    fontStyleArgs.clear();
-    for (int i=0; i< actionList.count(); i++)
-    {
-        if (actionList[i]->isChecked())
-            fontStyleArgs.push_back(actionList[i]->data().toString());
-    }
-    globalConfig.setPrefFontFamily(userID, fontStyleArgs.join(","));
-    applyFont();
 }
 
 void MainWindow::on_buttonTextAlign_clicked()
@@ -1842,9 +1895,13 @@ void MainWindow::on_buttonTextAlign_clicked()
         groupTextAlign = new QActionGroup(menuTextAlign);
         for (int i=0; i<actionList.count(); i++)
             groupTextAlign->addAction(actionList[i]);
+
+        connect(menuTextAlign,
+                SIGNAL(triggered(QAction*)),
+                this,
+                SLOT(onTextAlignMenuClicked(QAction*)));
     }
-    else
-    {
+
         // Parse align style from user config
         alignMode = globalConfig.prefTextAlign(userID);
         actionList = groupTextAlign->actions();
@@ -1854,22 +1911,8 @@ void MainWindow::on_buttonTextAlign_clicked()
             actionList[2]->setChecked(true);
         else
             actionList[0]->setChecked(true);
-    }
 
     menuTextAlign->popup(QCursor::pos());
-
-    // Store new style to user config
-    alignMode.clear();
-    for (int i=0; i< actionList.count(); i++)
-    {
-        if (actionList[i]->isChecked())
-        {
-            alignMode = actionList[i]->data().toString();
-            break;
-        }
-    }
-    globalConfig.setPrefTextAlign(userID, alignMode);
-    applyFont();
 }
 
 void MainWindow::on_comboFontFamily_currentTextChanged(const QString &arg1)
@@ -1915,9 +1958,13 @@ void MainWindow::on_buttonSendOpt_clicked()
         groupSendOption = new QActionGroup(menuSendOption);
         for (int i=0; i<actionList.count(); i++)
             groupSendOption->addAction(actionList[i]);
+
+        connect(menuSendOption,
+                SIGNAL(triggered(QAction*)),
+                this,
+                SLOT(onSendOptionMenuClicked(QAction*)));
     }
-    else
-    {
+
         // Parse send option from user config
         keyCode = globalConfig.prefSendKey(userID);
         actionList = groupSendOption->actions();
@@ -1925,21 +1972,8 @@ void MainWindow::on_buttonSendOpt_clicked()
             actionList[1]->setChecked(true);
         else
             actionList[0]->setChecked(true);
-    }
 
     menuSendOption->popup(QCursor::pos());
-
-    // Store new style to user config
-    keyCode = WICHAT_MAIN_EDITOR_SENDKEY_ENTER;
-    for (int i=0; i< actionList.count(); i++)
-    {
-        if (actionList[i]->isChecked())
-        {
-            keyCode = actionList[i]->data().toInt();
-            break;
-        }
-    }
-    globalConfig.setPrefSendKey(userID, keyCode);
 }
 
 void MainWindow::on_tabSession_tabBarClicked(int index)

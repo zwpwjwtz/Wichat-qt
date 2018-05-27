@@ -54,10 +54,17 @@ void EmoticonChooser::setResourceDir(QString dirPath)
         return;
 
     resourceDir.filePath(WICHAT_EMOJI_RESOURCE_DIR);
-//    emojiResourceDir = QDir::cleanPath(resourceDir.path()
-//                                       .append(QDir::separator())
-//                                       .append(WICHAT_EMOJI_RESOURCE_DIR));
     emojiResourceDir = resourceDir.absoluteFilePath(WICHAT_EMOJI_RESOURCE_DIR);
+
+    // Verify the path of resource directory
+    resourceDir.setPath(emojiResourceDir);
+    if (!resourceDir.exists())
+    {
+        // Assume resources are in the current directory
+        resourceDir.setPath(QCoreApplication::applicationDirPath());
+        emojiResourceDir = resourceDir.absoluteFilePath(
+                                                WICHAT_EMOJI_RESOURCE_DIR);
+    }
 }
 
 void EmoticonChooser::showEvent(QShowEvent* event)

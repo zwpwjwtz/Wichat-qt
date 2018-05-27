@@ -144,7 +144,8 @@ private:
     void showNotification();
     void fixBrokenConnection();
     QString addSenderInfo(const QString& content, QString ID);
-    QString renderMessage(const SessionMessageList::MessageEntry& message);
+    QString renderMessage(const SessionMessageList::MessageEntry& message,
+                          bool fullHTML = false);
     static QString extractHTMLTag(const QString& rawHTML, QString tagName);
     static QString stateToImagePath(int stateNumber, bool displayHide = false);
     static QString getFileNameFromPath(QString filePath);
@@ -188,6 +189,9 @@ private slots:
     void onSysTrayMenuShowed();
     void onSysTrayMenuClicked(QAction* action);
     void onEmoticonClicked(const QByteArray& emoticon);
+    void onFontStyleMenuClicked(QAction* action);
+    void onTextAlignMenuClicked(QAction* action);
+    void onSendOptionMenuClicked(QAction* action);
     void onListFriendMenuClicked(QAction* action);
     void onFriendRemarksChanged(QString ID, QString remarks);
     void onOfflineMsgChanged(QString ID, QString offlineMsg);
