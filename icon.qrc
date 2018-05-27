@@ -1,23 +1,22 @@
 <RCC>
     <qresource prefix="/">
         <file>Icons/advanced.png</file>
-        <file>Icons/blue.ico</file>
-        <file>Icons/green.ico</file>
-        <file>Icons/red.ico</file>
-        <file>Icons/grey.ico</file>
-        <file>Icons/yellow.ico</file>
-        <file>Icons/face.ico</file>
-        <file>Icons/color.ico</file>
         <file>Icons/format-justify-left.png</file>
         <file>Icons/format-justify-center.png</file>
         <file>Icons/format-justify-right.png</file>
-        <file>Icons/remove.ico</file>
         <file>Icons/insert-image.png</file>
         <file>Icons/insert-file.png</file>
-        <file>Icons/add.ico</file>
         <file>Icons/conversation.png</file>
         <file>Icons/notification.png</file>
         <file>Icons/edit.png</file>
         <file>Icons/save.png</file>
+        <file>Icons/add.png</file>
+        <file>Icons/face.png</file>
+        <file>Icons/remove.png</file>
+        <file>Icons/busy.png</file>
+        <file>Icons/invisible.png</file>
+        <file>Icons/offline.png</file>
+        <file>Icons/online.png</file>
+        <file>Icons/color.png</file>
     </qresource>
 </RCC>

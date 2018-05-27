@@ -71,11 +71,11 @@ void SystrayNotification::addNote(const Notification::Note &note)
     newRow.append(item);
     switch (note.type) {
         case Notification::NoteEvent::FriendAdd:
-            item = new QStandardItem(QIcon(":/Icons/add.ico"),
+            item = new QStandardItem(QIcon(":/Icons/add.png"),
                                      "Friend request");
             break;
         case Notification::NoteEvent::FriendDelete:
-            item = new QStandardItem(QIcon(":/Icons/remove.ico"),
+            item = new QStandardItem(QIcon(":/Icons/remove.png"),
                                      "Friend removed");
             break;
         case Notification::NoteEvent::GotMsg:

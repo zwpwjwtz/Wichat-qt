@@ -131,7 +131,13 @@
           </property>
           <property name="icon">
            <iconset resource="icon.qrc">
-            <normaloff>:/Icons/face.ico</normaloff>:/Icons/face.ico</iconset>
+            <normaloff>:/Icons/face.png</normaloff>:/Icons/face.png</iconset>
+          </property>
+          <property name="iconSize">
+           <size>
+            <width>24</width>
+            <height>24</height>
+           </size>
           </property>
           <property name="flat">
            <bool>true</bool>
@@ -239,7 +245,13 @@
            </property>
            <property name="icon">
             <iconset resource="icon.qrc">
-             <normaloff>:/Icons/color.ico</normaloff>:/Icons/color.ico</iconset>
+             <normaloff>:/Icons/color.png</normaloff>:/Icons/color.png</iconset>
+           </property>
+           <property name="iconSize">
+            <size>
+             <width>24</width>
+             <height>24</height>
+            </size>
            </property>
           </widget>
           <widget class="QPushButton" name="buttonTextStyle">
@@ -281,8 +293,8 @@
            </property>
            <property name="iconSize">
             <size>
-             <width>20</width>
-             <height>20</height>
+             <width>24</width>
+             <height>24</height>
             </size>
            </property>
           </widget>
@@ -302,8 +314,8 @@
           </property>
           <property name="iconSize">
            <size>
-            <width>28</width>
-            <height>28</height>
+            <width>24</width>
+            <height>24</height>
            </size>
           </property>
           <property name="flat">
@@ -325,8 +337,8 @@
           </property>
           <property name="iconSize">
            <size>
-            <width>28</width>
-            <height>28</height>
+            <width>24</width>
+            <height>24</height>
            </size>
           </property>
           <property name="flat">
@@ -605,7 +617,16 @@
               </property>
               <property name="icon">
                <iconset resource="icon.qrc">
-                <normaloff>:/Icons/add.ico</normaloff>:/Icons/add.ico</iconset>
+                <normaloff>:/Icons/add.png</normaloff>:/Icons/add.png</iconset>
+              </property>
+              <property name="iconSize">
+               <size>
+                <width>24</width>
+                <height>24</height>
+               </size>
+              </property>
+              <property name="shortcut">
+               <string>Ctrl+S</string>
               </property>
               <property name="flat">
                <bool>true</bool>

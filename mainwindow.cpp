@@ -147,7 +147,7 @@ MainWindow::MainWindow(QWidget *parent) :
     sysTrayNoteList = new SystrayNotification;
     emoticonList = new EmoticonChooser(this);
     emoticonList->hide();
-    buttonTabClose = new QPushButton(QIcon(":/Icons/remove.ico"),
+    buttonTabClose = new QPushButton(QIcon(":/Icons/remove.png"),
                                      "");
     buttonTabClose->setGeometry(0, 0, 10, 10);
     tabBarSession = ui->tabSession->findChild<QTabBar*>();
@@ -1207,22 +1207,22 @@ QString MainWindow::stateToImagePath(int stateNumber, bool displayHide)
     switch (Account::OnlineState(stateNumber))
     {
         case Account::OnlineState::Online:
-            path.append("green");
+            path.append("online");
             break;
         case Account::OnlineState::Busy:
-            path.append("yellow");
+            path.append("busy");
             break;
         case Account::OnlineState::Hide:
             if (displayHide)
-                path.append("blue");
+                path.append("invisible");
             else
-                path.append("grey");
+                path.append("offline");
             break;
         case Account::OnlineState::Offline:
         default:
-            path.append("grey");
+            path.append("offline");
     }
-    path.append(".ico");
+    path.append(".png");
     return path;
 }
 
