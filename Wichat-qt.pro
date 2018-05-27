@@ -8,8 +8,22 @@ QT       += core gui network
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
+!win32{
 CONFIG += link_pkgconfig
 PKGCONFIG += openssl
+}
+
+win32{
+# Please change the value of "COMPONENT_DIR" to the directory
+# that contains headers and static libraries of openssl
+COMPONENT_DIR = D:\Qt\Tools\mingw492_32\opt
+OPENSSL_INCDIR = $$COMPONENT_DIR\include
+OPENSSL_LIBDIR = $$COMPONENT_DIR\lib
+
+QMAKE_INCDIR += $$OPENSSL_INCDIR
+QMAKE_LIBDIR += $$OPENSSL_LIBDIR
+QMAKE_LIBS += -lssl -lcrypto
+}
 QMAKE_CXXFLAGS += -std=c++0x
 
 TARGET = Wichat-qt
@@ -107,9 +121,20 @@ RESOURCES += \
 
 DISTFILES +=
 
-target.path = $${PREFIX}/bin/
+isEmpty($$PREFIX){
+    PREFIX = .
+}
+!win32{
+target.path = $$PREFIX/bin
 
 emoticons.files = Emoticon/Twemoji/2/72x72/*
-emoticons.path = $${PREFIX}/share/emoticons/Twemoji/72x72/
+emoticons.path = $$PREFIX/share/emoticons/Twemoji/72x72
+}
+win32{
+target.path = $$PREFIX
+
+emoticons.files = Emoticon/Twemoji/2/72x72/*
+emoticons.path = $$PREFIX/Resource/emoticons/Twemoji/72x72
+}
 
 INSTALLS += target emoticons

@@ -366,7 +366,7 @@ EmojiSpecParserPrivate::parseUnicodeSpecRecord(const QByteArray &content)
         // Convert it to unicode (reduced UCS-4 / UTF-32)
         buffer = content.mid(p1 + dimLength, p2 - p1 - dimLength);
         codeBuffer = QString::fromUtf8(buffer).toUcs4();
-        codeLength = codeBuffer.length() * sizeof(uint);
+        codeLength = codeBuffer.size() * sizeof(uint);
         buffer = QByteArray::fromRawData((const char*)(codeBuffer.data()),
                                          codeLength);
 

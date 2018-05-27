@@ -463,6 +463,7 @@ ConversationPrivate::ConversationPrivate(Conversation* parent,
     else
         this->server = new RequestManager;
     sessionList = nullptr;
+    loggedin = false;
     connect(this->server,
             SIGNAL(requestFinished(int)),
             this,

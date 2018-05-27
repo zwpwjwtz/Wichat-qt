@@ -39,7 +39,11 @@
 #define WICHAT_MAIN_EDITOR_SENDKEY_ENTER 0x01000004
 #define WICHAT_MAIN_EDITOR_SENDKEY_CTRLENTER 0x01000004 + 0x04000000
 
+#ifdef Q_OS_WIN32
+#define WICHAT_MAIN_RESOURCE_DIR "Resource"
+#else
 #define WICHAT_MAIN_RESOURCE_DIR "/usr/share"
+#endif
 
 #define WICHAT_MAIN_MENU_FRIEND_OPEN 0
 #define WICHAT_MAIN_MENU_FRIEND_REMOVE 1
@@ -612,7 +616,7 @@ void MainWindow::syncSessionContent(QString ID, bool closeSession)
     if (session.ID == ID)
     {
         // Store content in input box to session cache
-        session.input = editorList[index]->toHtml().toLatin1();
+        session.input = editorList[index]->toHtml().toUtf8();
         session.active = !closeSession;
     }
 }

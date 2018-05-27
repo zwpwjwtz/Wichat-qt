@@ -1,5 +1,7 @@
 #include "loginwindow.h"
 #include <QApplication>
+#include <QTextCodec>
+
 
 int main(int argc, char *argv[])
 {
@@ -12,6 +14,12 @@ int main(int argc, char *argv[])
         QApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
 #endif
     }
+
+#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
+    // Set proper codec for strings in Qt 4
+    QTextCodec::setCodecForTr(QTextCodec::codecForName("UTF-8"));
+    QTextCodec::setCodecForCStrings(QTextCodec::codecForLocale());
+#endif
 
     QApplication a(argc, argv);
     LoginWindow w;

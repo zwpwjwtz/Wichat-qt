@@ -136,7 +136,7 @@ bool Encryptor::encrypt(Algorithm algo,
         default:;
     }
 
-    if (resultByte != nullptr)
+    if (!resultByte)
         delete resultByte;
     return ret;
 }
@@ -189,7 +189,7 @@ bool Encryptor::decrypt(Algorithm algo,
         default:;
     }
 
-    if (resultByte != nullptr)
+    if (!resultByte)
         delete resultByte;
     return ret;
 }
