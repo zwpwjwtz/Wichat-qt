@@ -1,9 +1,9 @@
 #include "global_objects.h"
 
-#include "wichatconfig.h"
-#include "serverconnection.h"
-#include "account.h"
-#include "conversation.h"
+#include "Modules/wichatconfig.h"
+#include "Modules/serverconnection.h"
+#include "Modules/account.h"
+#include "Modules/conversation.h"
 #include "mainwindow.h"
 #include "preferencedialog.h"
 

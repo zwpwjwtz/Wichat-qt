@@ -2,7 +2,7 @@
 #define ACCOUNTINFODIALOG_H
 
 #include <QDialog>
-#include "account.h"
+#include "Modules/account.h"
 #include "editablelabel.h"
 
 

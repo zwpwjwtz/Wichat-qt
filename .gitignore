@@ -5,6 +5,6 @@ moc*
 ui*.h
 *.pro.user
 Makefile
-Test/*/Test
-Test/*/*.o
-Test/*/*.moc
+src/Test/*/Test
+src/Test/*/*.o
+src/Test/*/*.moc

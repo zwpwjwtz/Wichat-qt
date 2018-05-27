@@ -3,9 +3,9 @@
 
 #include <QObject>
 
-#include "account.h"
-#include "encryptor.h"
-#include "requestmanager.h"
+#include "../account.h"
+#include "../encryptor.h"
+#include "../requestmanager.h"
 
 
 class AccountPrivate : public QObject

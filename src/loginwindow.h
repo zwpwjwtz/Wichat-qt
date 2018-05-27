@@ -2,7 +2,7 @@
 #define LOGINWINDOW_H
 
 #include <QWidget>
-#include "account.h"
+#include "Modules/account.h"
 
 class ServerConfigDialog;
 

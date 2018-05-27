@@ -5,7 +5,7 @@
 #include <QFile>
 
 #include "abstractsession_p.h"
-#include "usersession.h"
+#include "../usersession.h"
 
 class UserSessionPrivate : public AbstractSessionPrivate
 {

@@ -3,7 +3,7 @@
 
 #include <QWidget>
 #include <QStandardItemModel>
-#include "notification.h"
+#include "Modules/notification.h"
 
 
 namespace Ui {

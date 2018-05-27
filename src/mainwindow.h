@@ -7,12 +7,12 @@
 #include <QTimer>
 #include <QSystemTrayIcon>
 
-#include "account.h"
-#include "conversation.h"
-#include "usersession.h"
-#include "peersession.h"
-#include "notification.h"
-#include "sessionmessagelist.h"
+#include "Modules/account.h"
+#include "Modules/conversation.h"
+#include "Modules/usersession.h"
+#include "Modules/peersession.h"
+#include "Modules/notification.h"
+#include "Modules/sessionmessagelist.h"
 
 
 class QPushButton;

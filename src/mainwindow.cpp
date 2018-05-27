@@ -17,9 +17,9 @@
 #include "systraynotification.h"
 #include "emoticonchooser.h"
 #include "global_objects.h"
-#include "account.h"
-#include "conversation.h"
-#include "wichatconfig.h"
+#include "Modules/account.h"
+#include "Modules/conversation.h"
+#include "Modules/wichatconfig.h"
 
 #define WICHAT_MAIN_FRILIST_FIELD_ICON 0
 #define WICHAT_MAIN_FRILIST_FIELD_ICONPATH 1

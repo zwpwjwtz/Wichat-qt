@@ -5,8 +5,8 @@
 #include "preferencedialog.h"
 #include "ui_preferencedialog.h"
 #include "global_objects.h"
-#include "account.h"
-#include "wichatconfig.h"
+#include "Modules/account.h"
+#include "Modules/wichatconfig.h"
 
 
 PreferenceDialog::PreferenceDialog(QWidget *parent) :

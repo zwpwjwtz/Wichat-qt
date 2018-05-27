@@ -3,7 +3,7 @@
 
 #include <QQueue>
 
-#include "notification.h"
+#include "../notification.h"
 
 
 class NotificationPrivate : QObject

@@ -3,7 +3,7 @@
 
 #include <QWidget>
 #include <QStandardItemModel>
-#include <emojispecparser.h>
+#include "Modules/emojispecparser.h"
 
 
 class QShowEvent;

@@ -1,3 +1,3 @@
 [submodule "opensslpp"]
-	path = opensslpp
+	path = src/opensslpp
 	url = https://github.com/mtrempoltsev/opensslpp.git

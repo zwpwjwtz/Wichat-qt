@@ -3,8 +3,8 @@
 
 #include <QObject>
 
-#include "encryptor.h"
-#include "serverconnection.h"
+#include "../encryptor.h"
+#include "../serverconnection.h"
 
 
 class RequestManager;

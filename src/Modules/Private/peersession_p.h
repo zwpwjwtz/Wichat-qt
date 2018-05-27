@@ -2,8 +2,8 @@
 #define PEERSESSIONPRIVATE_H
 
 #include "abstractsession_p.h"
-#include "peersession.h"
-#include "encryptor.h"
+#include "../peersession.h"
+#include "../encryptor.h"
 
 
 class PeerSessionPrivate : public AbstractSessionPrivate

@@ -1,7 +1,7 @@
 #ifndef SESSIONEMESSAGELIST_P_H
 #define SESSIONEMESSAGELIST_P_H
 
-#include "sessionmessagelist.h"
+#include "../sessionmessagelist.h"
 
 
 class SessionMessageList;

@@ -44,45 +44,45 @@ DEFINES += QT_DEPRECATED_WARNINGS
 SOURCES += main.cpp\
         mainwindow.cpp \
     loginwindow.cpp \
-    serverconnection.cpp \
-    encryptor.cpp \
-    wichatconfig.cpp \
-    usersession.cpp \
-    peersession.cpp \
-    abstractsession.cpp \
-    notification.cpp \
-    account.cpp \
+    Modules/serverconnection.cpp \
+    Modules/encryptor.cpp \
+    Modules/wichatconfig.cpp \
+    Modules/usersession.cpp \
+    Modules/peersession.cpp \
+    Modules/abstractsession.cpp \
+    Modules/notification.cpp \
+    Modules/account.cpp \
     serverconfigdialog.cpp \
     global_objects.cpp \
     accountinfodialog.cpp \
-    requestmanager.cpp \
-    conversation.cpp \
+    Modules/requestmanager.cpp \
+    Modules/conversation.cpp \
     systraynotification.cpp \
     emoticonchooser.cpp \
-    emojispecparser.cpp \
+    Modules/emojispecparser.cpp \
     editablelabel.cpp \
     preferencedialog.cpp \
-    sessionmessagelist.cpp
+    Modules/sessionmessagelist.cpp
 
 HEADERS  += mainwindow.h \
     loginwindow.h \
-    serverconnection.h \
+    Modules/serverconnection.h \
     common.h \
-    encryptor.h \
-    wichatconfig.h \
-    usersession.h \
-    peersession.h \
-    abstractsession.h \
-    notification.h \
-    account.h \
-    Private/account_p.h \
-    Private/abstractsession_p.h \
-    Private/encryptor_p.h \
-    Private/notification_p.h \
-    Private/peersession_p.h \
-    Private/serverconnection_p.h \
-    Private/usersession_p.h \
-    Private/wichatconfig_p.h \
+    Modules/encryptor.h \
+    Modules/wichatconfig.h \
+    Modules/usersession.h \
+    Modules/peersession.h \
+    Modules/abstractsession.h \
+    Modules/notification.h \
+    Modules/account.h \
+    Modules/Private/account_p.h \
+    Modules/Private/abstractsession_p.h \
+    Modules/Private/encryptor_p.h \
+    Modules/Private/notification_p.h \
+    Modules/Private/peersession_p.h \
+    Modules/Private/serverconnection_p.h \
+    Modules/Private/usersession_p.h \
+    Modules/Private/wichatconfig_p.h \
     opensslpp/include/opensslpp/details/common.h \
     opensslpp/include/opensslpp/aes_cbc.h \
     opensslpp/include/opensslpp/aes_gcm.h \
@@ -93,18 +93,18 @@ HEADERS  += mainwindow.h \
     serverconfigdialog.h \
     global_objects.h \
     accountinfodialog.h \
-    requestmanager.h \
-    Private/requestmanager_p.h \
-    conversation.h \
-    Private/conversation_p.h \
+    Modules/requestmanager.h \
+    Modules/Private/requestmanager_p.h \
+    Modules/conversation.h \
+    Modules/Private/conversation_p.h \
     systraynotification.h \
     emoticonchooser.h \
-    emojispecparser.h \
-    Private/emojispecparserprivate.h \
+    Modules/emojispecparser.h \
+    Modules/Private/emojispecparserprivate.h \
     editablelabel.h \
     preferencedialog.h \
-    sessionmessagelist.h \
-    Private/sessionemessagelist_p.h
+    Modules/sessionmessagelist.h \
+    Modules/Private/sessionemessagelist_p.h
 
 FORMS    += mainwindow.ui \
     loginwindow.ui \

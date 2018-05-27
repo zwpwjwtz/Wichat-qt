@@ -7,9 +7,9 @@
 #include "serverconfigdialog.h"
 #include "global_objects.h"
 #include "mainwindow.h"
-#include "wichatconfig.h"
-#include "serverconnection.h"
-#include "account.h"
+#include "Modules/wichatconfig.h"
+#include "Modules/serverconnection.h"
+#include "Modules/account.h"
 
 
 LoginWindow::LoginWindow(QWidget *parent) :

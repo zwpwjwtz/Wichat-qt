@@ -3,10 +3,10 @@
 
 #include <QQueue>
 
-#include "conversation.h"
-#include "encryptor.h"
-#include "requestmanager.h"
-#include "peersession.h"
+#include "../conversation.h"
+#include "../encryptor.h"
+#include "../requestmanager.h"
+#include "../peersession.h"
 
 
 class Conversation;
