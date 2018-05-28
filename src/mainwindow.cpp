@@ -9,6 +9,8 @@
 #include <QMenu>
 #include <QFileDialog>
 #include <QDateTime>
+#include <QImageReader>
+#include <QDesktopServices>
 
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
@@ -101,18 +103,18 @@ QString Wichat_stateToString(Account::OnlineState state)
 const QString Wichat_getHTMLHeader(int docType)
 {
     // docType: 0=Content Window; 1=Input Window
-    QString buffer("<!DOCTYPE html PUBLIC ""-//W3C//DTD HTML 4.01 Transitional//EN"" ""http://www.w3.org/TR/html4/loose.dtd"">"
-                   "<html xmlns=""http://www.w3.org/1999/xhtml"">"
+    QString buffer("<!DOCTYPE html PUBLIC \"-//W3C//DTD HTML 4.01 Transitional//EN\" \"http://www.w3.org/TR/html4/loose.dtd\">"
+                   "<html xmlns=\"http://www.w3.org/1999/xhtml\">"
                    "<head>"
-                   "<meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"" />"
+                   "<meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\" />"
                    "<title></title>");
     switch (docType)
     {
         case 0:
-            buffer.append("<style>div,span,ul,li{marin:0px;padding:0px;list-style-type:none;font-size:15px}p{text-align:left}img{border:0px;max-width:100%;height:auto}.s{color:#339966}.r{color:#0066CC}.a{color:#000000}.c{margin:0px 0px 15px 5px;width:350px;word-wrap:break-word}</style></head><body style=""width:360px;overflow:hidden;"">");
+            buffer.append("<style>body{width:360px;overflow:hidden}div,span,ul,li{marin:0px;padding:0px;list-style-type:none;font-size:15px}p{text-align:left}img{border:0px;max-width:100%;height:auto}.s{color:#339966}.r{color:#0066CC}.a{color:#000000}.c{margin:0px 0px 15px 5px;width:350px;word-wrap:break-word}</style></head><body>");
             break;
         case 1:
-            buffer.append("<style>div,span,ul,li{marin:0px;padding:0px;list-style-type:none}p{text-align:left;}</style></head><body style=""width:98%;margin:2px;overflow:hidden""><textarea type=text id=" WICHAT_MAIN_EDITOR_TEXTBOX_NAME " cols=38 rows=3 style=""width:100%;overflow:hidden;border:0px;"">");
+            buffer.append("<style>body{width:98%;margin:2px;overflow:hidden}div,span,ul,li{marin:0px;padding:0px;list-style-type:none}p{text-align:left;}textarea{width:100%;overflow:hidden;border:0px}</style></head><body><textarea type=text id=" WICHAT_MAIN_EDITOR_TEXTBOX_NAME " cols=38 rows=3>");
             break;
         default:;
     }
@@ -656,12 +658,19 @@ void MainWindow::addTab(QString ID)
 
     newBrowser->setProperty("ID", ID);
     newBrowser->setProperty("Initialized", false);
-    newEditor->setProperty("ID", ID);
+    newBrowser->setOpenLinks(false);
     newBrowser->setGeometry(ui->textBrowser->geometry());
+    newEditor->setProperty("ID", ID);
     newEditor->setGeometry(ui->textEdit->geometry());
 
     browserList.push_back(newBrowser);
     editorList.push_back(newEditor);
+
+    connect(newBrowser,
+            SIGNAL(anchorClicked(const QUrl&)),
+            this,
+            SLOT(onBrowserLinkClicked(const QUrl&)));
+
     ui->tabSession->addTab(newBrowser,
                            QIcon(getStateImagePath(ID)),
                            ID);
@@ -709,6 +718,10 @@ void MainWindow::removeTab(QString ID)
 
     // Actually close the tab
     int index = getSessionIndex(ID);
+    disconnect(browserList[index],
+               SIGNAL(anchorClicked(const QUrl&)),
+               this,
+               SLOT(onBrowserLinkClicked(const QUrl&)));
     browserList.removeAt(index);
     delete editorList[index];
     editorList.removeAt(index);
@@ -1175,9 +1188,14 @@ QString MainWindow::renderMessage(const SessionMessageList::MessageEntry& messag
         if (p1 < 0 || p2 < 0)
             break;
         QString fileName = result.mid(p1 + 26, p2 - p1 - 26);
-        temp = QString("<img src=""file://")
+        QImageReader image(fileName);
+        int displayWidth = image.size().width();
+        if (displayWidth > ui->textBrowser->width())
+            displayWidth = ui->textBrowser->width() - 20;
+        temp = QString("<img src=\"file://")
                     .append(fileName)
-                    .append(""" />");
+                    .append("\" alt=Image width=%1 />")
+                    .arg(QString::number(displayWidth));
 
         result.replace(p1, p2 - p1, temp);
     }
@@ -1194,13 +1212,13 @@ QString MainWindow::renderMessage(const SessionMessageList::MessageEntry& messag
 
         QString noteText;
         if (message.source == userID)
-            noteText = QString("You sent file ""%1"" to him/her.")
+            noteText = QString("You sent file \"%1\" to him/her.")
                               .arg(getFileNameFromPath(fileName));
         else
-            noteText = QString("He/she sent file ""%1"" to you.")
+            noteText = QString("He/she sent file \"%1\" to you.")
                               .arg(getFileNameFromPath(fileName));
-        temp = QString("<div style=""width:300px;border:1px solid;"">"
-                          "<div style=""float:right"">")
+        temp = QString("<div style=\"width:300px;border:1px solid;\">"
+                          "<div style=\"float:right\">")
                     .append(noteText)
                     .append("<a href=\"file://")
                     .append(fileName)
@@ -1729,6 +1747,11 @@ void MainWindow::onFontStyleMenuClicked(QAction* action)
     }
     globalConfig.setPrefFontStyle(userID, fontStyleArgs.join(","));
     applyFont();
+}
+
+void MainWindow::onBrowserLinkClicked(const QUrl& url)
+{
+    QDesktopServices::openUrl(url);
 }
 
 void MainWindow::onTextAlignMenuClicked(QAction* action)

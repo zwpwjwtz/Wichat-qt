@@ -194,6 +194,7 @@ private slots:
     void onAppMenuClicked(QAction* action);
     void onEmoticonClicked(const QByteArray& emoticon);
     void onFontStyleMenuClicked(QAction* action);
+    void onBrowserLinkClicked(const QUrl& url);
     void onTextAlignMenuClicked(QAction* action);
     void onSendOptionMenuClicked(QAction* action);
     void onListFriendMenuClicked(QAction* action);

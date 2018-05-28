@@ -81,7 +81,11 @@
             <number>0</number>
            </property>
            <item>
-            <widget class="QTextBrowser" name="textBrowser"/>
+            <widget class="QTextBrowser" name="textBrowser">
+             <property name="openLinks">
+              <bool>false</bool>
+             </property>
+            </widget>
            </item>
           </layout>
          </widget>
