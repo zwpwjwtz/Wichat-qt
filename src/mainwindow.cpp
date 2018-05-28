@@ -164,7 +164,9 @@ MainWindow::MainWindow(QWidget *parent) :
     emoticonList->hide();
     buttonTabClose = new QPushButton(QIcon(":/Icons/remove.png"),
                                      "");
-    buttonTabClose->setGeometry(0, 0, 10, 10);
+    buttonTabClose->setFlat(true);
+    buttonTabClose->setIconSize(QSize(16, 16));
+    buttonTabClose->resize(20, 20);
     tabBarSession = ui->tabSession->findChild<QTabBar*>();
     listFriendModel.setColumnCount(3);
 
@@ -374,7 +376,8 @@ bool MainWindow::eventFilter(QObject *watched, QEvent *event)
         case QEvent::MouseButtonRelease:
             onMouseButtonRelease();
             break;
-        case QEvent::HoverEnter:
+//        case QEvent::HoverEnter:
+        case QEvent::HoverMove:
             onMouseHoverEnter(watched, (QHoverEvent*)(event));
             break;
         case QEvent::HoverLeave:
@@ -1526,18 +1529,15 @@ void MainWindow::onMouseButtonRelease()
 void MainWindow::onMouseHoverEnter(QObject* watched, QHoverEvent* event)
 {
     Q_UNUSED(event)
-    if (watched == tabBarSession)
+    if (watched == tabBarSession && lastHoveredTab < 0)
     {
-        int index = tabBarSession->tabAt(QCursor::pos()
-                                                    - pos()
-                                                    - QPoint(0, 50));
+        int index = tabBarSession->tabAt(
+                                tabBarSession->mapFromGlobal(QCursor::pos()));
         if (index < 0)
             return;
 
         lastHoveredTab = index;
-        tabBarSession->setTabButton(index,
-                                               QTabBar::RightSide,
-                                               buttonTabClose);
+        tabBarSession->setTabButton(index, QTabBar::RightSide, buttonTabClose);
     }
 }
 
@@ -1573,6 +1573,10 @@ void MainWindow::onKeyRelease(QObject* watched, QKeyEvent* event)
                 on_buttonSend_clicked();
             }
         }
+    }
+    else if (event->key() == Qt::Key_Escape)
+    {
+        onMouseButtonRelease();
     }
 }
 
