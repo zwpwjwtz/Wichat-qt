@@ -29,11 +29,17 @@ QMAKE_CXXFLAGS += -std=c++0x
 TARGET = Wichat-qt
 TEMPLATE = app
 
+VER_MAJ = 2
+VER_MIN = 0
+VER_PAT = 0
+VERSION = 2.0.0
+VERSION_PE_HEADER = 2.0.0
+
 # The following define makes your compiler emit warnings if you use
 # any feature of Qt which as been marked as deprecated (the exact warnings
 # depend on your compiler). Please consult the documentation of the
 # deprecated API in order to know how to port your code away from it.
-DEFINES += QT_DEPRECATED_WARNINGS
+DEFINES += QT_DEPRECATED_WARNINGS APP_VERSION=\\\"$$VERSION\\\"
 
 # You can also make your code fail to compile if you use deprecated APIs.
 # In order to do so, uncomment the following line.
@@ -62,7 +68,8 @@ SOURCES += main.cpp\
     Modules/emojispecparser.cpp \
     editablelabel.cpp \
     preferencedialog.cpp \
-    Modules/sessionmessagelist.cpp
+    Modules/sessionmessagelist.cpp \
+    aboutwindow.cpp
 
 HEADERS  += mainwindow.h \
     loginwindow.h \
@@ -104,7 +111,8 @@ HEADERS  += mainwindow.h \
     editablelabel.h \
     preferencedialog.h \
     Modules/sessionmessagelist.h \
-    Modules/Private/sessionemessagelist_p.h
+    Modules/Private/sessionemessagelist_p.h \
+    aboutwindow.h
 
 FORMS    += mainwindow.ui \
     loginwindow.ui \
@@ -113,7 +121,8 @@ FORMS    += mainwindow.ui \
     systraynotification.ui \
     emoticonchooser.ui \
     editablelabel.ui \
-    preferencedialog.ui
+    preferencedialog.ui \
+    aboutwindow.ui
 
 RESOURCES += \
     icon.qrc \

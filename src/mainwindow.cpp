@@ -12,6 +12,7 @@
 
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
+#include "aboutwindow.h"
 #include "accountinfodialog.h"
 #include "preferencedialog.h"
 #include "systraynotification.h"
@@ -49,6 +50,8 @@
 #define WICHAT_MAIN_MENU_FRIEND_REMOVE 1
 #define WICHAT_MAIN_MENU_FRIEND_INFO 2
 #define WICHAT_MAIN_MENU_APP_PREFERENCE 3
+#define WICHAT_MAIN_MENU_APP_ABOUT 4
+#define WICHAT_MAIN_MENU_APP_QUIT 5
 
 #define WICHAT_MAIN_FILE_FILTER_ALL "All (*.*)(*.*)"
 #define WICHAT_MAIN_FILE_FILTER_GIF "GIF file (*.gif)(*.gif)"
@@ -146,6 +149,11 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->frameTextGroup->setLayout(new QStackedLayout);
     ui->frameTextGroup->layout()->setMargin(0);
     ui->listFriend->setModel(&listFriendModel);
+    for (int i=0; i<4; i++)
+        ui->comboState->addItem(QIcon(stateToImagePath(int(Wichat_stateList[i]),
+                                                       true)),
+                                Wichat_stateToString(Wichat_stateList[i]),
+                                int(Wichat_stateList[i]));
 
     menuFriendOption = new QMenu(ui->listFriend);
     menuSysTray = new QMenu();
@@ -268,8 +276,10 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->listFriend->installEventFilter(this);
     tabBarSession->installEventFilter(this);
 
+    aboutDialog = nullptr;
     accountInfo = nullptr;
     dialogColor = nullptr;
+    menuApp = nullptr;
     menuFontStyle = nullptr;
     menuTextAlign = nullptr;
     menuSendOption = nullptr;
@@ -345,6 +355,8 @@ void MainWindow::closeEvent(QCloseEvent* event)
             return;
         }
     }
+    if (aboutDialog)
+        aboutDialog->close();
     if (accountInfo)
         accountInfo->close();
     sysTrayIcon->hide();
@@ -1657,6 +1669,33 @@ void MainWindow::onSysTrayMenuClicked(QAction* action)
         changeState(Account::OnlineState(action->data().toInt()));
 }
 
+void MainWindow::onAppMenuClicked(QAction* action)
+{
+    switch(action->data().toInt())
+    {
+        case WICHAT_MAIN_MENU_APP_PREFERENCE:
+        {
+            if (!globalPreference)
+                globalPreference = new PreferenceDialog;
+            globalPreference->exec();
+            break;
+        }
+        case WICHAT_MAIN_MENU_APP_ABOUT:
+        {
+            if (!aboutDialog)
+                aboutDialog = new AboutWindow(this);
+            aboutDialog->show();
+            break;
+        }
+        case WICHAT_MAIN_MENU_APP_QUIT:
+        {
+            close();
+            break;
+        }
+        default:;
+    }
+}
+
 void MainWindow::onEmoticonClicked(const QByteArray &emoticon)
 {
     const uint* unicode = (const uint*)(emoticon.constData());
@@ -1752,13 +1791,6 @@ void MainWindow::onListFriendMenuClicked(QAction *action)
             int queryID;
             globalAccount.queryFriendInfo(firstID, queryID);
         }
-        break;
-    }
-    case WICHAT_MAIN_MENU_APP_PREFERENCE:
-    {
-        if (!globalPreference)
-            globalPreference = new PreferenceDialog;
-        globalPreference->exec();
         break;
     }
     default:;
@@ -2023,14 +2055,6 @@ void MainWindow::on_listFriend_customContextMenuRequested(const QPoint &pos)
         action->setData(WICHAT_MAIN_MENU_FRIEND_INFO);
         menuFriendOption->addAction(action);
 
-        menuFriendOption->addSeparator();
-
-        // Action: WICHAT_MAIN_MENU_APP_PREFERENCE
-        action = new QAction(menuFriendOption);
-        action->setText("Wichat settings");
-        action->setData(WICHAT_MAIN_MENU_APP_PREFERENCE);
-        menuFriendOption->addAction(action);
-
         actionList = menuFriendOption->actions();
     }
 
@@ -2132,4 +2156,46 @@ void MainWindow::on_buttonEmotion_clicked()
                            QPoint(0, emoticonList->height()));
         emoticonList->show();
     }
+}
+
+void MainWindow::on_buttonWichat_clicked()
+{
+    if (!menuApp)
+    {
+        menuApp = new QMenu(this);
+
+        // Action: WICHAT_MAIN_MENU_APP_PREFERENCE
+        QAction* action = new QAction(menuApp);
+        action->setText("Settings");
+        action->setData(WICHAT_MAIN_MENU_APP_PREFERENCE);
+        menuApp->addAction(action);
+
+        // Action: WICHAT_MAIN_MENU_APP_ABOUT
+        action = new QAction(menuApp);
+        action->setText("About Wichat");
+        action->setData(WICHAT_MAIN_MENU_APP_ABOUT);
+        menuApp->addAction(action);
+
+        menuApp->addSeparator();
+
+        // Action: WICHAT_MAIN_MENU_APP_QUIT
+        action = new QAction(menuApp);
+        action->setText("Quit");
+        action->setData(WICHAT_MAIN_MENU_APP_QUIT);
+        menuApp->addAction(action);
+
+        connect(menuApp,
+                SIGNAL(triggered(QAction*)),
+                this,
+                SLOT(onAppMenuClicked(QAction*)));
+    }
+    menuApp->popup(QCursor::pos());
+}
+
+void MainWindow::on_comboState_currentIndexChanged(int index)
+{
+    bool ok;
+    int state = ui->comboState->itemData(index).toInt(&ok);
+    if (ok)
+        changeState(Account::OnlineState(state));
 }

@@ -20,6 +20,7 @@ class QColorDialog;
 class QTextBrowser;
 class QTextEdit;
 class QActionGroup;
+class AboutWindow;
 class AccountInfoDialog;
 class SystrayNotification;
 class EmoticonChooser;
@@ -77,11 +78,13 @@ private:
     };
 
     Ui::MainWindow *ui;
+    AboutWindow* aboutDialog;
     AccountInfoDialog* accountInfo;
     SystrayNotification* sysTrayNoteList;
     EmoticonChooser* emoticonList;
     QPushButton* buttonTabClose;
     QColorDialog* dialogColor;
+    QMenu* menuApp;
     QMenu* menuFontStyle;
     QMenu* menuTextAlign;
     QMenu* menuSendOption;
@@ -188,6 +191,7 @@ private slots:
     void onSysTrayIconClicked(QSystemTrayIcon::ActivationReason reason);
     void onSysTrayMenuShowed();
     void onSysTrayMenuClicked(QAction* action);
+    void onAppMenuClicked(QAction* action);
     void onEmoticonClicked(const QByteArray& emoticon);
     void onFontStyleMenuClicked(QAction* action);
     void onTextAlignMenuClicked(QAction* action);
@@ -214,6 +218,8 @@ private slots:
     void on_textFriendSearch_textChanged(const QString &arg1);
     void on_buttonFriendAdd_clicked();
     void on_buttonEmotion_clicked();
+    void on_buttonWichat_clicked();
+    void on_comboState_currentIndexChanged(int index);
 };
 
 #endif // MAINWINDOW_H
