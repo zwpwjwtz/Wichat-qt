@@ -315,7 +315,7 @@ void MainWindow::init()
     else
     {
         loadTab();
-        loadSession(userSessionList.currentSession().ID);
+        loadSession(userSessionList.currentSession().ID, false);
     }
     globalConversation.setPeerSession(peerSessionList);
 
@@ -562,6 +562,7 @@ void MainWindow::loadSession(QString ID, bool setTabActive)
         queryList[queryID] = ID;
     }
 
+    // Change session tab index if necessary
     index = getSessionTabIndex(ID);
     if (setTabActive)
     {
@@ -570,6 +571,7 @@ void MainWindow::loadSession(QString ID, bool setTabActive)
     }
     highlightSession(ID, false);
 
+    // Save old session if necessary
     if (lastConversation == ID)
         return;
     UserSession::SessionData& oldSession =
@@ -583,16 +585,18 @@ void MainWindow::loadSession(QString ID, bool setTabActive)
         }
     }
 
+    // Load and activate the session
     index = getSessionIndex(ID);
     if (!browserList[index]->property("Initialized").toBool())
+        return;
+    if (!browserList[index]->property("Loaded").toBool())
     {
         loadSessionContent(ID);
-        browserList[index]->setProperty("Initialized", true);
+        browserList[index]->setProperty("Loaded", true);
     }
     ((QStackedLayout*)(ui->frameTextGroup->layout()))->setCurrentIndex(index);
     lastConversation = ID;
 
-    showNotification();
     updateCaption();
 }
 
@@ -602,7 +606,7 @@ void MainWindow::loadSessionContent(QString ID)
     session.active = true;
 
     // Load cached session content from session data
-    int tabIndex = getSessionTabIndex(ID);
+    int tabIndex = getSessionIndex(ID);
     QString buffer;
     QList<SessionMessageList::MessageEntry> messages =
                                     session.messageList->getAll();
@@ -658,6 +662,7 @@ void MainWindow::addTab(QString ID)
 
     newBrowser->setProperty("ID", ID);
     newBrowser->setProperty("Initialized", false);
+    newBrowser->setProperty("Loaded", false);
     newBrowser->setOpenLinks(false);
     newBrowser->setGeometry(ui->textBrowser->geometry());
     newEditor->setProperty("ID", ID);
@@ -676,6 +681,8 @@ void MainWindow::addTab(QString ID)
                            ID);
     ui->frameTextGroup->layout()->addWidget(newEditor);
     ui->frameMsg->show();
+
+    newBrowser->setProperty("Initialized", true);
 }
 
 // Initialize session tab with given session list
