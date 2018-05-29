@@ -22,14 +22,17 @@ public:
 protected:
     void keyPressEvent(QKeyEvent * event);
 
+private:
+    Ui::LoginWindow *ui;
+    ServerConfigDialog* serverConfig;
+    bool loggingIn;
+    void showLoginProgress();
+
 private slots:
     void onAccountVerifyFinished(VerifyError errorCode);
     void on_buttonLogin_clicked();
     void on_buttonSettings_clicked();
 
-private:
-    Ui::LoginWindow *ui;
-    ServerConfigDialog* serverConfig;
 };
 
 #endif // LOGINWINDOW_H

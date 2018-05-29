@@ -19,6 +19,7 @@ LoginWindow::LoginWindow(QWidget *parent) :
     ui->setupUi(this);
     ui->textID->setText(globalConfig.lastID());
     serverConfig = nullptr;
+    loggingIn = false;
 
     move((QApplication::desktop()->width() - width()) / 2,
          (QApplication::desktop()->height() - height()) / 2);
@@ -27,6 +28,8 @@ LoginWindow::LoginWindow(QWidget *parent) :
             SIGNAL(verifyFinished(VerifyError)),
             this,
             SLOT(onAccountVerifyFinished(VerifyError)));
+
+    showLoginProgress();
 }
 
 LoginWindow::~LoginWindow()
@@ -43,8 +46,32 @@ void LoginWindow::keyPressEvent(QKeyEvent * event)
         ui->buttonLogin->animateClick();
 }
 
+void LoginWindow::showLoginProgress()
+{
+    if (loggingIn)
+    {
+        ui->textState->setText("Logging in...");
+        ui->buttonLogin->setText("Cancel");
+        ui->frameInput->hide();
+        ui->frameProgress->show();
+    }
+    else
+    {
+        ui->textState->clear();
+        ui->buttonLogin->setEnabled(true);
+        ui->buttonLogin->setText("Login");
+        ui->frameInput->show();
+        ui->frameProgress->hide();
+    }
+}
+
 void LoginWindow::onAccountVerifyFinished(VerifyError errorCode)
 {
+    if (!loggingIn)
+        return;
+
+    loggingIn = false;
+    showLoginProgress();
     switch (errorCode)
     {
         case Account::VerifyError::Ok:
@@ -88,13 +115,18 @@ void LoginWindow::onAccountVerifyFinished(VerifyError errorCode)
                                   "You may need to check program integrity, or "
                                   "report this error to the developper.");
     }
-
-    ui->buttonLogin->setEnabled(true);
-    ui->buttonLogin->setText("Login");
 }
 
 void LoginWindow::on_buttonLogin_clicked()
 {
+    if (loggingIn)
+    {
+        // Cancel log in
+        loggingIn = false;
+        showLoginProgress();
+        return;
+    }
+
     globalConfig.setLastID(ui->textID->text());
 
     QList<QString> rootServer = globalConfig.rootServer().split(',')
@@ -102,15 +134,12 @@ void LoginWindow::on_buttonLogin_clicked()
     if (rootServer.count() >= 2)
         globalConnection.setRootServer(rootServer[0], rootServer[1].toInt());
 
+    loggingIn = true;
+    showLoginProgress();
     if (!globalAccount.verify(ui->textID->text(), ui->textPassword->text()))
     {
         // Assuming network problem
         onAccountVerifyFinished(Account::VerifyError::NetworkError);
-    }
-    else
-    {
-        ui->buttonLogin->setEnabled(false);
-        ui->buttonLogin->setText("Logging in...");
     }
 }
 
