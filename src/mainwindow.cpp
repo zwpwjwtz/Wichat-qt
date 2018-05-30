@@ -504,7 +504,9 @@ void MainWindow::applyUserSettings()
 {
     globalConversation.setUserDirectory(globalConfig.userDirectory(userID));
 
-    if (globalConfig.prefSendKey(userID) == -1)
+    int sendKey = globalConfig.prefSendKey(userID);
+    if (!(sendKey == WICHAT_MAIN_EDITOR_SENDKEY_ENTER ||
+          sendKey == WICHAT_MAIN_EDITOR_SENDKEY_CTRLENTER))
         globalConfig.setPrefSendKey(userID, WICHAT_MAIN_EDITOR_SENDKEY_ENTER);
 }
 
@@ -734,7 +736,13 @@ void MainWindow::removeTab(QString ID)
     editorList.removeAt(index);
     ui->tabSession->removeTab(getSessionTabIndex(ID));
     if (editorList.count() < 1)
+    {
         ui->frameMsg->hide();
+
+        // Trigger resizing manually
+        QCoreApplication::processEvents();
+        resizeEvent(0);
+    }
 }
 
 void MainWindow::changeSession()
@@ -811,7 +819,8 @@ void MainWindow::updateSysTrayMenu()
 
         // Add an entry for quitting program
         menuSysTray->addSeparator();
-        action = new QAction("Quit", menuSysTray);
+        action = new QAction(QIcon(":/Icons/exit.png"),
+                             "Quit", menuSysTray);
         action->setData(-1);
         menuSysTray->addAction(action);
 
@@ -2075,18 +2084,21 @@ void MainWindow::on_listFriend_customContextMenuRequested(const QPoint &pos)
         QAction* action = new QAction(menuFriendOption);
         action->setText("Open dialog");
         action->setData(WICHAT_MAIN_MENU_FRIEND_OPEN);
+        action->setIcon(QIcon(":/Icons/conversation.png"));
         menuFriendOption->addAction(action);
 
         // Action: WICHAT_MAIN_MENU_FRIEND_REMOVE
         action = new QAction(menuFriendOption);
         action->setText("Remove this friend");
         action->setData(WICHAT_MAIN_MENU_FRIEND_REMOVE);
+        action->setIcon(QIcon(":/Icons/remove.png"));
         menuFriendOption->addAction(action);
 
         // Action: WICHAT_MAIN_MENU_FRIEND_INFO
         action = new QAction(menuFriendOption);
         action->setText("View information");
         action->setData(WICHAT_MAIN_MENU_FRIEND_INFO);
+        action->setIcon(QIcon(":/Icons/information.png"));
         menuFriendOption->addAction(action);
 
         actionList = menuFriendOption->actions();
@@ -2109,7 +2121,7 @@ void MainWindow::on_listFriend_customContextMenuRequested(const QPoint &pos)
 void MainWindow::on_buttonImage_clicked()
 {
     QString path = QFileDialog::getOpenFileName(this,
-                         "Send image(s)",
+                         "Send image",
                          lastFilePath,
                          QString(WICHAT_MAIN_FILE_FILTER_GIF).append(";;")
                          .append(WICHAT_MAIN_FILE_FILTER_JPG).append(";;")
@@ -2127,7 +2139,7 @@ void MainWindow::on_buttonImage_clicked()
 void MainWindow::on_buttonFile_clicked()
 {
     QString path = QFileDialog::getOpenFileName(this,
-                         "Send image(s)",
+                         "Send file",
                          lastFilePath,
                          QString(WICHAT_MAIN_FILE_FILTER_ALL));
     if (path.isEmpty())
@@ -2202,12 +2214,14 @@ void MainWindow::on_buttonWichat_clicked()
         QAction* action = new QAction(menuApp);
         action->setText("Settings");
         action->setData(WICHAT_MAIN_MENU_APP_PREFERENCE);
+        action->setIcon(QIcon(":/Icons/advanced.png"));
         menuApp->addAction(action);
 
         // Action: WICHAT_MAIN_MENU_APP_ABOUT
         action = new QAction(menuApp);
         action->setText("About Wichat");
         action->setData(WICHAT_MAIN_MENU_APP_ABOUT);
+        action->setIcon(QIcon(":/Icons/Wichat.png"));
         menuApp->addAction(action);
 
         menuApp->addSeparator();
@@ -2216,6 +2230,7 @@ void MainWindow::on_buttonWichat_clicked()
         action = new QAction(menuApp);
         action->setText("Quit");
         action->setData(WICHAT_MAIN_MENU_APP_QUIT);
+        action->setIcon(QIcon(":/Icons/exit.png"));
         menuApp->addAction(action);
 
         connect(menuApp,

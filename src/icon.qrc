@@ -19,5 +19,7 @@
         <file>Icons/online.png</file>
         <file>Icons/color.png</file>
         <file>Icons/Wichat.png</file>
+        <file>Icons/exit.png</file>
+        <file>Icons/information.png</file>
     </qresource>
 </RCC>

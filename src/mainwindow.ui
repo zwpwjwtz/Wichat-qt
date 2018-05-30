@@ -121,6 +121,9 @@
             <underline>true</underline>
            </font>
           </property>
+          <property name="toolTip">
+           <string>Edit text style</string>
+          </property>
           <property name="text">
            <string>T</string>
           </property>
@@ -136,6 +139,9 @@
             <width>41</width>
             <height>31</height>
            </rect>
+          </property>
+          <property name="toolTip">
+           <string>Insert emoticons</string>
           </property>
           <property name="icon">
            <iconset resource="icon.qrc">
@@ -175,6 +181,9 @@
              <height>24</height>
             </rect>
            </property>
+           <property name="toolTip">
+            <string>Font family</string>
+           </property>
           </widget>
           <widget class="QComboBox" name="comboTextSize">
            <property name="geometry">
@@ -184,6 +193,9 @@
              <width>51</width>
              <height>31</height>
             </rect>
+           </property>
+           <property name="toolTip">
+            <string>Font size</string>
            </property>
            <property name="currentIndex">
             <number>2</number>
@@ -248,6 +260,9 @@
              <height>31</height>
             </rect>
            </property>
+           <property name="toolTip">
+            <string>Font color</string>
+           </property>
            <property name="text">
             <string/>
            </property>
@@ -279,6 +294,9 @@
              <underline>true</underline>
             </font>
            </property>
+           <property name="toolTip">
+            <string>Font style</string>
+           </property>
            <property name="text">
             <string>A</string>
            </property>
@@ -291,6 +309,9 @@
              <width>31</width>
              <height>31</height>
             </rect>
+           </property>
+           <property name="toolTip">
+            <string>Text align mode</string>
            </property>
            <property name="text">
             <string/>
@@ -316,6 +337,9 @@
             <height>31</height>
            </rect>
           </property>
+          <property name="toolTip">
+           <string>Send image</string>
+          </property>
           <property name="icon">
            <iconset resource="icon.qrc">
             <normaloff>:/Icons/insert-image.png</normaloff>:/Icons/insert-image.png</iconset>
@@ -338,6 +362,9 @@
             <width>41</width>
             <height>31</height>
            </rect>
+          </property>
+          <property name="toolTip">
+           <string>Send file</string>
           </property>
           <property name="icon">
            <iconset resource="icon.qrc">
@@ -467,6 +494,9 @@
               <height>0</height>
              </size>
             </property>
+            <property name="toolTip">
+             <string>Send message</string>
+            </property>
             <property name="text">
              <string>Send</string>
             </property>
@@ -537,6 +567,9 @@
             </property>
             <item>
              <widget class="QComboBox" name="comboState">
+              <property name="toolTip">
+               <string>Send online state</string>
+              </property>
               <property name="frame">
                <bool>false</bool>
               </property>
@@ -544,6 +577,9 @@
             </item>
             <item>
              <widget class="QPushButton" name="buttonWichat">
+              <property name="toolTip">
+               <string>Main menu</string>
+              </property>
               <property name="icon">
                <iconset resource="icon.qrc">
                 <normaloff>:/Icons/Wichat.png</normaloff>:/Icons/Wichat.png</iconset>
@@ -667,6 +703,9 @@
                 <width>30</width>
                 <height>30</height>
                </size>
+              </property>
+              <property name="toolTip">
+               <string>Add new friend</string>
               </property>
               <property name="icon">
                <iconset resource="icon.qrc">
