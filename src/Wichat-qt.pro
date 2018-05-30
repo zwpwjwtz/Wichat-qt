@@ -130,7 +130,7 @@ RESOURCES += \
 
 DISTFILES +=
 
-isEmpty($$PREFIX){
+isEmpty(PREFIX){
     PREFIX = .
 }
 !win32{

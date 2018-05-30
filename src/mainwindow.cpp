@@ -46,6 +46,7 @@
 #define WICHAT_MAIN_RESOURCE_DIR "Resource"
 #else
 #define WICHAT_MAIN_RESOURCE_DIR "/usr/share"
+#define WICHAT_MAIN_RESOURCE_DIR_2 "/app/share"
 #endif
 
 #define WICHAT_MAIN_MENU_FRIEND_OPEN 0
@@ -319,12 +320,19 @@ void MainWindow::init()
     }
     globalConversation.setPeerSession(peerSessionList);
 
-    resizeEvent(0); // Trigger resizing manually
-    sysTrayIcon->show();
-    emoticonList->setResourceDir(QDir::current()
-                                 .absoluteFilePath(WICHAT_MAIN_RESOURCE_DIR));
+    QDir resourceDir(WICHAT_MAIN_RESOURCE_DIR);
+#ifdef WICHAT_MAIN_RESOURCE_DIR_2
+    if (!resourceDir.exists())
+        resourceDir.setPath(WICHAT_MAIN_RESOURCE_DIR_2);
+#endif
+    if (!resourceDir.exists())
+        resourceDir = QCoreApplication::applicationDirPath();
+    emoticonList->setResourceDir(resourceDir.absolutePath());
 
     applyUserSettings();
+
+    resizeEvent(0); // Trigger resizing manually
+    sysTrayIcon->show();
 
     addTask(taskUpdateAll);
     timer.start();
@@ -569,13 +577,12 @@ void MainWindow::loadSession(QString ID, bool setTabActive)
     if (setTabActive)
     {
         ui->tabSession->setCurrentIndex(index);
-        return;
     }
+    if (lastConversation == ID)
+        return;
     highlightSession(ID, false);
 
     // Save old session if necessary
-    if (lastConversation == ID)
-        return;
     UserSession::SessionData& oldSession =
                                 userSessionList.getSession(lastConversation);
     if (!oldSession.ID.isEmpty())
