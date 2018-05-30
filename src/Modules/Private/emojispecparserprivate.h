@@ -1,13 +1,13 @@
 #ifndef EMOJISPECPARSERPRIVATE_H
 #define EMOJISPECPARSERPRIVATE_H
 
-#include <QObject>
+#include <QtGlobal>
 #include <QMap>
 
 
 class EmojiSpecParser;
 
-class EmojiSpecParserPrivate : QObject
+class EmojiSpecParserPrivate
 {
     Q_DECLARE_PUBLIC(EmojiSpecParser)
 protected:

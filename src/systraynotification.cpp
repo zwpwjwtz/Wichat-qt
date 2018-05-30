@@ -116,7 +116,7 @@ int SystrayNotification::removeNotes(Notification::NoteEvent noteType,
     {
         if (!source.isEmpty() && source != tempList[i].source)
             continue;
-        if (tempList[i].type = noteType)
+        if (tempList[i].type == noteType)
         {
             noteList.remove(tempList[i].ID);
             removedCount++;

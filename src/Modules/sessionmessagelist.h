@@ -30,7 +30,8 @@ public:
         QByteArray content;
     };
 
-    SessionMessageList();
+    explicit SessionMessageList();
+    ~SessionMessageList();
 
     int count();
     void clear();

@@ -59,6 +59,7 @@ public:
 
     explicit Account();
     explicit Account(ServerConnection& server);
+    ~Account();
 
     static bool checkID(QString ID);
     static bool checkPassword(QString password);

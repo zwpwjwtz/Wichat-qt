@@ -8,7 +8,6 @@
 
 class PeerSessionPrivate : public AbstractSessionPrivate
 {
-    Q_OBJECT
     Q_DECLARE_PUBLIC(PeerSession)
 protected:
     PeerSession* q_ptr;

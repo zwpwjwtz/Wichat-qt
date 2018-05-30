@@ -1,7 +1,7 @@
 #ifndef ENCRYPTORPRIVATE_H
 #define ENCRYPTORPRIVATE_H
 
-#include <QObject>
+#include <QtGlobal>
 #include "opensslpp/include/opensslpp/random.h"
 
 #define BLOWFISH_MAX_PBLOCK_SIZE 18
@@ -12,9 +12,8 @@
 
 class Encryptor;
 
-class EncryptorPrivate : QObject
+class EncryptorPrivate
 {
-    Q_OBJECT
     Q_DECLARE_PUBLIC(Encryptor)
 
 public:

@@ -1,7 +1,6 @@
 #ifndef SERVERCONNECTION_P_H
 #define SERVERCONNECTION_P_H
 
-#include <QObject>
 #include <QNetworkAccessManager>
 
 class QNetworkRequest;

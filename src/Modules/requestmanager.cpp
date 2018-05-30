@@ -142,7 +142,7 @@ RequestManager::getData(int requestID, QByteArray& buffer)
     }
 
      d->requestList.removeAt(recordIndex);
-    if (data.length() < 4)
+    if (data.length() <= 4)
         return ReplyIncomplete;
 
     d->encoder.decrypt(Encryptor::AES,

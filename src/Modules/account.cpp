@@ -61,6 +61,11 @@ Account::Account(ServerConnection &server)
             SLOT(onPrivateEvent(int, int)));
 }
 
+Account::~Account()
+{
+    delete this->d_ptr;
+}
+
 bool Account::checkID(QString ID)
 {
     int length = ID.length();

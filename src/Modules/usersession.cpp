@@ -25,6 +25,11 @@ UserSession::UserSession(UserSessionPrivate* d)
     this->d_ptr = d;
 }
 
+UserSession::~UserSession()
+{
+    delete this->d_ptr;
+}
+
 bool UserSession::loadFromFile(QString userDir)
 {
     Q_D(UserSession);

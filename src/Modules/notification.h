@@ -31,6 +31,8 @@ public:
     };
 
     explicit Notification();
+    ~Notification();
+
     int count();
     void append(const Note& note);
     const Note& peek(int noteID);

@@ -20,6 +20,7 @@ public:
     };
 
     explicit Encryptor();
+    ~Encryptor();
 
     static QByteArray getCRC32(const QByteArray &source);
     static QByteArray getSHA256(const QByteArray& source, bool toDec = false);

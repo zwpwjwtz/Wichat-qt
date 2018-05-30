@@ -43,6 +43,11 @@ Conversation::Conversation(ServerConnection &server)
             SLOT(onPrivateEvent(int, int)));
 }
 
+Conversation::~Conversation()
+{
+    delete this->d_ptr;
+}
+
 bool Conversation::verify(QByteArray sessionID, QByteArray sessionKey)
 {
     Q_D(Conversation);

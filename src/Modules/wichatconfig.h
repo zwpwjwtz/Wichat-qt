@@ -6,14 +6,14 @@
 
 class WichatConfigPrivate;
 
-class WichatConfig : public QObject
+class WichatConfig
 {
-    Q_OBJECT
     Q_DECLARE_PRIVATE(WichatConfig)
     WichatConfigPrivate* d_ptr;
 
 public:
     explicit WichatConfig();
+    ~WichatConfig();
 
     // Application configuration
     bool loadConfigFile(QString path);

@@ -16,8 +16,14 @@ AbstractSession::AbstractSession(AbstractSessionPrivate* d)
     this->d_ptr = d;
 }
 
+AbstractSession::~AbstractSession()
+{
+    delete this->d_ptr;
+}
+
 AbstractSessionPrivate::AbstractSessionPrivate()
 {
+    this->q_ptr = nullptr;
 }
 
 AbstractSessionPrivate::AbstractSessionPrivate(AbstractSession *parent)

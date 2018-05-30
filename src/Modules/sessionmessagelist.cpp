@@ -12,6 +12,11 @@ SessionMessageList::SessionMessageList()
     this->d_ptr = new SessionMessageListPrivate(this);
 }
 
+SessionMessageList::~SessionMessageList()
+{
+    delete this->d_ptr;
+}
+
 int SessionMessageList::count()
 {
     Q_D(SessionMessageList);

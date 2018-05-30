@@ -1,14 +1,13 @@
 #ifndef AbstractSession_H
 #define AbstractSession_H
 
-#include <QObject>
+#include <QtGlobal>
 
 
 class AbstractSessionPrivate;
 
-class AbstractSession : public QObject
+class AbstractSession
 {
-    Q_OBJECT
     Q_DECLARE_PRIVATE(AbstractSession)
 protected:
     AbstractSessionPrivate* d_ptr;
@@ -18,6 +17,7 @@ public:
 
     explicit AbstractSession();
     AbstractSession(AbstractSessionPrivate* d);
+    ~AbstractSession();
     virtual int count() = 0;
     virtual bool exists(QString sessionID) = 0;
     virtual void add(QString sessionID) = 0;

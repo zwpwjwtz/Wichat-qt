@@ -6,6 +6,11 @@ Notification::Notification()
     this->d_ptr = new NotificationPrivate(this);
 }
 
+Notification::~Notification()
+{
+    delete this->d_ptr;
+}
+
 int Notification::count()
 {
     Q_D(Notification);

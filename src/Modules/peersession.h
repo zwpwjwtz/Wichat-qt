@@ -8,7 +8,6 @@ class PeerSessionPrivate;
 
 class PeerSession : public AbstractSession
 {
-    Q_OBJECT
     Q_DECLARE_PRIVATE(PeerSession)
 protected:
     PeerSession(PeerSessionPrivate* d);
@@ -23,6 +22,8 @@ public:
     };
 
     explicit PeerSession();
+    ~PeerSession();
+
     int count();
     bool exists(QString sessionID);
     void add(QString sessionID);

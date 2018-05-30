@@ -10,7 +10,6 @@ class UserSessionPrivate;
 
 class UserSession : public AbstractSession
 {
-    Q_OBJECT
     Q_DECLARE_PRIVATE(UserSession)
 protected:
     UserSession(UserSessionPrivate* d);
@@ -25,6 +24,8 @@ public:
     };
 
     explicit UserSession();
+    ~UserSession();
+
     bool loadFromFile(QString userDir);
     bool saveToFile(QString userDir);
     int count();

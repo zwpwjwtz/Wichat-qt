@@ -9,6 +9,11 @@ Encryptor::Encryptor()
     this->d_ptr = new EncryptorPrivate;
 }
 
+Encryptor::~Encryptor()
+{
+    delete this->d_ptr;
+}
+
 QByteArray Encryptor::getCRC32(const QByteArray& source)
 {
     unsigned int ret = EncryptorPrivate::crc32_string(source.data(), source.size());

@@ -53,6 +53,8 @@ public:
 
     explicit Conversation();
     explicit Conversation(ServerConnection& server);
+    ~Conversation();
+
     void setUserDirectory(QString path);
     void setPeerSession(PeerSession& sessionList);
     bool verify(QByteArray sessionID, QByteArray sessionKey);

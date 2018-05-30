@@ -1,14 +1,14 @@
 #ifndef AbstractSessionPRIVATE_H
 #define AbstractSessionPRIVATE_H
 
-#include <QObject>
-#include <QFile>
+#include <QtGlobal>
 
+
+class QFile;
 
 class AbstractSession;
-class AbstractSessionPrivate : public QObject
+class AbstractSessionPrivate
 {
-    Q_OBJECT
     Q_DECLARE_PUBLIC(AbstractSession)
 protected:
     AbstractSession* q_ptr;

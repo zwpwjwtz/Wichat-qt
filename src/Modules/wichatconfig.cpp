@@ -31,6 +31,11 @@ WichatConfig::WichatConfig()
     this->d_ptr = new WichatConfigPrivate(this);
 }
 
+WichatConfig::~WichatConfig()
+{
+    delete this->d_ptr;
+}
+
 bool WichatConfig::loadConfigFile(QString path)
 {
     Q_D(WichatConfig);
@@ -351,8 +356,7 @@ bool WichatConfigPrivate::switchUser(QString userID)
     userConfig = new QSettings(QString(currentUserDir)
                                .append('/')
                                .append(WICHAT_CONFIG_FILENAME_USER),
-                               QSettings::NativeFormat,
-                               this);
+                               QSettings::NativeFormat);
     return true;
 }
 

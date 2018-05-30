@@ -14,7 +14,7 @@
 
 class EmojiSpecParserPrivate;
 
-class EmojiSpecParser : public QObject
+class EmojiSpecParser
 {
     Q_DECLARE_PRIVATE(EmojiSpecParser)
 protected:

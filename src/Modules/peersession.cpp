@@ -11,6 +11,11 @@ PeerSession::PeerSession()
     this->d_ptr = new PeerSessionPrivate(this);
 }
 
+PeerSession::~PeerSession()
+{
+    delete this->d_ptr;
+}
+
 PeerSession::PeerSession(PeerSessionPrivate* d)
 {
     this->d_ptr = d;

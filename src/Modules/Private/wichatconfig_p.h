@@ -5,9 +5,8 @@
 
 class WichatConfig;
 
-class WichatConfigPrivate : QObject
+class WichatConfigPrivate
 {
-    Q_OBJECT
     Q_DECLARE_PUBLIC(WichatConfig)
     WichatConfig* q_ptr;
 
