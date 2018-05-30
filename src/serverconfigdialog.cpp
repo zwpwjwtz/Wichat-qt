@@ -6,6 +6,10 @@ ServerConfigDialog::ServerConfigDialog(QWidget *parent) :
     ui(new Ui::ServerConfigDialog)
 {
     ui->setupUi(this);
+
+    setFixedSize(width(), height());
+    WichatRootServer = "dns.wichat.net";
+    WichatRootServerPort = 80;
 }
 
 ServerConfigDialog::~ServerConfigDialog()
@@ -26,6 +30,6 @@ void ServerConfigDialog::on_buttonBox_accepted()
 {
     WichatRootServer = ui->textRootServer->text();
     WichatRootServerPort = ui->textRootPort->text().toInt();
-    if (WichatRootServerPort <= 0)
-        WichatRootServerPort = 80;
+    if (WichatRootServerPort < 0)
+        WichatRootServerPort = 0;
 }

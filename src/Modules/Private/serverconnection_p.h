@@ -25,7 +25,7 @@ public:
 #ifdef IS_LOCAL_SERVER
     const char* DefaultRootServer = "127.0.0.1.";
 #else
-    const char* DefaultRootServer = "dns.wichat.org";
+    const char* DefaultRootServer = "dns.wichat.net";
 #endif
 
     const char* QueryHeader = "WiChatCQ";

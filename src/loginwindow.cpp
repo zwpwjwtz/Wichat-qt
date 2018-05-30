@@ -17,6 +17,8 @@ LoginWindow::LoginWindow(QWidget *parent) :
     ui(new Ui::LoginWindow)
 {
     ui->setupUi(this);
+
+    setFixedSize(width(), height());
     ui->textID->setText(globalConfig.lastID());
     serverConfig = nullptr;
     loggingIn = false;
@@ -148,7 +150,9 @@ void LoginWindow::on_buttonSettings_clicked()
     if (!serverConfig)
         serverConfig = new ServerConfigDialog;
 
-    QStringList rootServerInfo = globalConfig.rootServer().split(',');
+    QStringList rootServerInfo = globalConfig.rootServer()
+                                             .split(',',
+                                                    QString::SkipEmptyParts);
     if (rootServerInfo.count() > 0)
         serverConfig->WichatRootServer = rootServerInfo[0];
     else
