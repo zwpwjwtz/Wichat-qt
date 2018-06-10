@@ -293,7 +293,7 @@ MainWindow::MainWindow(QWidget *parent) :
     groupSendOption = nullptr;
     timer.setInterval(1000);
     manualExit = false;
-    lastHoveredTab = 0;
+    lastHoveredTab = -1;
     conversationLoginState = 0;
     notificationState = 0;
 }
@@ -696,9 +696,12 @@ void MainWindow::addTab(QString ID)
             this,
             SLOT(onBrowserLinkClicked(const QUrl&)));
 
+    QString tabText = friendInfoList.value(ID).remarks;
+    if (tabText.isEmpty())
+        tabText = ID;
     ui->tabSession->addTab(newBrowser,
                            QIcon(getStateImagePath(ID)),
-                           ID);
+                           tabText);
     ui->frameTextGroup->layout()->addWidget(newEditor);
     ui->frameMsg->show();
 
