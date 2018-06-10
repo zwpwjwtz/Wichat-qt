@@ -57,6 +57,7 @@
 #define WICHAT_MAIN_MENU_APP_QUIT 5
 
 #define WICHAT_MAIN_FILE_FILTER_ALL "All (*.*)(*.*)"
+#define WICHAT_MAIN_FILE_FILTER_IMAGE "Image file (*.gif *.jpg *.png)(*.gif *.jpg *.png)"
 #define WICHAT_MAIN_FILE_FILTER_GIF "GIF file (*.gif)(*.gif)"
 #define WICHAT_MAIN_FILE_FILTER_JPG "JPEG file (*.jpg *.jpeg)(*.jpg *.jpeg)"
 #define WICHAT_MAIN_FILE_FILTER_PNG "PNG file (*.png)(*.png)"
@@ -1225,7 +1226,7 @@ QString MainWindow::renderMessage(const SessionMessageList::MessageEntry& messag
         int displayWidth = image.size().width();
         if (displayWidth > ui->textBrowser->width())
             displayWidth = ui->textBrowser->width() - 20;
-        temp = QString("<img src=\"file://")
+        temp = QString("<img src=\"")
                     .append(fileName)
                     .append("\" alt=Image width=%1 />")
                     .arg(QString::number(displayWidth));
@@ -1253,7 +1254,7 @@ QString MainWindow::renderMessage(const SessionMessageList::MessageEntry& messag
         temp = QString("<div style=\"width:300px;border:1px solid;\">"
                           "<div style=\"float:right\">")
                     .append(noteText)
-                    .append("<a href=\"file://")
+                    .append("<a href=\"")
                     .append(fileName)
                     .append("\" target=_blank>View the file</a></div></div>");
 
@@ -2144,7 +2145,8 @@ void MainWindow::on_buttonImage_clicked()
     QString path = QFileDialog::getOpenFileName(this,
                          "Send image",
                          lastFilePath,
-                         QString(WICHAT_MAIN_FILE_FILTER_GIF).append(";;")
+                         QString(WICHAT_MAIN_FILE_FILTER_IMAGE).append(";;")
+                         .append(WICHAT_MAIN_FILE_FILTER_GIF).append(";;")
                          .append(WICHAT_MAIN_FILE_FILTER_JPG).append(";;")
                          .append(WICHAT_MAIN_FILE_FILTER_PNG),
                          &lastImageFilter);
