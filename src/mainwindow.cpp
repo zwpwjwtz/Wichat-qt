@@ -367,6 +367,16 @@ void MainWindow::closeEvent(QCloseEvent* event)
             return;
         }
     }
+
+    // Log out before exit
+    changeState(Account::OnlineState::Offline);
+    QEventLoop loop(this);
+    connect(&globalAccount,
+            SIGNAL(setStateFinished(int,bool,OnlineState)),
+            &loop,
+            SLOT(quit()));
+    loop.exec();
+
     if (aboutDialog)
         aboutDialog->close();
     if (accountInfo)
@@ -1709,7 +1719,10 @@ void MainWindow::onSysTrayMenuClicked(QAction* action)
 {
     int state = action->data().toInt();
     if (state == -1)
+    {
+        manualExit = true;
         close();
+    }
     else if (state > 0)
         changeState(Account::OnlineState(action->data().toInt()));
 }
@@ -1734,6 +1747,7 @@ void MainWindow::onAppMenuClicked(QAction* action)
         }
         case WICHAT_MAIN_MENU_APP_QUIT:
         {
+            manualExit = true;
             close();
             break;
         }

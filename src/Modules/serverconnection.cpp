@@ -304,7 +304,8 @@ int ServerConnectionPrivate::httpRequest(QString strHostName,
     QUrl url;
     url.setScheme("http");
     url.setHost(strHostName);
-    url.setPort(intPort);
+    if (intPort != 80)
+        url.setPort(intPort);
     url.setPath(strUrl);
 
     QNetworkRequest request;
