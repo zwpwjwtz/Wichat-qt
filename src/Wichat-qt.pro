@@ -19,7 +19,17 @@ win32{
 COMPONENT_DIR = D:\Qt\Tools\mingw492_32\opt
 OPENSSL_INCDIR = $$COMPONENT_DIR\include
 OPENSSL_LIBDIR = $$COMPONENT_DIR\lib
+}
 
+macx{
+# Please change the value of "COMPONENT_DIR" to the directory
+# that contains headers and static libraries of openssl
+COMPONENT_DIR = /usr/local/Cellar/openssl/1.0.2o_2
+OPENSSL_INCDIR = $$COMPONENT_DIR/include
+OPENSSL_LIBDIR = $$COMPONENT_DIR/lib
+}
+
+win32|macx{
 QMAKE_INCDIR += $$OPENSSL_INCDIR
 QMAKE_LIBDIR += $$OPENSSL_LIBDIR
 QMAKE_LIBS += -lssl -lcrypto

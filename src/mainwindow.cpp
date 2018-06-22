@@ -1638,9 +1638,8 @@ void MainWindow::onKeyRelease(QObject* watched, QKeyEvent* event)
 void MainWindow::onSessionTabClose(bool checked)
 {
     Q_UNUSED(checked)
-    int index = tabBarSession->tabAt(QCursor::pos()
-                                                - pos()
-                                                - QPoint(0, 50));
+    int index = tabBarSession->tabAt(
+                                tabBarSession->mapFromGlobal(QCursor::pos()));
     tabBarSession->setTabButton(index,
                                            QTabBar::RightSide,
                                            nullptr);
@@ -1701,11 +1700,17 @@ void MainWindow::onSysTrayIconClicked(QSystemTrayIcon::ActivationReason reason)
             {
                 sysTrayNoteList->show();
                 sysTrayNoteList->activate();
-                QRect iconPos = sysTrayIcon->geometry();
-                sysTrayNoteList->move(iconPos.x() -
-                                      sysTrayNoteList->width() / 2,
-                                      iconPos.y() -
-                                      sysTrayNoteList->height());
+                QRect iconGeo = sysTrayIcon->geometry();
+                if (iconGeo.y() - sysTrayNoteList->height() <= 0)
+                    sysTrayNoteList->move(iconGeo.x() -
+                                          sysTrayNoteList->width() / 2,
+                                          iconGeo.y() +
+                                          sysTrayNoteList->height());
+                else
+                    sysTrayNoteList->move(iconGeo.x() -
+                                          sysTrayNoteList->width() / 2,
+                                          iconGeo.y() -
+                                          sysTrayNoteList->height());
             }
             else
                 setWindowState(Qt::WindowActive);
