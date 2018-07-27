@@ -1,20 +1,17 @@
 ﻿#ifndef CONVERSATION_H
 #define CONVERSATION_H
 
-#include <QObject>
 #include <QDateTime>
+#include "abstractservice.h"
 
 
 class PeerSession;
-class ServerConnection;
 class ConversationPrivate;
 
-class Conversation : public QObject
+class Conversation : public AbstractService
 {
     Q_OBJECT
     Q_DECLARE_PRIVATE(Conversation)
-protected:
-    ConversationPrivate* d_ptr;
 
 public:
     enum class VerifyError
@@ -46,9 +43,6 @@ public:
         QByteArray content;
     };
 
-    static const int MaxIDLen = 8;
-    static const int SessionLen = 16;
-    static const int KeyLen = 16;
     static const int RecordSaltLen = 16;
 
     explicit Conversation();
@@ -76,12 +70,6 @@ signals:
     void receiveMessageFinished(int queryID,
                                 QList<Conversation::MessageEntry>& messages);
     void fixBrokenConnectionFinished(int queryID, bool successful);
-
-private:
-    void dispatchQueryRespone(int requestID);
-
-private slots:
-    void onPrivateEvent(int eventType, int data);
 };
 
 #endif // CONVERSATION_H

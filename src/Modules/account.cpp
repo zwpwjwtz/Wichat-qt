@@ -40,8 +40,6 @@
 #define WICHAT_ACCOUNT_RESPONSE_PASSWORD_OK 1
 #define WICHAT_ACCOUNT_RESPONSE_PASSWORD_INCORRECT 2
 
-#define WICHAT_ACCOUNT_EVENT_REQUEST_FINISHED 1
-
 
 Account::Account()
 {
@@ -52,7 +50,7 @@ Account::Account()
             SLOT(onPrivateEvent(int, int)));
 }
 
-Account::Account(ServerConnection &server)
+Account::Account(ServerConnection& server)
 {
     this->d_ptr = new AccountPrivate(this, &server);
     connect(d_ptr,
@@ -362,187 +360,142 @@ bool Account::queryFriendInfo(QString ID, int& queryID)
     return true;
 }
 
-void Account::dispatchQueryRespone(int requestID)
+AccountPrivate::AccountPrivate(Account *parent, ServerConnection *server) :
+    AbstractServicePrivate(parent, server){}
+
+void AccountPrivate::dispatchQueryRespone(int requestID)
 {
-    Q_D(Account);
+    Q_Q(Account);
 
     bool successful;
     QByteArray data;
     QList<QByteArray> tempList;
 
-    int requestIndex = d->getRequestIndexByID(requestID);
-    AccountPrivate::RequestType requestType = d->requestList[requestIndex].type;
-    if (requestType == AccountPrivate::RequestType::Login)
+    int requestIndex = getRequestIndexByID(requestID);
+    RequestType requestType(requestList[requestIndex].type);
+    if (requestType == RequestType::Login)
     {
-        d->processLogin(requestID);
-        d->requestList.removeAt(requestIndex);
+        processLogin(requestID);
+        requestList.removeAt(requestIndex);
         return;
     }
 
-    RequestManager::RequestError errCode = d->server->getData(requestID, data);
+    RequestManager::RequestError errCode = server->getData(requestID, data);
     if (errCode == RequestManager::Ok)
     {
-        successful = d->processReplyData(requestType, data);
+        successful = processReplyData(requestType, data);
         switch (requestType)
         {
             // For some operations, the first byte (indicating if
             // it is successful or not) has already been checked in
-            // d->processReplyData(), and no further checking is needed
+            // processReplyData(), and no further checking is needed
             // So we simply pass the value of "successful" to these signals
             case AccountPrivate::RequestType::ResetSession:
             {
-                successful &= data.length() > KeyLen;
+                successful &= data.length() > Account::KeyLen;
                 if (successful)
                 {
-                    d->currentSession = data.left(SessionLen);
-                    d->sessionKey = data.mid(SessionLen, KeyLen);
-                    d->server->setSessionInfo(d->currentSession, d->sessionKey);
+                    currentSession = data.left(Account::SessionLen);
+                    sessionKey = data.mid(Account::SessionLen, Account::KeyLen);
+                    server->setSessionInfo(currentSession, sessionKey);
                 }
-                emit resetSessionFinished(requestID, successful);
+                emit q->resetSessionFinished(requestID, successful);
                 break;
             }
             case AccountPrivate::RequestType::SetPassword:
             {
-                emit setPasswordFinished(requestID, successful);
+                emit q->setPasswordFinished(requestID, successful);
                 break;
             }
             case AccountPrivate::RequestType::SetState:
             {
                 if (successful)
-                    d->currentState = OnlineState(data.at(0));
-                emit setStateFinished(requestID, successful, d->currentState);
+                    currentState = Account::OnlineState(data.at(0));
+                emit q->setStateFinished(requestID,
+                                         successful,
+                                         currentState);
                 break;
             }
             case AccountPrivate::RequestType::SetOfflineMsg:
             {
-                emit setOfflineMsgFinished(requestID, successful);
+                emit q->setOfflineMsgFinished(requestID, successful);
                 break;
             }
             case AccountPrivate::RequestType::GetFriendList:
             {
-                QList<AccountListEntry> idList;
-                d->parseAccountList(data, "b", idList);
+                QList<Account::AccountListEntry> idList;
+                parseAccountList(data, "b", idList);
                 for (int i=0; i<idList.count(); i++)
-                    emit friendRemoved(idList[i].ID);
-                d->parseAccountList(data, "w", idList);
+                    emit q->friendRemoved(idList[i].ID);
+                parseAccountList(data, "w", idList);
                 for (int i=0; i<idList.count(); i++)
-                    emit friendRequest(idList[i].ID);
-                d->parseAccountList(data, "c", idList);
-                emit queryFriendListFinished(requestID, idList);
+                    emit q->friendRequest(idList[i].ID);
+                parseAccountList(data, "c", idList);
+                emit q->queryFriendListFinished(requestID, idList);
                 break;
             }
             case AccountPrivate::RequestType::AddFriend:
             {
-                QList<AccountListEntry> idList;
-                d->parseAccountList(data, "f", idList);
+                QList<Account::AccountListEntry> idList;
+                parseAccountList(data, "f", idList);
                 successful &= idList.isEmpty();
-                emit addFriendFinished(requestID, successful);
+                emit q->addFriendFinished(requestID, successful);
                 break;
             }
             case AccountPrivate::RequestType::RemoveFriend:
             {
-                QList<AccountListEntry> idList;
-                d->parseAccountList(data, "f", idList);
+                QList<Account::AccountListEntry> idList;
+                parseAccountList(data, "f", idList);
                 successful &= idList.isEmpty();
-                emit removeFriendFinished(requestID, successful);
+                emit q->removeFriendFinished(requestID, successful);
                 break;
             }
             case AccountPrivate::RequestType::GetFriendRemarks:
             {
                 QList<QString> remarkList;
-                d->parseMixedList(data, "NOTE", tempList);
+                parseMixedList(data, "NOTE", tempList);
                 for (int i=0; i<tempList.count(); i++)
                     remarkList.push_back(tempList[i]);
-                emit queryFriendRemarksFinished(requestID, remarkList);
+                emit q->queryFriendRemarksFinished(requestID, remarkList);
                 break;
             }
             case AccountPrivate::RequestType::SetFriendRemarks:
             {
-                emit setFriendRemarksFinished(requestID, successful);
+                emit q->setFriendRemarksFinished(requestID, successful);
                 break;
             }
             case AccountPrivate::RequestType::GetFriendInfo:
             {
-                QList<AccountInfoEntry> accountInfoList;
-                AccountInfoEntry accountInfo;
-                d->parseMixedList(data, "ID", tempList);
+                QList<Account::AccountInfoEntry> accountInfoList;
+                Account::AccountInfoEntry accountInfo;
+                parseMixedList(data, "ID", tempList);
                 for (int i=0; i<tempList.count(); i++)
                 {
                     accountInfo.ID = tempList[i];
                     accountInfoList.push_back(accountInfo);
                 }
-                d->parseMixedList(data, "MSG", tempList);
+                parseMixedList(data, "MSG", tempList);
                 for (int i=0; i<tempList.count(); i++)
                 {
                     accountInfoList[i].offlineMsg = tempList[i];
                 }
-                emit queryFriendInfoFinished(requestID, accountInfoList);
+                emit q->queryFriendInfoFinished(requestID, accountInfoList);
                 break;
             }
             default:
-                emit queryError(requestID, QueryError::UnknownError);
+                emit q->queryError(requestID,
+                                   Account::QueryError::UnknownError);
         }
     }
     else if (errCode == RequestManager::VersionTooOld)
-        emit queryError(requestID, QueryError::VersionNotSupported);
+        emit q->queryError(requestID, Account::QueryError::VersionNotSupported);
     else if (errCode == RequestManager::CannotConnect)
-        emit queryError(requestID, QueryError::NetworkError);
+        emit q->queryError(requestID, Account::QueryError::NetworkError);
     else
-        emit queryError(requestID, QueryError::UnknownError);
+        emit q->queryError(requestID, Account::QueryError::UnknownError);
 
-    d->requestList.removeAt(requestIndex);
+    requestList.removeAt(requestIndex);
 }
-
-void Account::onPrivateEvent(int eventType, int data)
-{
-    Q_D(Account);
-
-    switch (eventType)
-    {
-        case WICHAT_ACCOUNT_EVENT_REQUEST_FINISHED:
-            if (d->getRequestIndexByID(data) >= 0)
-                dispatchQueryRespone(data);
-            break;
-        default:;
-    }
-}
-
-AccountPrivate::AccountPrivate(Account* parent, ServerConnection* server)
-{
-    this->q_ptr = parent;
-    if (server)
-        this->server = new RequestManager(*server);
-    else
-        this->server = new RequestManager;
-    connect(this->server,
-            SIGNAL(requestFinished(int)),
-            this,
-            SLOT(onRequestFinished(int)));
-}
-
-AccountPrivate::~AccountPrivate()
-{
-    delete this->server;
-}
-
-int AccountPrivate::getRequestIndexByID(int requestID)
-{
-    for (int i=0; i<requestList.count(); i++)
-    {
-        if (requestList[i].ID == requestID)
-            return i;
-    }
-    return -1;
-}
-
-void AccountPrivate::addRequest(int requestID, RequestType type)
-{
-    RequestInfo request;
-    request.ID = requestID;
-    request.type = type;
-    requestList.append(request);
-}
-
 
 bool AccountPrivate::processLogin(int requestID)
 {
@@ -571,13 +524,12 @@ bool AccountPrivate::processLogin(int requestID)
     // Send pre-login reques
     if (server->sendRawData(bufferIn, bufferOut,
                             RequestManager::AccountServer,
-                            serverObjectToPath(
-                                AccountPrivate::ServerObject::AccountLogin),
+                            serverObjectToPath(ServerObject::AccountLogin),
                             false, &requestID)
              != RequestManager::Ok)
          return false;
 
-    addRequest(requestID, AccountPrivate::RequestType::Login);
+    addRequest(requestID, RequestType::Login);
     loginState = 1;
     }
     else if (loginState == 1) // Stage 1 finished
@@ -622,13 +574,12 @@ bool AccountPrivate::processLogin(int requestID)
     // Send login request
     if (server->sendRawData(bufferIn, bufferOut,
                             RequestManager::AccountServer,
-                            serverObjectToPath(
-                                AccountPrivate::ServerObject::AccountLogin),
+                            serverObjectToPath(ServerObject::AccountLogin),
                             false, &requestID)
             != RequestManager::Ok)
         return false;
 
-    addRequest(requestID, AccountPrivate::RequestType::Login);
+    addRequest(requestID, RequestType::Login);
     loginState = 2;
     }
     else if (loginState == 2) // Stage 2 finished
@@ -676,20 +627,20 @@ bool AccountPrivate::processReplyData(RequestType type, QByteArray& data)
         return false;
     switch (type)
     {
-        case RequestType::SetPassword:
+        case AccountPrivate::RequestType::SetPassword:
             if (data[1] != char(WICHAT_ACCOUNT_RESPONSE_PASSWORD_OK))
                 return false;
-        case RequestType::SetState:
+        case AccountPrivate::RequestType::SetState:
             data.remove(0, 1);
             break;
-        case RequestType::ResetSession:
-        case RequestType::SetOfflineMsg:
-        case RequestType::GetFriendList:
-        case RequestType::AddFriend:
-        case RequestType::RemoveFriend:
-        case RequestType::GetFriendRemarks:
-        case RequestType::SetFriendRemarks:
-        case RequestType::GetFriendInfo:
+        case AccountPrivate::RequestType::ResetSession:
+        case AccountPrivate::RequestType::SetOfflineMsg:
+        case AccountPrivate::RequestType::GetFriendList:
+        case AccountPrivate::RequestType::AddFriend:
+        case AccountPrivate::RequestType::RemoveFriend:
+        case AccountPrivate::RequestType::GetFriendRemarks:
+        case AccountPrivate::RequestType::SetFriendRemarks:
+        case AccountPrivate::RequestType::GetFriendInfo:
             data.remove(0, 2);
             break;
         default:;
@@ -736,41 +687,6 @@ void AccountPrivate::parseAccountList(QByteArray& data,
     }
 }
 
-void AccountPrivate::parseMixedList(QByteArray& data,
-                                    QByteArray fieldName,
-                                    QList<QByteArray>& list)
-{
-    int p1, p2, pE, length;
-    QByteArray fieldBegin, fieldEnd;
-    p1 = data.indexOf("<MList>");
-    pE = data.indexOf("</MList>");
-    fieldBegin.append('<').append(fieldName).append('>');
-    fieldEnd.append("</").append(fieldName).append('>');
-    list.clear();
-    if (p1 >= 0 && pE > 13)
-    {
-        p2 = p1;
-        while (true)
-        {
-            p1 = data.indexOf(fieldBegin, p1 + 1);
-            p2 = data.indexOf(fieldEnd, p2 + 1);
-            if (p1 < 0 || p2 < 0)
-                break;
-
-            length = p2 - p1 - fieldBegin.length();
-            if (length > 0)
-                list.append(data.mid(p1 + fieldBegin.length(), length));
-            else
-                list.append(QByteArray());
-        }
-    }
-}
-
-QByteArray AccountPrivate::formatID(QString ID)
-{
-    return ID.leftJustified(Account::MaxIDLen, '\0', true).toLatin1();
-}
-
 Account::OnlineState AccountPrivate::intToOnlineState(int var)
 {
     switch (var)
@@ -792,21 +708,16 @@ QString AccountPrivate::serverObjectToPath(ServerObject objectID)
 {
     switch (objectID)
     {
-        case ServerObject::AccountLogin:
+        case AccountPrivate::ServerObject::AccountLogin:
             return WICHAT_SERVER_PATH_ACCOUNT_LOGIN;
             break;
-        case ServerObject::AccountAction:
+        case AccountPrivate::ServerObject::AccountAction:
             return WICHAT_SERVER_PATH_ACCOUNT_ACTION;
             break;
-        case ServerObject::FriendAction:
+        case AccountPrivate::ServerObject::FriendAction:
             return WICHAT_SERVER_PATH_ACCOUNT_FRIEND;
             break;
         default:
             return "";
     }
-}
-
-void AccountPrivate::onRequestFinished(int requestID)
-{
-    emit privateEvent(WICHAT_ACCOUNT_EVENT_REQUEST_FINISHED, requestID);
 }

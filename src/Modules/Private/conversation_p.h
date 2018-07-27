@@ -3,37 +3,38 @@
 
 #include <QQueue>
 
+#include "abstractservice_p.h"
 #include "../conversation.h"
-#include "../encryptor.h"
-#include "../requestmanager.h"
 #include "../peersession.h"
 
 
 class Conversation;
 
-class ConversationPrivate : public QObject
+class ConversationPrivate : public AbstractServicePrivate
 {
     Q_OBJECT
     Q_DECLARE_PUBLIC(Conversation)
-protected:
-    Conversation* q_ptr;
 
 public:
-    enum class ServerObject
+    class ServerObject : public AbstractEnum
     {
-        RecordLogin = 1,
-        RecordGet = 2,
-        RecordAction = 3
+    public:
+        static const int RecordLogin = 1;
+        static const int RecordGet = 2;
+        static const int RecordAction = 3;
+        inline ServerObject(const int& initValue){value = initValue;}
     };
-    enum class RequestType
+    class RequestType : public AbstractEnum
     {
-        None = 0,
-        Verify = 1,
-        ResetSession = 2,
-        SendMessage = 3,
-        GetMessageList = 4,
-        ReceiveMessage = 5,
-        FixConnection = 6
+    public:
+        static const int None = 0;
+        static const int Verify = 1;
+        static const int ResetSession = 2;
+        static const int SendMessage = 3;
+        static const int GetMessageList = 4;
+        static const int ReceiveMessage = 5;
+        static const int FixConnection = 6;
+        inline RequestType(const int& initValue){value = initValue;}
     };
     enum PrivateEventType
     {
@@ -41,11 +42,7 @@ public:
         SendingFailed = 2,
         ReceivingFailed = 3
     };
-    struct RequestInfo
-    {
-        int ID;
-        RequestType type;
-    };
+
     struct MessageTransaction
     {
         QString target;
@@ -70,44 +67,32 @@ public:
     qint64 sessionStartTime;
     qint64 sessionValidTime;
     QByteArray keySalt;
-    Encryptor encoder;
-    RequestManager* server;
-    QList<RequestInfo> requestList;
     QString userDir;
     PeerSession* sessionList;
     QQueue<MessageTransaction> sendingList;
     QQueue<MessageTransaction> receivingList;
 
     ConversationPrivate(Conversation* parent = 0, ServerConnection* server = 0);
-    ~ConversationPrivate();
-    int getRequestIndexByID(int requestID);
-    void addRequest(int requestID, RequestType type);
+
+    virtual void dispatchQueryRespone(int requestID);
     bool processReplyData(RequestType type, QByteArray& data);
     bool processSendList();
     bool processReceiveList();
+
     int getAvailableQueryID();
     MessageTransaction* getTransactionByQueryID(int queryID);
     MessageTransaction* getTransactionByRequestID(int requestID);
     void removeTransaction(MessageTransaction* transaction);
+
     void dataXMLize(const QByteArray& src, QByteArray& dest);
     void dataUnxmlize(const QByteArray& src,
                       QByteArray& dest,
                       QString cacheDir);
+
     static void parseAccountList(QByteArray& data,
                                  QByteArray listType,
                                  QList<Conversation::MessageListEntry> &list);
-    static void parseMixedList(QByteArray& data,
-                               QByteArray fieldName,
-                               QList<QByteArray>& list,
-                               int* parsedLength = 0);
-    static QByteArray formatID(QString ID);
     static QString serverObjectToPath(ServerObject objectID);
-
-signals:
-    void privateEvent(int eventType, int data);
-
-protected slots:
-    void onRequestFinished(int requestID);
 };
 
 #endif // CONVERSATION_P_H

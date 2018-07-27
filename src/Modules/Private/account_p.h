@@ -3,46 +3,41 @@
 
 #include <QObject>
 
+#include "abstractservice_p.h"
 #include "../account.h"
-#include "../encryptor.h"
-#include "../requestmanager.h"
 
 
-class AccountPrivate : public QObject
+class AccountPrivate : public AbstractServicePrivate
 {
     Q_OBJECT
     Q_DECLARE_PUBLIC(Account)
-protected:
-    Account* q_ptr;
 
 public:
-    enum class ServerObject
+    class ServerObject : public AbstractEnum
     {
-        AccountLogin = 1,
-        AccountAction = 2,
-        FriendAction = 3
+    public:
+        static const int AccountLogin = 1;
+        static const int AccountAction = 2;
+        static const int FriendAction = 3;
+        inline ServerObject(const int& initValue){value = initValue;}
     };
 
-    enum class RequestType
+    class RequestType : public AbstractEnum
     {
-        None = 0,
-        ResetSession = 1,
-        SetPassword = 2,
-        SetState = 3,
-        SetOfflineMsg = 4,
-        GetFriendList = 5,
-        AddFriend = 6,
-        RemoveFriend = 7,
-        GetFriendRemarks = 8,
-        SetFriendRemarks = 9,
-        GetFriendInfo = 10,
-        Login = 11
-    };
-
-    struct RequestInfo
-    {
-        int ID;
-        RequestType type;
+    public:
+        static const int None = 0;
+        static const int ResetSession = 1;
+        static const int SetPassword = 2;
+        static const int SetState = 3;
+        static const int SetOfflineMsg = 4;
+        static const int GetFriendList = 5;
+        static const int AddFriend = 6;
+        static const int RemoveFriend = 7;
+        static const int GetFriendRemarks = 8;
+        static const int SetFriendRemarks = 9;
+        static const int GetFriendInfo = 10;
+        static const int Login = 11;
+        inline RequestType(const int& initValue){value = initValue;}
     };
 
     QString loginID;
@@ -55,31 +50,18 @@ public:
     qint64 sessionValidTime;
     Account::OnlineState currentState;
     QString currentOfflineMsg;
-    Encryptor encoder;
-    RequestManager* server;
-    QList<RequestInfo> requestList;
 
     AccountPrivate(Account* parent = 0, ServerConnection* server = 0);
-    ~AccountPrivate();
-    int getRequestIndexByID(int requestID);
-    void addRequest(int requestID, RequestType type);
+
+    virtual void dispatchQueryRespone(int requestID);
     bool processLogin(int requestID);
     bool processReplyData(RequestType type, QByteArray& data);
+
     static void parseAccountList(QByteArray& data,
                                  QByteArray listType,
                                  QList<Account::AccountListEntry>& list);
-    static void parseMixedList(QByteArray& data,
-                               QByteArray fieldName,
-                               QList<QByteArray>& list);
-    static QByteArray formatID(QString ID);
     static Account::OnlineState intToOnlineState(int var);
     static QString serverObjectToPath(ServerObject objectID);
-
-signals:
-    void privateEvent(int eventType, int data);
-
-protected slots:
-    void onRequestFinished(int requestID);
 };
 
 #endif // ACCOUNT_P_H

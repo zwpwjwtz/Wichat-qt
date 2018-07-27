@@ -81,7 +81,8 @@ SOURCES += main.cpp\
     editablelabel.cpp \
     preferencedialog.cpp \
     Modules/sessionmessagelist.cpp \
-    aboutwindow.cpp
+    aboutwindow.cpp \
+    Modules/abstractservice.cpp
 
 HEADERS  += mainwindow.h \
     loginwindow.h \
@@ -124,7 +125,10 @@ HEADERS  += mainwindow.h \
     preferencedialog.h \
     Modules/sessionmessagelist.h \
     Modules/Private/sessionemessagelist_p.h \
-    aboutwindow.h
+    aboutwindow.h \
+    Modules/abstractservice.h \
+    Modules/Private/abstractservice_p.h \
+    Modules/abstractenum.h
 
 FORMS    += mainwindow.ui \
     loginwindow.ui \

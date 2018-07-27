@@ -1,17 +1,14 @@
 #ifndef ACCOUNT_H
 #define ACCOUNT_H
 
-#include <QObject>
+#include "abstractservice.h"
 
-class ServerConnection;
 class AccountPrivate;
 
-class Account : public QObject
+class Account : public AbstractService
 {
     Q_OBJECT
     Q_DECLARE_PRIVATE(Account)
-protected:
-    AccountPrivate* d_ptr;
 
 public:
     enum class VerifyError
@@ -50,10 +47,7 @@ public:
         QString offlineMsg;
     };
 
-    static const int MaxIDLen = 8;
     static const int MaxPasswordLen = 16;
-    static const int SessionLen = 16;
-    static const int KeyLen = 16;
     static const int MaxOfflineMsgLen = 64;
     static const int MaxRemarkLen = 16;
 
@@ -98,12 +92,6 @@ signals:
     void queryFriendInfoFinished(int queryID, QList<AccountInfoEntry> infos);
     void friendRequest(QString ID);
     void friendRemoved(QString ID);
-
-private:
-    void dispatchQueryRespone(int requestID);
-
-private slots:
-    void onPrivateEvent(int eventType, int data);
 };
 
 #endif // ACCOUNT_H

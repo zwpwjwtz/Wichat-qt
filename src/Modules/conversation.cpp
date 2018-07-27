@@ -230,54 +230,54 @@ bool Conversation::fixBrokenConnection(QString ID, int& queryID)
     return true;
 }
 
-void Conversation::dispatchQueryRespone(int requestID)
+void ConversationPrivate::dispatchQueryRespone(int requestID)
 {
-    Q_D(Conversation);
+    Q_Q(Conversation);
 
     QByteArray data;
     bool successful;
-    int requestIndex = d->getRequestIndexByID(requestID);
-    ConversationPrivate::RequestType requestType =
-                                            d->requestList[requestIndex].type;
-    RequestManager::RequestError errCode = d->server->getData(requestID, data);
+    int requestIndex = getRequestIndexByID(requestID);
+    ConversationPrivate::RequestType requestType(requestList[requestIndex].type);
+    RequestManager::RequestError errCode = server->getData(requestID, data);
     if (errCode == RequestManager::Ok)
     {
-        successful = d->processReplyData(requestType, data);
+        successful = processReplyData(requestType, data);
         switch (requestType)
         {
         // For some operations, the first byte (indicating if
         // it is successful or not) has already been checked in
-        // d->processReplyData(), and no further checking is needed
+        // processReplyData(), and no further checking is needed
         // So we simply pass the value of "successful" to these signals
             case ConversationPrivate::RequestType::Verify:
             {
-                d->sessionKey = d->tempLoginKey;
-                d->currentSession = d->tempSession;
-                d->keySalt = data.left(RecordSaltLen);
-                d->server->setSessionInfo(d->currentSession, d->sessionKey);
-                d->loggedin = true;
-                emit verifyFinished(requestID, VerifyError::Ok);
+                sessionKey = tempLoginKey;
+                currentSession = tempSession;
+                keySalt = data.left(Conversation::RecordSaltLen);
+                server->setSessionInfo(currentSession, sessionKey);
+                loggedin = true;
+                emit q->verifyFinished(requestID, Conversation::VerifyError::Ok);
                 break;
             }
             case ConversationPrivate::RequestType::ResetSession:
             {
-                successful &= data.length() > KeyLen;
+                successful &= data.length() > Conversation::KeyLen;
                 if (successful)
                 {
-                    d->currentSession = data.left(SessionLen);
-                    d->sessionKey = data.mid(SessionLen, KeyLen);
-                    d->server->setSessionInfo(d->currentSession, d->sessionKey);
+                    currentSession = data.left(Conversation::SessionLen);
+                    sessionKey = data.mid(Conversation::SessionLen,
+                                          Conversation::KeyLen);
+                    server->setSessionInfo(currentSession, sessionKey);
                 }
-                emit resetSessionFinished(requestID, successful);
+                emit q->resetSessionFinished(requestID, successful);
                 break;
             }
             case ConversationPrivate::RequestType::SendMessage:
             {
                 ConversationPrivate::MessageTransaction* transaction =
-                                        d->getTransactionByRequestID(requestID);
+                                        getTransactionByRequestID(requestID);
                 if (!transaction)
                 {
-                    emit queryError(requestID, QueryError::UnknownError);
+                    emit q->queryError(requestID, Conversation::QueryError::UnknownError);
                     break;
                 }
                 if (transaction->pos == 0)
@@ -286,33 +286,33 @@ void Conversation::dispatchQueryRespone(int requestID)
                     transaction->messageID =
                                     data.left(WICHAT_SERVER_RECORD_ID_LEN);
                 }
-                if (transaction->pos + d->MaxMsgBlock <
+                if (transaction->pos + MaxMsgBlock <
                     transaction->data->length())
                 {
                     // Continue to send the rest part of the message
-                    transaction->pos += d->MaxMsgBlock;
-                    d->processSendList();
+                    transaction->pos += MaxMsgBlock;
+                    processSendList();
                     break;
                 }
-                emit sendMessageFinished(transaction->queryID, successful);
-                d->removeTransaction(transaction);
+                emit q->sendMessageFinished(transaction->queryID, successful);
+                removeTransaction(transaction);
                 break;
             }
             case ConversationPrivate::RequestType::GetMessageList:
             {
-                QList<MessageListEntry> idList;
-                d->parseAccountList(data, "v", idList);
-                emit getMessageListFinished(requestID, idList);
+                QList<Conversation::MessageListEntry> idList;
+                parseAccountList(data, "v", idList);
+                emit q->getMessageListFinished(requestID, idList);
                 break;
             }
             case ConversationPrivate::RequestType::ReceiveMessage:
             {
                 ConversationPrivate::MessageTransaction* transaction =
-                                        d->getTransactionByRequestID(requestID);
+                                        getTransactionByRequestID(requestID);
                 if (!transaction)
                 {
-                    emit queryError(requestID, QueryError::UnknownError);
-                    d->removeTransaction(transaction);
+                    emit q->queryError(requestID, Conversation::QueryError::UnknownError);
+                    removeTransaction(transaction);
                     break;
                 }
                 if (data[0] == char(WICHAT_SERVER_RESPONSE_RES_SIZE_TOO_LARGE))
@@ -320,28 +320,28 @@ void Conversation::dispatchQueryRespone(int requestID)
                     // Try to query resource with multiple request
                     if (transaction->multiPart)
                     {
-                        emit queryError(requestID, QueryError::UnknownError);
-                        d->removeTransaction(transaction);
+                        emit q->queryError(requestID, Conversation::QueryError::UnknownError);
+                        removeTransaction(transaction);
                     }
                     else
                     {
                         transaction->multiPart = true;
-                        d->processReceiveList();
+                        processReceiveList();
                     }
                     break;
                 }
                 if (data[0] != char(WICHAT_SERVER_RESPONSE_RES_OK) &&
                     data[0] != char(WICHAT_SERVER_RESPONSE_RES_EOF))
                 {
-                    emit queryError(requestID, QueryError::UnknownError);
-                    d->removeTransaction(transaction);
+                    emit q->queryError(requestID, Conversation::QueryError::UnknownError);
+                    removeTransaction(transaction);
                     break;
                 }
 
                 int i, pos;
                 int readLength;
                 QList<QByteArray> tempList;
-                d->parseMixedList(data, "SRC", tempList, &pos);
+                parseMixedList(data, "SRC", tempList, &pos);
                 pos += 1;
                 if (tempList.length() > 0)
                 {
@@ -358,21 +358,21 @@ void Conversation::dispatchQueryRespone(int requestID)
                     }
 
                     // Then create new records for the rest content
-                    QList<MessageEntry> newMessageList;
+                    QList<Conversation::MessageEntry> newMessageList;
                     for (i=0; i<tempList.count(); i++)
                     {
-                        newMessageList.push_back(MessageEntry());
+                        newMessageList.push_back(Conversation::MessageEntry());
                         newMessageList[i].source = tempList[i];
                         newMessageList[i].length = 0;
                     }
 
                     // Then parse records' time and length
-                    d->parseMixedList(data, "TIME", tempList, &pos);
+                    parseMixedList(data, "TIME", tempList, &pos);
                     for (i=0; i<tempList.count(); i++)
                         newMessageList[i].time =
                                     QDateTime::fromString(QString(tempList[i]),
                                             WICHAT_SERVER_RECORD_TIME_FORMAT);
-                    d->parseMixedList(data, "LEN", tempList, &pos);
+                    parseMixedList(data, "LEN", tempList, &pos);
                     for (i=0; i<tempList.count(); i++)
                         newMessageList[i].length = QString(tempList[i]).toInt();
 
@@ -402,101 +402,52 @@ void Conversation::dispatchQueryRespone(int requestID)
                     data[0] != char(WICHAT_SERVER_RESPONSE_RES_EOF))
                 {
                     // Continue to receive the rest part of the message
-                    d->processReceiveList();
+                    processReceiveList();
                     break;
                 }
                 /*
                  * TODO: End-to-end encryption
-                d->encoder.decrypt(Encryptor::Blowfish,
+                encoder.decrypt(Encryptor::Blowfish,
                                    data,
-                                   d->sessionList->getSession(
+                                   sessionList->getSession(
                                             transaction->target).receiversKey,
                                    *transaction->data);
                 */
-                QString cacheDir(d->userDir);
+                QString cacheDir(userDir);
                 cacheDir.append('/').append(WICHAT_SESSION_FILE_CACHE_DIR);
                 for (i=0; i<transaction->messages->count(); i++)
                 {
-                    d->dataUnxmlize((*transaction->messages)[i].content, data, cacheDir);
+                    dataUnxmlize((*transaction->messages)[i].content, data, cacheDir);
                     (*transaction->messages)[i].content = data;
                 }
-                emit receiveMessageFinished(transaction->queryID,
+                emit q->receiveMessageFinished(transaction->queryID,
                                             *(transaction->messages));
-                d->removeTransaction(transaction);
+                removeTransaction(transaction);
                 break;
             }
             case ConversationPrivate::RequestType::FixConnection:
             {
-                emit fixBrokenConnectionFinished(requestID, successful);
+                emit q->fixBrokenConnectionFinished(requestID, successful);
                 break;
             }
             default:
-                emit queryError(requestID, QueryError::UnknownError);
+                emit q->queryError(requestID,
+                                   Conversation::QueryError::UnknownError);
         }
     }
     else if (errCode == RequestManager::VersionTooOld)
-        emit queryError(requestID, QueryError::VersionNotSupported);
+        emit q->queryError(requestID, Conversation::QueryError::VersionNotSupported);
     else if (errCode == RequestManager::CannotConnect)
-        emit queryError(requestID, QueryError::NetworkError);
+        emit q->queryError(requestID, Conversation::QueryError::NetworkError);
     else
-        emit queryError(requestID, QueryError::UnknownError);
+        emit q->queryError(requestID, Conversation::QueryError::UnknownError);
 
-    d->requestList.removeAt(requestIndex);
-}
-
-
-void Conversation::onPrivateEvent(int eventType, int data)
-{
-    Q_D(Conversation);
-
-    switch (eventType)
-    {
-        case WICHAT_CONVERS_EVENT_REQUEST_FINISHED:
-            if (d->getRequestIndexByID(data) >= 0)
-                dispatchQueryRespone(data);
-            break;
-        default:;
-    }
+    requestList.removeAt(requestIndex);
 }
 
 ConversationPrivate::ConversationPrivate(Conversation* parent,
-                                         ServerConnection* server)
-{
-    this->q_ptr = parent;
-    if (server)
-        this->server = new RequestManager(*server);
-    else
-        this->server = new RequestManager;
-    sessionList = nullptr;
-    loggedin = false;
-    connect(this->server,
-            SIGNAL(requestFinished(int)),
-            this,
-            SLOT(onRequestFinished(int)));
-}
-
-ConversationPrivate::~ConversationPrivate()
-{
-    delete this->server;
-}
-
-int ConversationPrivate::getRequestIndexByID(int requestID)
-{
-    for (int i=0; i<requestList.count(); i++)
-    {
-        if (requestList[i].ID == requestID)
-            return i;
-    }
-    return -1;
-}
-
-void ConversationPrivate::addRequest(int requestID, RequestType type)
-{
-    RequestInfo request;
-    request.ID = requestID;
-    request.type = type;
-    requestList.append(request);
-}
+                                         ServerConnection* server) :
+    AbstractServicePrivate(parent, server){}
 
 bool ConversationPrivate::processReplyData(RequestType type, QByteArray& data)
 {
@@ -572,7 +523,7 @@ bool ConversationPrivate::processSendList()
                          false, &transaction.requestID)
             != RequestManager::Ok)
     {
-        emit privateEvent(SendingFailed, transaction.queryID);
+        emit privateEvent(ConversationPrivate::SendingFailed, transaction.queryID);
         removeTransaction(&transaction);
         return false;
     }
@@ -690,11 +641,6 @@ void ConversationPrivate::removeTransaction(MessageTransaction* transaction)
             break;
         }
     }
-}
-
-QByteArray ConversationPrivate::formatID(QString ID)
-{
-    return ID.leftJustified(Conversation::MaxIDLen, '\0', true).toLatin1();
 }
 
 void ConversationPrivate::dataXMLize(const QByteArray& src, QByteArray& dest)
@@ -884,44 +830,6 @@ void ConversationPrivate::parseAccountList(QByteArray& data,
     }
 }
 
-void ConversationPrivate::parseMixedList(QByteArray& data,
-                                         QByteArray fieldName,
-                                         QList<QByteArray>& list,
-                                         int* parsedLength)
-{
-    int p1, p2, pE, length;
-    QByteArray fieldBegin, fieldEnd;
-    p1 = data.indexOf("<MList>");
-    pE = data.indexOf("</MList>");
-    fieldBegin.append('<').append(fieldName).append('>');
-    fieldEnd.append("</").append(fieldName).append('>');
-    list.clear();
-    if (p1 >= 0 && pE > 13)
-    {
-        p2 = p1;
-        while (true)
-        {
-            p1 = data.indexOf(fieldBegin, p1 + 1);
-            p2 = data.indexOf(fieldEnd, p2 + 1);
-            if (p1 < 0 || p2 < 0)
-                break;
-
-            length = p2 - p1 - fieldBegin.length();
-            if (length > 0)
-                list.append(data.mid(p1 + fieldBegin.length(), length));
-            else
-                list.append(QByteArray());
-        }
-        if (parsedLength)
-            *parsedLength = pE - data.indexOf("<MList>") + 9;
-    }
-    else
-    {
-        if (parsedLength)
-            *parsedLength = 0;
-    }
-}
-
 QString ConversationPrivate::serverObjectToPath(ServerObject objectID)
 {
     switch (objectID)
@@ -938,9 +846,4 @@ QString ConversationPrivate::serverObjectToPath(ServerObject objectID)
         default:
             return "";
     }
-}
-
-void ConversationPrivate::onRequestFinished(int requestID)
-{
-    emit privateEvent(WICHAT_CONVERS_EVENT_REQUEST_FINISHED, requestID);
 }
