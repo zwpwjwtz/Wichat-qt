@@ -3,14 +3,13 @@
 
 #include <QQueue>
 
-#include "abstractservice_p.h"
+#include "abstracchat_p.h"
 #include "../conversation.h"
-#include "../peersession.h"
 
 
 class Conversation;
 
-class ConversationPrivate : public AbstractServicePrivate
+class ConversationPrivate : public AbstractChatPrivate
 {
     Q_OBJECT
     Q_DECLARE_PUBLIC(Conversation)
@@ -43,34 +42,7 @@ public:
         ReceivingFailed = 3
     };
 
-    struct MessageTransaction
-    {
-        QString target;
-        QByteArray messageID;
-        QByteArray* data;
-        QList<Conversation::MessageEntry>* messages;
-        qint32 pos;
-        qint32 currentMessageLength;
-        bool multiPart;
-        int queryID;    // For high-level callbacks; constant
-        int requestID;  // For low-level callbacks; variable
-    };
-
     static const int MaxMsgBlock = 50 * 1024 - 16;
-
-    QString currentID;
-    bool loggedin;
-    QByteArray currentSession;
-    QByteArray sessionKey;
-    QByteArray tempLoginKey;
-    QByteArray tempSession;
-    qint64 sessionStartTime;
-    qint64 sessionValidTime;
-    QByteArray keySalt;
-    QString userDir;
-    PeerSession* sessionList;
-    QQueue<MessageTransaction> sendingList;
-    QQueue<MessageTransaction> receivingList;
 
     ConversationPrivate(Conversation* parent = 0, ServerConnection* server = 0);
 
@@ -79,19 +51,6 @@ public:
     bool processSendList();
     bool processReceiveList();
 
-    int getAvailableQueryID();
-    MessageTransaction* getTransactionByQueryID(int queryID);
-    MessageTransaction* getTransactionByRequestID(int requestID);
-    void removeTransaction(MessageTransaction* transaction);
-
-    void dataXMLize(const QByteArray& src, QByteArray& dest);
-    void dataUnxmlize(const QByteArray& src,
-                      QByteArray& dest,
-                      QString cacheDir);
-
-    static void parseAccountList(QByteArray& data,
-                                 QByteArray listType,
-                                 QList<Conversation::MessageListEntry> &list);
     static QString serverObjectToPath(ServerObject objectID);
 };
 

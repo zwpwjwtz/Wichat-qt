@@ -82,7 +82,8 @@ SOURCES += main.cpp\
     preferencedialog.cpp \
     Modules/sessionmessagelist.cpp \
     aboutwindow.cpp \
-    Modules/abstractservice.cpp
+    Modules/abstractservice.cpp \
+    Modules/abstractchat.cpp
 
 HEADERS  += mainwindow.h \
     loginwindow.h \
@@ -128,7 +129,9 @@ HEADERS  += mainwindow.h \
     aboutwindow.h \
     Modules/abstractservice.h \
     Modules/Private/abstractservice_p.h \
-    Modules/abstractenum.h
+    Modules/abstractenum.h \
+    Modules/Private/abstracchat_p.h \
+    Modules/abstractchat.h
 
 FORMS    += mainwindow.ui \
     loginwindow.ui \
