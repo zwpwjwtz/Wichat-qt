@@ -19,7 +19,8 @@ public:
         none = 0,
         FriendAdd = 1,
         FriendDelete = 2,
-        GotMsg = 3
+        GotMsg = 3,
+        GotGroupMsg = 4,
     };
     struct Note
     {

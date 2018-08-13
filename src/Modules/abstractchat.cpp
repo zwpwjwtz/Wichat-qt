@@ -268,7 +268,7 @@ void AbstractChatPrivate::dataUnxmlize(const QByteArray& src,
     dest.append(src.mid(p));
 }
 
-void AbstractChatPrivate::parseAccountList(QByteArray& data,
+void AbstractChatPrivate::parseMessageList(QByteArray& data,
                                            QByteArray listType,
                                    QList<AbstractChat::MessageListEntry>& list)
 {

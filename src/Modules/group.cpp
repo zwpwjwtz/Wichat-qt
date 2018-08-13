@@ -1,15 +1,13 @@
-﻿#include <QFile>
-#include <QDir>
 #include "common.h"
-#include "conversation.h"
-#include "Private/conversation_p.h"
+#include "Private/group_p.h"
 
-#define WICHAT_SERVER_PATH_RECORD_LOGIN "/Record/log/login.php"
-#define WICHAT_SERVER_PATH_RECORD_ACTION "/Record/query/action.php"
-#define WICHAT_SERVER_PATH_RECORD_GET "/Record/query/get.php"
+#define WICHAT_SERVER_PATH_GROUP_LOGIN "/Record/log/login.php"
+#define WICHAT_SERVER_PATH_GROUP_ACTION "/Record/group/action.php"
+#define WICHAT_SERVER_PATH_GROUP_GET "/Record/group/get.php"
 
 #define WICHAT_SERVER_RECORD_OBJID_SERVER "10000"
 #define WICHAT_SERVER_RECORD_TIME_FORMAT "yyyy/MM/dd,HH:mm:ss"
+#define WICHAT_SERVER_RECORD_TIME_NULL "0001/01/01,00:00:00"
 #define WICHAT_SERVER_RECORD_ID_LEN 16
 
 #define WICHAT_SERVER_RESPONSE_RES_OK 0
@@ -21,32 +19,32 @@
 #define WICHAT_SESSION_FILE_CACHE_DIR "cache"
 
 
-Conversation::Conversation()
+Group::Group()
 {
-    this->d_ptr = new ConversationPrivate(this);
+    this->d_ptr = new GroupPrivate(this);
     connect(d_ptr,
             SIGNAL(privateEvent(int, int)),
             this,
             SLOT(onPrivateEvent(int, int)));
 }
 
-Conversation::Conversation(ServerConnection &server)
+Group::Group(ServerConnection &server)
 {
-    this->d_ptr = new ConversationPrivate(this, &server);
+    this->d_ptr = new GroupPrivate(this, &server);
     connect(d_ptr,
             SIGNAL(privateEvent(int, int)),
             this,
             SLOT(onPrivateEvent(int, int)));
 }
 
-Conversation::~Conversation()
+Group::~Group()
 {
     delete this->d_ptr;
 }
 
-bool Conversation::verify(QByteArray sessionID, QByteArray sessionKey)
+bool Group::verify(QByteArray sessionID, QByteArray sessionKey)
 {
-    Q_D(Conversation);
+    Q_D(Group);
 
     if (sessionID.length() != SessionLen)
     {
@@ -66,13 +64,14 @@ bool Conversation::verify(QByteArray sessionID, QByteArray sessionKey)
 
     int queryID;
     QByteArray bufferIn, bufferOut;
+    bufferIn.append(char(5));
     d->server->setSessionInfo(sessionID, sessionKey);
     d->tempLoginKey = d->encoder.genKey(KeyLen);
     bufferIn.append(d->tempLoginKey);
     if (d->server->sendData(bufferIn, bufferOut,
                             RequestManager::RecordServer,
                             d->serverObjectToPath(
-                                ConversationPrivate::ServerObject::RecordLogin),
+                                GroupPrivate::ServerObject::GroupLogin),
                             false, &queryID)
                 == RequestManager::CannotConnect)
         return false;
@@ -80,13 +79,13 @@ bool Conversation::verify(QByteArray sessionID, QByteArray sessionKey)
     d->tempLoginKey = d->encoder.getHMAC(sessionKey, d->tempLoginKey)
                                 .left(KeyLen);
     d->tempSession = sessionID;
-    d->addRequest(queryID, ConversationPrivate::RequestType::Verify);
+    d->addRequest(queryID, GroupPrivate::RequestType::Verify);
     return true;
 }
 
-bool Conversation::sendMessage(QString ID, QByteArray &content, int& queryID)
+bool Group::sendMessage(QString ID, QByteArray &content, int& queryID)
 {
-    Q_D(Conversation);
+    Q_D(Group);
 
     if (!d->loggedin || !d->sessionList)
         return false;
@@ -113,8 +112,9 @@ bool Conversation::sendMessage(QString ID, QByteArray &content, int& queryID)
 
     // TODO: Reset sending key positively & randomly
 
-    ConversationPrivate::MessageTransaction transaction;
+    GroupPrivate::MessageTransaction transaction;
     transaction.target = ID;
+    transaction.time = QDateTime::currentDateTime();
     transaction.data = bufferIn;
     transaction.messages = nullptr;
     transaction.pos = 0;
@@ -127,36 +127,61 @@ bool Conversation::sendMessage(QString ID, QByteArray &content, int& queryID)
     return true;
 }
 
-bool Conversation::getMessageList(int& queryID)
+bool Group::getMessageList(int &queryID)
 {
-    Q_D(Conversation);
+    QDateTime nullTime(QDateTime::fromString(WICHAT_SERVER_RECORD_TIME_NULL,
+                                             WICHAT_SERVER_RECORD_TIME_FORMAT));
+    return getMessageList(nullTime, queryID);
+}
 
-    if (!d->loggedin)
+bool Group::getMessageList(QDateTime &lastTime, int& queryID)
+{
+    Q_D(Group);
+
+    if (!d->loggedin || d->groupListCache.count() < 1)
         return false;
 
     QByteArray bufferIn, bufferOut;
     bufferIn.append(char(1)).append(char(qrand()));
+    bufferIn.append(lastTime.toString(WICHAT_SERVER_RECORD_TIME_FORMAT)
+                            .toLatin1());
+
+    bufferIn.append("<IDList>");
+    for (int i=0; i<d->groupListCache.count(); i++)
+        bufferIn.append("<ID>")
+                .append(d->formatID(d->groupListCache[i]))
+                .append("</ID>");
+    bufferIn.append("</IDList>");
+
     if (d->server->sendData(bufferIn, bufferOut,
                             RequestManager::RecordServer,
                             d->serverObjectToPath(
-                               ConversationPrivate::ServerObject::RecordGet),
+                               GroupPrivate::ServerObject::GroupGet),
                             false, &queryID)
             == RequestManager::CannotConnect)
-    return false;
+        return false;
 
-    d->addRequest(queryID, ConversationPrivate::RequestType::GetMessageList);
+    d->addRequest(queryID, GroupPrivate::RequestType::GetMessageList);
     return true;
 }
 
-bool Conversation::receiveMessage(QString ID, int& queryID)
+bool Group::receiveMessage(QString ID, int &queryID)
 {
-    Q_D(Conversation);
+    QDateTime nullTime(QDateTime::fromString(WICHAT_SERVER_RECORD_TIME_NULL,
+                                             WICHAT_SERVER_RECORD_TIME_FORMAT));
+    return receiveMessage(ID, nullTime, queryID);
+}
+
+bool Group::receiveMessage(QString ID, QDateTime& lastTime, int& queryID)
+{
+    Q_D(Group);
 
     if (!d->loggedin || !d->sessionList)
         return false;
 
-    ConversationPrivate::MessageTransaction transaction;
+    GroupPrivate::MessageTransaction transaction;
     transaction.target = ID;
+    transaction.time = lastTime;
     transaction.data = nullptr;
     transaction.messages = new QList<MessageEntry>;
     transaction.pos = 0;
@@ -170,45 +195,20 @@ bool Conversation::receiveMessage(QString ID, int& queryID)
     return true;
 }
 
-bool Conversation::fixBrokenConnection(QString ID, int& queryID)
+void Group::setGroupList(QList<QString> groupIDList)
 {
-    Q_D(Conversation);
-
-    if (!d->loggedin || !d->sessionList)
-        return false;
-
-    qint32 sendLength = 32;
-    QByteArray bufferIn, bufferOut;
-    bufferIn.append(char(0)).append(char(2));
-    bufferIn.append(d->formatID(ID));
-    bufferIn.append(QByteArray::fromRawData((const char*)(&sendLength), 4));
-    bufferIn.append(char(1)).append(char(0));
-    bufferIn.append(char(127)).append(char(255))
-            .append(char(127)).append(char(255))
-            .append(char(WICHAT_CLIENT_DEVICE)).append(char(4));
-    for (int i=0; i<26; i++)
-        bufferIn.append(char(qrand()));
-
-    if (d->server->sendData(bufferIn, bufferOut,
-                        RequestManager::RecordServer,
-                        d->serverObjectToPath(
-                            ConversationPrivate::ServerObject::RecordAction),
-                        false, &queryID)
-            != RequestManager::Ok)
-        return false;
-
-    d->addRequest(queryID, ConversationPrivate::RequestType::FixConnection);
-    return true;
+    Q_D(Group);
+    d->groupListCache = groupIDList;
 }
 
-void ConversationPrivate::dispatchQueryRespone(int requestID)
+void GroupPrivate::dispatchQueryRespone(int requestID)
 {
-    Q_Q(Conversation);
+    Q_Q(Group);
 
     QByteArray data;
     bool successful;
     int requestIndex = getRequestIndexByID(requestID);
-    ConversationPrivate::RequestType requestType(requestList[requestIndex].type);
+    GroupPrivate::RequestType requestType(requestList[requestIndex].type);
     RequestManager::RequestError errCode = server->getData(requestID, data);
     if (errCode == RequestManager::Ok)
     {
@@ -219,36 +219,37 @@ void ConversationPrivate::dispatchQueryRespone(int requestID)
         // it is successful or not) has already been checked in
         // processReplyData(), and no further checking is needed
         // So we simply pass the value of "successful" to these signals
-            case ConversationPrivate::RequestType::Verify:
+            case GroupPrivate::RequestType::Verify:
             {
                 sessionKey = tempLoginKey;
                 currentSession = tempSession;
-                keySalt = data.left(Conversation::RecordSaltLen);
+                keySalt = data.left(Group::RecordSaltLen);
                 server->setSessionInfo(currentSession, sessionKey);
                 loggedin = true;
-                emit q->verifyFinished(requestID, Conversation::VerifyError::Ok);
+                emit q->verifyFinished(requestID, Group::VerifyError::Ok);
                 break;
             }
-            case ConversationPrivate::RequestType::ResetSession:
+            case GroupPrivate::RequestType::ResetSession:
             {
-                successful &= data.length() > Conversation::KeyLen;
+                successful &= data.length() > Group::KeyLen;
                 if (successful)
                 {
-                    currentSession = data.left(Conversation::SessionLen);
-                    sessionKey = data.mid(Conversation::SessionLen,
-                                          Conversation::KeyLen);
+                    currentSession = data.left(Group::SessionLen);
+                    sessionKey = data.mid(Group::SessionLen,
+                                          Group::KeyLen);
                     server->setSessionInfo(currentSession, sessionKey);
                 }
                 emit q->resetSessionFinished(requestID, successful);
                 break;
             }
-            case ConversationPrivate::RequestType::SendMessage:
+            case GroupPrivate::RequestType::SendMessage:
             {
-                ConversationPrivate::MessageTransaction* transaction =
+                GroupPrivate::MessageTransaction* transaction =
                                         getTransactionByRequestID(requestID);
                 if (!transaction)
                 {
-                    emit q->queryError(requestID, Conversation::QueryError::UnknownError);
+                    emit q->queryError(requestID,
+                                       Group::QueryError::UnknownError);
                     break;
                 }
                 if (transaction->pos == 0)
@@ -269,20 +270,21 @@ void ConversationPrivate::dispatchQueryRespone(int requestID)
                 removeTransaction(transaction);
                 break;
             }
-            case ConversationPrivate::RequestType::GetMessageList:
+            case GroupPrivate::RequestType::GetMessageList:
             {
-                QList<Conversation::MessageListEntry> idList;
+                QList<Group::MessageListEntry> idList;
                 parseMessageList(data, "v", idList);
                 emit q->getMessageListFinished(requestID, idList);
                 break;
             }
-            case ConversationPrivate::RequestType::ReceiveMessage:
+            case GroupPrivate::RequestType::ReceiveMessage:
             {
-                ConversationPrivate::MessageTransaction* transaction =
+                GroupPrivate::MessageTransaction* transaction =
                                         getTransactionByRequestID(requestID);
                 if (!transaction)
                 {
-                    emit q->queryError(requestID, Conversation::QueryError::UnknownError);
+                    emit q->queryError(requestID,
+                                       Group::QueryError::UnknownError);
                     removeTransaction(transaction);
                     break;
                 }
@@ -291,7 +293,8 @@ void ConversationPrivate::dispatchQueryRespone(int requestID)
                     // Try to query resource with multiple request
                     if (transaction->multiPart)
                     {
-                        emit q->queryError(requestID, Conversation::QueryError::UnknownError);
+                        emit q->queryError(requestID,
+                                           Group::QueryError::UnknownError);
                         removeTransaction(transaction);
                     }
                     else
@@ -304,7 +307,8 @@ void ConversationPrivate::dispatchQueryRespone(int requestID)
                 if (data[0] != char(WICHAT_SERVER_RESPONSE_RES_OK) &&
                     data[0] != char(WICHAT_SERVER_RESPONSE_RES_EOF))
                 {
-                    emit q->queryError(requestID, Conversation::QueryError::UnknownError);
+                    emit q->queryError(requestID,
+                                       Group::QueryError::UnknownError);
                     removeTransaction(transaction);
                     break;
                 }
@@ -329,10 +333,10 @@ void ConversationPrivate::dispatchQueryRespone(int requestID)
                     }
 
                     // Then create new records for the rest content
-                    QList<Conversation::MessageEntry> newMessageList;
+                    QList<Group::MessageEntry> newMessageList;
                     for (i=0; i<tempList.count(); i++)
                     {
-                        newMessageList.push_back(Conversation::MessageEntry());
+                        newMessageList.push_back(Group::MessageEntry());
                         newMessageList[i].source = tempList[i];
                         newMessageList[i].length = 0;
                     }
@@ -364,7 +368,9 @@ void ConversationPrivate::dispatchQueryRespone(int requestID)
                 else
                 {
                     // Simply append content to the last record
-                    transaction->messages->last().content.append(data.mid(pos));
+                    if (transaction->messages->count() > 0)
+                        transaction->messages->last().content.append(
+                                                                data.mid(pos));
                     transaction->currentMessageLength += data.length() - pos;
 
                 }
@@ -388,7 +394,9 @@ void ConversationPrivate::dispatchQueryRespone(int requestID)
                 cacheDir.append('/').append(WICHAT_SESSION_FILE_CACHE_DIR);
                 for (i=0; i<transaction->messages->count(); i++)
                 {
-                    dataUnxmlize((*transaction->messages)[i].content, data, cacheDir);
+                    dataUnxmlize((*transaction->messages)[i].content,
+                                 data,
+                                 cacheDir);
                     (*transaction->messages)[i].content = data;
                 }
                 emit q->receiveMessageFinished(transaction->queryID,
@@ -396,31 +404,25 @@ void ConversationPrivate::dispatchQueryRespone(int requestID)
                 removeTransaction(transaction);
                 break;
             }
-            case ConversationPrivate::RequestType::FixConnection:
-            {
-                emit q->fixBrokenConnectionFinished(requestID, successful);
-                break;
-            }
             default:
                 emit q->queryError(requestID,
-                                   Conversation::QueryError::UnknownError);
+                                   Group::QueryError::UnknownError);
         }
     }
     else if (errCode == RequestManager::VersionTooOld)
-        emit q->queryError(requestID, Conversation::QueryError::VersionNotSupported);
+        emit q->queryError(requestID, Group::QueryError::VersionNotSupported);
     else if (errCode == RequestManager::CannotConnect)
-        emit q->queryError(requestID, Conversation::QueryError::NetworkError);
+        emit q->queryError(requestID, Group::QueryError::NetworkError);
     else
-        emit q->queryError(requestID, Conversation::QueryError::UnknownError);
+        emit q->queryError(requestID, Group::QueryError::UnknownError);
 
     requestList.removeAt(requestIndex);
 }
 
-ConversationPrivate::ConversationPrivate(Conversation* parent,
-                                         ServerConnection* server) :
+GroupPrivate::GroupPrivate(Group* parent, ServerConnection* server) :
     AbstractChatPrivate(parent, server){}
 
-bool ConversationPrivate::processReplyData(RequestType type, QByteArray& data)
+bool GroupPrivate::processReplyData(RequestType type, QByteArray& data)
 {
     if (data.length() < 2)
         return false;
@@ -433,15 +435,12 @@ bool ConversationPrivate::processReplyData(RequestType type, QByteArray& data)
         case RequestType::ResetSession:
         case RequestType::SendMessage:
         case RequestType::GetMessageList:
-        case RequestType::FixConnection:
-            data.remove(0, 2);
-            break;
         default:;
     }
     return true;
 }
 
-bool ConversationPrivate::processSendList()
+bool GroupPrivate::processSendList()
 {
     if (sendingList.isEmpty())
         return false;
@@ -490,11 +489,11 @@ bool ConversationPrivate::processSendList()
 
     if (server->sendData(bufferIn, bufferOut,
                          RequestManager::RecordServer,
-                         serverObjectToPath(ServerObject::RecordAction),
+                         serverObjectToPath(ServerObject::GroupAction),
                          false, &transaction.requestID)
             != RequestManager::Ok)
     {
-        emit privateEvent(ConversationPrivate::SendingFailed, transaction.queryID);
+        emit privateEvent(GroupPrivate::SendingFailed, transaction.queryID);
         removeTransaction(&transaction);
         return false;
     }
@@ -502,7 +501,7 @@ bool ConversationPrivate::processSendList()
     return true;
 }
 
-bool ConversationPrivate::processReceiveList()
+bool GroupPrivate::processReceiveList()
 {
     if (receivingList.isEmpty())
         return false;
@@ -521,10 +520,12 @@ bool ConversationPrivate::processReceiveList()
         bufferIn.append(char(0)).append(char(transaction.pos / MaxMsgBlock));
     else
         bufferIn.append(char(1)).append(char(0));
+    bufferIn.append(transaction.time
+                    .toString(WICHAT_SERVER_RECORD_TIME_FORMAT).toLatin1());
 
     if (server->sendData(bufferIn, bufferOut,
                          RequestManager::RecordServer,
-                         serverObjectToPath(ServerObject::RecordAction),
+                         serverObjectToPath(ServerObject::GroupAction),
                          false, &transaction.requestID)
             != RequestManager::Ok)
     {
@@ -536,18 +537,18 @@ bool ConversationPrivate::processReceiveList()
     return true;
 }
 
-QString ConversationPrivate::serverObjectToPath(ServerObject objectID)
+QString GroupPrivate::serverObjectToPath(ServerObject objectID)
 {
     switch (objectID)
     {
-        case ServerObject::RecordLogin:
-            return WICHAT_SERVER_PATH_RECORD_LOGIN;
+        case ServerObject::GroupLogin:
+            return WICHAT_SERVER_PATH_GROUP_LOGIN;
             break;
-        case ServerObject::RecordGet:
-            return WICHAT_SERVER_PATH_RECORD_GET;
+        case ServerObject::GroupGet:
+            return WICHAT_SERVER_PATH_GROUP_GET;
             break;
-        case ServerObject::RecordAction:
-            return WICHAT_SERVER_PATH_RECORD_ACTION;
+        case ServerObject::GroupAction:
+            return WICHAT_SERVER_PATH_GROUP_ACTION;
             break;
         default:
             return "";

@@ -46,6 +46,10 @@ public:
         QString ID;
         QString offlineMsg;
     };
+    struct GroupListEntry
+    {
+        QString ID;
+    };
 
     static const int MaxPasswordLen = 16;
     static const int MaxOfflineMsgLen = 64;
@@ -77,6 +81,8 @@ public:
     bool setFriendRemarks(QString ID, QString remarks, int& queryID);
     bool queryFriendInfo(QString ID, int& queryID);
 
+    bool getGroupList(int& queryID);
+
 signals:
     void queryError(int queryID, QueryError errorCode);
     void verifyFinished(VerifyError errorCode);
@@ -92,6 +98,8 @@ signals:
     void queryFriendInfoFinished(int queryID, QList<AccountInfoEntry> infos);
     void friendRequest(QString ID);
     void friendRemoved(QString ID);
+    void getGroupListFinished(int queryID,
+                              QList<Account::GroupListEntry>& groupList);
 };
 
 #endif // ACCOUNT_H

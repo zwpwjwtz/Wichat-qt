@@ -19,6 +19,7 @@ public:
     struct MessageTransaction
     {
         QString target;
+        QDateTime time;
         QByteArray messageID;
         QByteArray* data;
         QList<AbstractChat::MessageEntry>* messages;
@@ -58,7 +59,7 @@ public:
                       QByteArray& dest,
                       QString cacheDir);
 
-    static void parseAccountList(QByteArray& data,
+    static void parseMessageList(QByteArray& data,
                                  QByteArray listType,
                                  QList<AbstractChat::MessageListEntry> &list);
 };

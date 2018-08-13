@@ -22,11 +22,15 @@
 #include "global_objects.h"
 #include "Modules/account.h"
 #include "Modules/conversation.h"
+#include "Modules/group.h"
 #include "Modules/wichatconfig.h"
 
 #define WICHAT_MAIN_FRILIST_FIELD_ICON 0
 #define WICHAT_MAIN_FRILIST_FIELD_ICONPATH 1
 #define WICHAT_MAIN_FRILIST_FIELD_ID 2
+#define WICHAT_MAIN_GRPLIST_FIELD_ICON 0
+#define WICHAT_MAIN_GRPLIST_FIELD_ICONPATH 1
+#define WICHAT_MAIN_GRPLIST_FIELD_ID 2
 
 #define WICHAT_MAIN_FONT_STYLE_BOLD "bold"
 #define WICHAT_MAIN_FONT_STYLE_ITALIC "italic"
@@ -55,6 +59,9 @@
 #define WICHAT_MAIN_MENU_APP_PREFERENCE 3
 #define WICHAT_MAIN_MENU_APP_ABOUT 4
 #define WICHAT_MAIN_MENU_APP_QUIT 5
+#define WICHAT_MAIN_MENU_GROUP_OPEN 6
+#define WICHAT_MAIN_MENU_GROUP_REMOVE 7
+#define WICHAT_MAIN_MENU_GROUP_INFO 8
 
 #define WICHAT_MAIN_FILE_FILTER_ALL "All (*.*)(*.*)"
 #define WICHAT_MAIN_FILE_FILTER_IMAGE "Image file (*.gif *.jpg *.png)(*.gif *.jpg *.png)"
@@ -66,6 +73,7 @@
 
 #define WICHAT_MAIN_TIMER_GET_FRIENDLIST 30
 #define WICHAT_MAIN_TIMER_GET_FRIENDINFO 60
+#define WICHAT_MAIN_TIMER_GET_GROUPLIST 300
 #define WICHAT_MAIN_TIMER_GET_MSG 10
 #ifdef QT_DEBUG
 #define WICHAT_MAIN_TIMER_SHOW_NOTE 10
@@ -153,6 +161,7 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->frameTextGroup->setLayout(new QStackedLayout);
     ui->frameTextGroup->layout()->setMargin(0);
     ui->listFriend->setModel(&listFriendModel);
+    ui->listGroup->setModel(&listGroupModel);
     for (int i=0; i<4; i++)
         ui->comboState->addItem(QIcon(stateToImagePath(int(Wichat_stateList[i]),
                                                        true)),
@@ -160,6 +169,7 @@ MainWindow::MainWindow(QWidget *parent) :
                                 int(Wichat_stateList[i]));
 
     menuFriendOption = new QMenu(ui->listFriend);
+    menuGroupOption = new QMenu(ui->listGroup);
     menuSysTray = new QMenu();
     sysTrayIcon = new QSystemTrayIcon(this);
     sysTrayIcon->setContextMenu(menuSysTray);
@@ -173,6 +183,7 @@ MainWindow::MainWindow(QWidget *parent) :
     buttonTabClose->resize(20, 20);
     tabBarSession = ui->tabSession->findChild<QTabBar*>();
     listFriendModel.setColumnCount(3);
+    listGroupModel.setColumnCount(3);
 
     connect(&globalAccount,
             SIGNAL(resetSessionFinished(int, bool)),
@@ -214,18 +225,23 @@ MainWindow::MainWindow(QWidget *parent) :
             SIGNAL(friendRemoved(QString)),
             this,
             SLOT(onFriendRemoved(QString)));
-    connect(&globalConversation,
-            SIGNAL(queryError(int, Conversation::QueryError)),
+    connect(&globalAccount,
+            SIGNAL(getGroupListFinished(int,QList<Account::GroupListEntry>&)),
             this,
-            SLOT(onConversationQueryError(int, Conversation::QueryError)));
+            SLOT(onUpdateGroupListFinished(int,QList<Account::GroupListEntry>&)));
+
+    connect(&globalConversation,
+            SIGNAL(queryError(int, AbstractChat::QueryError)),
+            this,
+            SLOT(onConversationQueryError(int, AbstractChat::QueryError)));
     connect(&globalConversation,
             SIGNAL(connectionBroken(QString)),
             this,
             SLOT(onConnectionBroken(QString)));
     connect(&globalConversation,
-            SIGNAL(verifyFinished(int, Conversation::VerifyError)),
+            SIGNAL(verifyFinished(int, AbstractChat::VerifyError)),
             this,
-            SLOT(onConversationVerifyFinished(int, Conversation::VerifyError)));
+            SLOT(onConversationVerifyFinished(int, AbstractChat::VerifyError)));
     connect(&globalConversation,
             SIGNAL(resetSessionFinished(int, bool)),
             this,
@@ -236,15 +252,42 @@ MainWindow::MainWindow(QWidget *parent) :
             SLOT(onSendMessageFinished(int, bool)));
     connect(&globalConversation,
             SIGNAL(getMessageListFinished(int,
-                                          QList<Conversation::MessageListEntry>&)),
+                                          QList<AbstractChat::MessageListEntry>&)),
             this,
             SLOT(onGetMessageListFinished(int,
-                                          QList<Conversation::MessageListEntry>&)));
+                                          QList<AbstractChat::MessageListEntry>&)));
     connect(&globalConversation,
             SIGNAL(receiveMessageFinished(int,
-                                          QList<Conversation::MessageEntry>&)),
+                                          QList<AbstractChat::MessageEntry>&)),
             this,
-            SLOT(onReceiveMessageFinished(int, QList<Conversation::MessageEntry>&)));
+            SLOT(onReceiveMessageFinished(int, QList<AbstractChat::MessageEntry>&)));
+    connect(&globalGroup,
+            SIGNAL(queryError(int, AbstractChat::QueryError)),
+            this,
+            SLOT(onConversationQueryError(int, AbstractChat::QueryError)));
+    connect(&globalGroup,
+            SIGNAL(verifyFinished(int, AbstractChat::VerifyError)),
+            this,
+            SLOT(onConversationVerifyFinished(int, AbstractChat::VerifyError)));
+    connect(&globalGroup,
+            SIGNAL(resetSessionFinished(int, bool)),
+            this,
+            SLOT(onResetSessionFinished(int, bool)));
+    connect(&globalGroup,
+            SIGNAL(sendMessageFinished(int, bool)),
+            this,
+            SLOT(onSendMessageFinished(int, bool)));
+    connect(&globalGroup,
+            SIGNAL(getMessageListFinished(int,
+                                          QList<AbstractChat::MessageListEntry>&)),
+            this,
+            SLOT(onGetGroupMessageListFinished(int,
+                                          QList<AbstractChat::MessageListEntry>&)));
+    connect(&globalGroup,
+            SIGNAL(receiveMessageFinished(int,
+                                          QList<AbstractChat::MessageEntry>&)),
+            this,
+            SLOT(onReceiveMessageFinished(int, QList<AbstractChat::MessageEntry>&)));
     connect(buttonTabClose,
             SIGNAL(clicked(bool)),
             this,
@@ -253,6 +296,10 @@ MainWindow::MainWindow(QWidget *parent) :
             SIGNAL(triggered(QAction*)),
             this,
             SLOT(onListFriendMenuClicked(QAction*)));
+    connect(menuGroupOption,
+            SIGNAL(triggered(QAction*)),
+            this,
+            SLOT(onListGroupMenuClicked(QAction*)));
     connect(sysTrayIcon,
             SIGNAL(activated(QSystemTrayIcon::ActivationReason)),
             this,
@@ -313,13 +360,29 @@ void MainWindow::init()
 
     userSessionList.loadFromFile(globalConfig.userDirectory(userID));
     if (userSessionList.count() < 1)
-        loadSession(userID);
+        loadSession(getSessionIDByID(userID, LocalDialog));
     else
     {
         loadTab();
         loadSession(userSessionList.currentSession().ID, false);
     }
+
+    QDateTime sessionLastTime;
+    QList<QString> sessionIDList = userSessionList.sessionIdList();
+    lastGroupMsgTime = QDateTime::fromMSecsSinceEpoch(0);
+    for (int i=0; i<sessionIDList.count(); i++)
+    {
+        if (getSessionType(sessionIDList[i]) == GroupChat)
+        {
+            sessionLastTime = userSessionList.getSession(sessionIDList[i])
+                                             .messageList->last().time;
+            if (sessionLastTime > lastGroupMsgTime)
+                lastGroupMsgTime = sessionLastTime;
+        }
+    }
+
     globalConversation.setPeerSession(peerSessionList);
+    globalGroup.setPeerSession(peerSessionList);
 
     QDir resourceDir(WICHAT_MAIN_RESOURCE_DIR);
 #ifdef WICHAT_MAIN_RESOURCE_DIR_2
@@ -459,6 +522,7 @@ void MainWindow::doTask()
             addTask(taskUpdateState);
             addTask(taskUpdateFriendList);
             addTask(taskUpdateFriendInfo);
+            addTask(taskUpdateGroupList);
             addTask(taskGetMsgList);
             break;
         case taskGetMsgList:
@@ -478,6 +542,12 @@ void MainWindow::doTask()
             break;
         case taskRefreshFriendList:
             refreshFriendList();
+            break;
+        case taskUpdateGroupList:
+            updateGroupList();
+            break;
+        case taskRefreshGroupList:
+            refreshGroupList();
             break;
         default:;
     }
@@ -522,6 +592,7 @@ void MainWindow::applyFont()
 void MainWindow::applyUserSettings()
 {
     globalConversation.setUserDirectory(globalConfig.userDirectory(userID));
+    globalGroup.setUserDirectory(globalConfig.userDirectory(userID));
 
     int sendKey = globalConfig.prefSendKey(userID);
     if (!(sendKey == WICHAT_MAIN_EDITOR_SENDKEY_ENTER ||
@@ -529,40 +600,68 @@ void MainWindow::applyUserSettings()
         globalConfig.setPrefSendKey(userID, WICHAT_MAIN_EDITOR_SENDKEY_ENTER);
 }
 
-int MainWindow::getSessionIndex(QString ID)
+int MainWindow::getSessionIndex(QString sessionID)
 {
     for (int i=0; i<browserList.count(); i++)
     {
-        if (browserList[i]->property("ID").toString() == ID)
+        if (browserList[i]->property("ID").toString() == sessionID)
             return i;
     }
     return -1;
 }
 
-int MainWindow::getSessionTabIndex(QString ID)
+int MainWindow::getSessionTabIndex(QString sessionID)
 {
     for (int i=0; i<ui->tabSession->count(); i++)
     {
         if (((QTextBrowser*)(ui->tabSession->widget(i)))
-                                        ->property("ID").toString() == ID)
+                                    ->property("ID").toString() == sessionID)
             return i;
     }
     return -1;
 }
 
-// Load new session, and make it visible to user
-void MainWindow::loadSession(QString ID, bool setTabActive)
+MainWindow::SessionType MainWindow::getSessionType(QString sessionID)
 {
-    if (ID.isEmpty())
+    if (sessionID.indexOf('L') == 0)
+        return LocalDialog;
+    else if (sessionID.indexOf('G') == 0)
+        return GroupChat;
+    else
+        return FriendChat;
+}
+
+QString MainWindow::getIDBySessionID(QString sessionID)
+{
+    if (sessionID.indexOf('L') == 0 || sessionID.indexOf('G') == 0)
+        return sessionID.mid(1);
+    else
+        return sessionID;
+}
+
+QString MainWindow::getSessionIDByID(QString ID, SessionType type)
+{
+    if (type == LocalDialog)
+        return ID.prepend('L');
+    else if (type == GroupChat)
+        return ID.prepend('G');
+    else
+        return ID;
+}
+
+// Load new session, and make it visible to user
+void MainWindow::loadSession(QString sessionID, bool setTabActive)
+{
+    if (sessionID.isEmpty())
         return;
 
-    int index = getSessionTabIndex(ID);
+    int index = getSessionTabIndex(sessionID);
     if (index == -1)
     {
         // Create new session
-        if (!userSessionList.exists(ID))
-            userSessionList.add(ID);
-        addTab(ID);
+        if (!userSessionList.exists(sessionID))
+            userSessionList.add(sessionID);
+        addTab(sessionID);
     }
 
     // Clear possible notifications of in-coming messages
@@ -570,28 +669,26 @@ void MainWindow::loadSession(QString ID, bool setTabActive)
     QList<Notification::Note> notes = noteList.getAll();
     for (int i=0; i<notes.count(); i++)
     {
-        if (notes[i].source == ID && notes[i].type == Notification::GotMsg)
+        if (notes[i].source == sessionID &&
+            (notes[i].type == Notification::GotMsg ||
+             notes[i].type == Notification::GotGroupMsg))
         {
             noteList.remove(notes[i].ID);
             receivedMsg = true;
         }
     }
-    if (receivedMsg && ID != userID)
-    {
-        int queryID;
-        globalConversation.receiveMessage(ID, queryID);
-        queryList[queryID] = ID;
-    }
+    if (receivedMsg && sessionID != userID)
+        receiveMessage(sessionID);
 
     // Change session tab index if necessary
-    index = getSessionTabIndex(ID);
+    index = getSessionTabIndex(sessionID);
     if (setTabActive)
     {
         ui->tabSession->setCurrentIndex(index);
     }
-    if (lastConversation == ID)
+    if (lastConversation == sessionID)
         return;
-    highlightSession(ID, false);
+    highlightSession(sessionID, false);
 
     // Save old session if necessary
     UserSession::SessionData& oldSession =
@@ -606,27 +703,27 @@ void MainWindow::loadSession(QString ID, bool setTabActive)
     }
 
     // Load and activate the session
-    index = getSessionIndex(ID);
+    index = getSessionIndex(sessionID);
     if (!browserList[index]->property("Initialized").toBool())
         return;
     if (!browserList[index]->property("Loaded").toBool())
     {
-        loadSessionContent(ID);
+        loadSessionContent(sessionID);
         browserList[index]->setProperty("Loaded", true);
     }
     ((QStackedLayout*)(ui->frameTextGroup->layout()))->setCurrentIndex(index);
-    lastConversation = ID;
+    lastConversation = sessionID;
 
     updateCaption();
 }
 
-void MainWindow::loadSessionContent(QString ID)
+void MainWindow::loadSessionContent(QString sessionID)
 {
-    UserSession::SessionData& session = userSessionList.getSession(ID);
+    UserSession::SessionData& session = userSessionList.getSession(sessionID);
     session.active = true;
 
     // Load cached session content from session data
-    int tabIndex = getSessionIndex(ID);
+    int tabIndex = getSessionIndex(sessionID);
     QString buffer;
     QList<SessionMessageList::MessageEntry> messages =
                                     session.messageList->getAll();
@@ -652,21 +749,21 @@ void MainWindow::loadSessionContent(QString ID)
                     editorList[tabIndex]->verticalScrollBar()->maximum());
 }
 
-void MainWindow::syncSessionContent(QString ID, bool closeSession)
+void MainWindow::syncSessionContent(QString sessionID, bool closeSession)
 {
     int index;
 
-    if (ID.isEmpty())
+    if (sessionID.isEmpty())
     {
         index = ui->tabSession->currentIndex();
         if (index < 0)
            return;
-        ID = browserList[index]->property("ID").toString();
+        sessionID = browserList[index]->property("ID").toString();
     }
 
-    index = getSessionIndex(ID);
-    UserSession::SessionData& session = userSessionList.getSession(ID);
-    if (session.ID == ID)
+    index = getSessionIndex(sessionID);
+    UserSession::SessionData& session = userSessionList.getSession(sessionID);
+    if (session.ID == sessionID)
     {
         // Store content in input box to session cache
         session.input = editorList[index]->toHtml().toUtf8();
@@ -675,17 +772,17 @@ void MainWindow::syncSessionContent(QString ID, bool closeSession)
 }
 
 
-void MainWindow::addTab(QString ID)
+void MainWindow::addTab(QString sessionID)
 {
     QTextBrowser* newBrowser = new QTextBrowser;
     QTextEdit* newEditor = new QTextEdit;
 
-    newBrowser->setProperty("ID", ID);
+    newBrowser->setProperty("ID", sessionID);
     newBrowser->setProperty("Initialized", false);
     newBrowser->setProperty("Loaded", false);
     newBrowser->setOpenLinks(false);
     newBrowser->setGeometry(ui->textBrowser->geometry());
-    newEditor->setProperty("ID", ID);
+    newEditor->setProperty("ID", sessionID);
     newEditor->setGeometry(ui->textEdit->geometry());
 
     browserList.push_back(newBrowser);
@@ -696,11 +793,11 @@ void MainWindow::addTab(QString ID)
             this,
             SLOT(onBrowserLinkClicked(const QUrl&)));
 
-    QString tabText = friendInfoList.value(ID).remarks;
+    QString tabText = friendInfoList.value(sessionID).remarks;
     if (tabText.isEmpty())
-        tabText = ID;
+        tabText = getIDBySessionID(sessionID);
     ui->tabSession->addTab(newBrowser,
-                           QIcon(getStateImagePath(ID)),
+                           QIcon(getStateImagePath(sessionID)),
                            tabText);
     ui->frameTextGroup->layout()->addWidget(newEditor);
     ui->frameMsg->show();
@@ -723,15 +820,16 @@ void MainWindow::loadTab()
     }
 }
 
-void MainWindow::highlightSession(QString ID, bool highlight)
+void MainWindow::highlightSession(QString sessionID, bool highlight)
 {
-    int index = getSessionTabIndex(ID);
+    int index = getSessionTabIndex(sessionID);
     if (index < 0)
         return;
     if (highlight)
     {
         tabBarSession->setTabTextColor(index, QColor("#FFA07A"));
-        setWindowTitle(QString("Message from %1").arg(ID));
+        setWindowTitle(QString("Message from %1")
+                              .arg(getIDBySessionID(sessionID)));
         QApplication::alert(this);
     }
     else
@@ -741,13 +839,13 @@ void MainWindow::highlightSession(QString ID, bool highlight)
     }
 }
 
-void MainWindow::removeTab(QString ID)
+void MainWindow::removeTab(QString sessionID)
 {
-    syncSessionContent(ID, true);
+    syncSessionContent(sessionID, true);
     lastConversation.clear();
 
     // Actually close the tab
-    int index = getSessionIndex(ID);
+    int index = getSessionIndex(sessionID);
     disconnect(browserList[index],
                SIGNAL(anchorClicked(const QUrl&)),
                this,
@@ -755,7 +853,7 @@ void MainWindow::removeTab(QString ID)
     browserList.removeAt(index);
     delete editorList[index];
     editorList.removeAt(index);
-    ui->tabSession->removeTab(getSessionTabIndex(ID));
+    ui->tabSession->removeTab(getSessionTabIndex(sessionID));
     if (editorList.count() < 1)
     {
         ui->frameMsg->hide();
@@ -811,7 +909,7 @@ void MainWindow::updateCaption()
     }
     else
         title = QString("Session with %1")
-                .arg(lastConversation);
+                .arg(getIDBySessionID(lastConversation));
     setWindowTitle(title);
 }
 
@@ -861,17 +959,24 @@ void MainWindow::updateFriendInfo()
     globalAccount.queryFriendRemarks(friendInfoList.keys(), queryID);
 }
 
-QString MainWindow::getStateImagePath(QString ID)
+QString MainWindow::getStateImagePath(QString sessionID)
 {
-    QString image = stateToImagePath(int(Account::OnlineState::Offline));
-    if (ID == userID)
+    QString image;
+    if (getIDBySessionID(sessionID) == userID)
         image = stateToImagePath(int(globalAccount.state()), true);
-    else
+    else switch (getSessionType(sessionID))
     {
+        case LocalDialog:
+            image = stateToImagePath(int(Account::OnlineState::Online));
+            break;
+        case GroupChat:
+            image = ":/Icons/group.png";
+            break;
+        case FriendChat:
         for (int i=0; i<listFriendModel.rowCount(); i++)
         {
             if (listFriendModel.item(i, WICHAT_MAIN_FRILIST_FIELD_ID)
-                                ->text() == ID)
+                                ->text() == sessionID)
             {
                 image = listFriendModel.item(i,
                                              WICHAT_MAIN_FRILIST_FIELD_ICONPATH)
@@ -879,6 +984,8 @@ QString MainWindow::getStateImagePath(QString ID)
                 break;
             }
         }
+        default:
+            image = stateToImagePath(int(Account::OnlineState::Offline));
     }
     return image;
 }
@@ -899,7 +1006,7 @@ bool MainWindow::isFriend(QString ID)
 
 bool MainWindow::refreshFriendList()
 {
-    if (!ui->textFriendSearch->text().isEmpty())
+    if (!(ui->textFriendSearch->text().isEmpty()))
         return false;
 
     listFriendModel.removeRows(0, listFriendModel.rowCount());
@@ -970,6 +1077,54 @@ void MainWindow::showFriendInfo(const AccountInfoEntry &info)
     accountInfo->show();
 }
 
+void MainWindow::updateGroupList()
+{
+    int queryID;
+    globalAccount.getGroupList(queryID);
+}
+
+bool MainWindow::refreshGroupList()
+{
+    if (!(ui->textFriendSearch->text().isEmpty()))
+        return false;
+
+    listGroupModel.removeRows(0, listGroupModel.rowCount());
+
+    QList<QStandardItem*> row;
+    QString iconPath(":/Icons/group.png");
+
+    GroupInfoEntry groupInfo;
+    QList<QString> groupIDList = groupInfoList.keys();
+    for (int i=0; i<groupIDList.count(); i++)
+    {
+        groupInfo = groupInfoList[groupIDList[i]];
+
+        row.clear();
+        if (groupInfo.remarks.isEmpty())
+            row.append(new QStandardItem(QIcon(iconPath), groupIDList[i]));
+        else
+            row.append(new QStandardItem(QIcon(iconPath),
+                                         QString("%1(%2)")
+                                         .arg(groupInfo.remarks)
+                                         .arg(groupIDList[i])));
+        row.append(new QStandardItem(iconPath));
+        row.append(new QStandardItem(groupIDList[i]));
+        listGroupModel.appendRow(row);
+
+        // Update icons in tab
+        int index = getSessionTabIndex(groupIDList[i]);
+        if (index >= 0)
+        {
+            ui->tabSession->setTabIcon(index, QIcon(iconPath));
+            if (groupInfo.remarks.isEmpty())
+                ui->tabSession->setTabText(index, groupIDList[i]);
+            else
+                ui->tabSession->setTabText(index, groupInfo.remarks);
+        }
+    }
+    return true;
+}
+
 void MainWindow::conversationLogin()
 {
     switch (conversationLoginState)
@@ -977,6 +1132,8 @@ void MainWindow::conversationLogin()
         case 0: // Not logged in
             globalConversation.verify(globalAccount.sessionID(),
                                   globalAccount.sessionKey());
+            globalGroup.verify(globalAccount.sessionID(),
+                               globalAccount.sessionKey());
             conversationLoginState = 1;
         case 1: // Waiting for server response
             // Do not use QEventloop here, as it might provoke deadlook
@@ -989,8 +1146,10 @@ void MainWindow::conversationLogin()
 
 void MainWindow::getMessageList()
 {
+    int queryID;
     conversationLogin();
-    globalConversation.getMessageList();
+    globalConversation.getMessageList(queryID);
+    globalGroup.getMessageList(lastGroupMsgTime, queryID);
 }
 
 bool MainWindow::sendMessage(QString content, QString sessionID)
@@ -1011,22 +1170,28 @@ bool MainWindow::sendMessage(QString content, QString sessionID)
         return false;
 
     int queryID;
+    SessionType messageType(getSessionType(sessionID));
+    QString ID(getIDBySessionID(sessionID));
     QByteArray buffer(addSenderInfo(content, userID).toUtf8());
-    if (sessionID != userID)
+    bool successful;
+    if (ID != userID)
     {
-        if (!isFriend(sessionID))
+        if (messageType == FriendChat && !isFriend(ID))
         {
             QMessageBox::warning(this, "Unable send message",
                                  QString("You are not friend to %1.\n"
                                  "Please add %1 to your friend list before "
                                  "sending any message.")
-                                 .arg(sessionID).arg(sessionID));
+                                 .arg(ID).arg(ID));
             return false;
         }
+
         conversationLogin();
-        if (!globalConversation.sendMessage(sessionID,
-                                            buffer,
-                                            queryID))
+        if (messageType == GroupChat)
+            successful = globalGroup.sendMessage(ID, buffer, queryID);
+        else
+            successful = globalConversation.sendMessage(ID, buffer, queryID);
+        if (!successful)
         {
             QMessageBox::warning(this, "Cannot send message",
                                  "Wichat is currently unable to send message.");
@@ -1037,7 +1202,7 @@ bool MainWindow::sendMessage(QString content, QString sessionID)
     }
 
     SessionMessageList::MessageEntry sessionMessage;
-    sessionMessage.time = QDateTime::currentDateTime();
+    sessionMessage.time = QDateTime::currentDateTimeUtc();
     sessionMessage.type = SessionMessageList::TextMessage;
     sessionMessage.source = userID;
     sessionMessage.content = buffer;
@@ -1051,8 +1216,20 @@ bool MainWindow::sendMessage(QString content, QString sessionID)
 bool MainWindow::receiveMessage(QString sessionID)
 {
     int queryID;
+    QString ID(getIDBySessionID(sessionID));
+    SessionType type(getSessionType(sessionID));
+
     conversationLogin();
-    globalConversation.receiveMessage(sessionID, queryID);
+    if (type == FriendChat)
+        globalConversation.receiveMessage(ID, queryID);
+    else if (type == GroupChat)
+    {
+        globalGroup.receiveMessage(ID, lastGroupMsgTime, queryID);
+        lastGroupMsgTime = QDateTime::currentDateTimeUtc();
+    }
+    else
+        return false;
+
     queryList[queryID] = sessionID;
     return true;
 }
@@ -1063,6 +1240,7 @@ void MainWindow::showNotification()
         return;
 
     bool clearNote;
+    static QString sessionID;
     static QList<Notification::Note> tempNoteList;
     tempNoteList = noteList.getAll();
     for (int i=0; i<tempNoteList.count(); i++)
@@ -1075,15 +1253,22 @@ void MainWindow::showNotification()
                 sysTrayNoteList->addNote(tempNoteList[i]);
                 break;
             case Notification::GotMsg:
-                if (tempNoteList[i].source == lastConversation)
-                    receiveMessage(tempNoteList[i].source);
+            case Notification::GotGroupMsg:
+                if (tempNoteList[i].type == Notification::GotGroupMsg)
+                    sessionID = getSessionIDByID(tempNoteList[i].source,
+                                                 GroupChat);
+                else
+                    sessionID = getSessionIDByID(tempNoteList[i].source,
+                                                 FriendChat);
+                if (sessionID == lastConversation)
+                    receiveMessage(lastConversation);
                 else
                 {
-                    int index = getSessionIndex(tempNoteList[i].source);
+                    int index = getSessionIndex(sessionID);
                     if (index >= 0) // Session exists, highlight it
                     {
                         clearNote = false;
-                        highlightSession(tempNoteList[i].source, true);
+                        highlightSession(sessionID, true);
                     }
                     else // Otherwise, show notification only
                         sysTrayNoteList->addNote(tempNoteList[i]);
@@ -1112,9 +1297,10 @@ void MainWindow::fixBrokenConnection()
 {
     int queryID;
     QString sessionID = brokenConnectionList.dequeue();
+    QString ID = getIDBySessionID(sessionID);
+
     conversationLogin();
-    globalConversation.fixBrokenConnection(sessionID,
-                                           queryID);
+    globalConversation.fixBrokenConnection(ID, queryID);
     queryList[queryID] = sessionID;
 }
 
@@ -1467,8 +1653,50 @@ void MainWindow::onFriendRemoved(QString ID)
     noteList.append(note);
 }
 
+void MainWindow::onUpdateGroupListFinished(int queryID,
+                                        QList<Account::GroupListEntry>& groups)
+{
+    Q_UNUSED(queryID)
+
+    int i, j;
+    bool found;
+
+    // Remove non-existent entries
+    QList<QString> groupIDList = groupInfoList.keys();
+    for (i=0; i<groupIDList.count(); i++)
+    {
+        found = false;
+        for (j=0; j<groups.count(); j++)
+        {
+            if (groupIDList[i] == groups[j].ID)
+            {
+                found = true;
+                break;
+            }
+        }
+        if (!found)
+            groupInfoList.remove(groupIDList[i]);
+    }
+
+    // Update existing entries and create new entries
+    GroupInfoEntry groupInfo;
+    groupIDList = groupInfoList.keys();
+    for (i=0; i<groups.count(); i++)
+    {
+        if (groupIDList.indexOf(groups[i].ID) < 0)
+        {
+            groupInfo.remarks.clear();
+            groupInfoList.insert(groups[i].ID, groupInfo);
+        }
+    }
+
+    globalGroup.setGroupList(groupInfoList.keys());
+
+    addTask(taskRefreshGroupList);
+}
+
 void MainWindow::onConversationQueryError(int queryID,
-                                          Conversation::QueryError errCode)
+                                          AbstractChat::QueryError errCode)
 {
     Q_UNUSED(queryID)
     Q_UNUSED(errCode)
@@ -1482,10 +1710,10 @@ void MainWindow::onConnectionBroken(QString ID)
 }
 
 void MainWindow::onConversationVerifyFinished(int queryID,
-                                            Conversation::VerifyError errorCode)
+                                            AbstractChat::VerifyError errorCode)
 {
     Q_UNUSED(queryID)
-    if (errorCode == Conversation::VerifyError::Ok)
+    if (errorCode == AbstractChat::VerifyError::Ok)
     {
         conversationLoginState = 2;
         peerSessionList.loadSessionKey(globalConfig.userDirectory(userID),
@@ -1513,11 +1741,11 @@ void MainWindow::onSendMessageFinished(int queryID, bool successful)
         QMessageBox::warning(this, "Failed to send message",
                              QString("Wichat failed to send message to %1.\n"
                              "Please check your network, then try again.")
-                             .arg(destination));
+                             .arg(getIDBySessionID(destination)));
 }
 
 void MainWindow::onGetMessageListFinished(int queryID,
-                                          QList<Conversation::MessageListEntry>& msgList)
+                                          QList<AbstractChat::MessageListEntry>& msgList)
 {
     Q_UNUSED(queryID)
     Notification::Note newNote;
@@ -1532,20 +1760,38 @@ void MainWindow::onGetMessageListFinished(int queryID,
     }
 }
 
+void MainWindow::onGetGroupMessageListFinished(int queryID,
+                                QList<AbstractChat::MessageListEntry>& msgList)
+{
+    Q_UNUSED(queryID)
+    Notification::Note newNote;
+    newNote.destination = userID;
+    newNote.type = Notification::GotGroupMsg;
+    newNote.time = QDateTime::currentDateTime();
+    for (int i=0; i<msgList.count(); i++)
+    {
+        newNote.source = msgList[i].ID;
+        newNote.ID = noteList.getNewID();
+        noteList.append(newNote);
+    }
+}
+
 void MainWindow::onReceiveMessageFinished(int queryID,
-                                          QList<Conversation::MessageEntry>& messages)
+                                          QList<AbstractChat::MessageEntry>& messages)
 {
     QString sourceID = queryList.value(queryID);
     if (sourceID.isEmpty())
         return;
     queryList.remove(queryID);
 
-    QString htmlBuffer(Wichat_getHTMLHeader(0));
+    QString htmlBuffer;
     SessionMessageList::MessageEntry sessionMessage;
     SessionMessageList* messageList =
                             userSessionList.getSession(sourceID).messageList;
     for (int i=0; i<messages.count(); i++)
     {
+        if (messages[i].source == userID)
+            continue;
         sessionMessage.source = messages[i].source;
         sessionMessage.time = messages[i].time;
         sessionMessage.type = SessionMessageList::TextMessage;
@@ -1554,8 +1800,12 @@ void MainWindow::onReceiveMessageFinished(int queryID,
 
         htmlBuffer.append(renderMessage(sessionMessage));
     }
-    htmlBuffer.append(Wichat_getHTMLFooter(0));
-    browserList[getSessionIndex(sourceID)]->append(htmlBuffer);
+    if (!htmlBuffer.isEmpty())
+    {
+        htmlBuffer.prepend(Wichat_getHTMLHeader(0));
+        htmlBuffer.append(Wichat_getHTMLFooter(0));
+        browserList[getSessionIndex(sourceID)]->append(htmlBuffer);
+    }
 }
 
 void MainWindow::onTimerTimeout()
@@ -1567,6 +1817,8 @@ void MainWindow::onTimerTimeout()
         addTask(taskUpdateFriendList);
     if (count % WICHAT_MAIN_TIMER_GET_FRIENDINFO == 0)
         addTask(taskUpdateFriendInfo);
+    if (count % WICHAT_MAIN_TIMER_GET_GROUPLIST == 10)
+        addTask(taskUpdateGroupList);
     if (count % WICHAT_MAIN_TIMER_GET_MSG == 0)
         addTask(taskGetMsgList);
     if (count % WICHAT_MAIN_TIMER_SHOW_NOTE == 0)
@@ -1671,7 +1923,11 @@ void MainWindow::onSysTrayNoteClicked(const Notification::Note& note)
             globalAccount.removeFriend(note.source, queryID);
             break;
         case Notification::GotMsg:
-            loadSession(note.source, true);
+            loadSession(getSessionIDByID(note.source, FriendChat), true);
+            setWindowState(Qt::WindowActive);
+            break;
+        case Notification::GotGroupMsg:
+            loadSession(getSessionIDByID(note.source, GroupChat), true);
             setWindowState(Qt::WindowActive);
             break;
         default:;
@@ -1867,6 +2123,56 @@ void MainWindow::onListFriendMenuClicked(QAction *action)
         break;
     }
     default:;
+    }
+}
+
+void MainWindow::onListGroupMenuClicked(QAction *action)
+{
+    QModelIndexList index = ui->listGroup->selectionModel()->selectedIndexes();
+    if (index.count() < 1)
+        return;
+    QString firstID = listGroupModel.item(index[0].row(),
+                                          WICHAT_MAIN_GRPLIST_FIELD_ID)
+                                     ->text();
+
+    switch(action->data().toInt())
+    {
+        case WICHAT_MAIN_MENU_GROUP_OPEN:
+        {
+            on_listGroup_doubleClicked(index[0]);
+            break;
+        }
+        case WICHAT_MAIN_MENU_GROUP_REMOVE:
+        {
+            if (QMessageBox::information(this, "Quit a group",
+                                         QString("Do you really want to quit "
+                                                 "group %1 ?").arg(firstID),
+                                         QMessageBox::Yes | QMessageBox::No)
+                            != QMessageBox::Yes)
+                return;
+            int queryID;
+            globalAccount.removeFriend(firstID, queryID);
+            queryList[queryID] = firstID;
+            break;
+        }
+        case WICHAT_MAIN_MENU_GROUP_INFO:
+        {
+            if (firstID == userID)
+            {
+                // An info entry for own account
+                Account::AccountInfoEntry info;
+                info.ID = globalAccount.ID();
+                info.offlineMsg = globalAccount.offlineMsg();
+                showFriendInfo(info);
+            }
+            else
+            {
+                int queryID;
+                globalAccount.queryFriendInfo(firstID, queryID);
+            }
+            break;
+        }
+        default:;
     }
 }
 
@@ -2099,8 +2405,12 @@ void MainWindow::on_tabSession_currentChanged(int index)
 
 void MainWindow::on_listFriend_doubleClicked(const QModelIndex &index)
 {
-    loadSession(listFriendModel.item(index.row(), WICHAT_MAIN_FRILIST_FIELD_ID)
-                                    ->text());
+    QString ID = listFriendModel.item(index.row(),
+                                      WICHAT_MAIN_FRILIST_FIELD_ID)->text();
+    if (ID == userID)
+        loadSession(getSessionIDByID(ID, LocalDialog));
+    else
+        loadSession(getSessionIDByID(ID, FriendChat));
 }
 
 void MainWindow::on_listFriend_customContextMenuRequested(const QPoint &pos)
@@ -2144,6 +2454,47 @@ void MainWindow::on_listFriend_customContextMenuRequested(const QPoint &pos)
         actionList[WICHAT_MAIN_MENU_FRIEND_REMOVE]->setVisible(false);
     else
         actionList[WICHAT_MAIN_MENU_FRIEND_REMOVE]->setVisible(true);
+
+    menuFriendOption->popup(QCursor::pos());
+}
+
+void MainWindow::on_listGroup_doubleClicked(const QModelIndex &index)
+{
+    QString ID = listGroupModel.item(index.row(),
+                                      WICHAT_MAIN_GRPLIST_FIELD_ID)->text();
+    loadSession(getSessionIDByID(ID, GroupChat));
+}
+
+void MainWindow::on_listGroup_customContextMenuRequested(const QPoint &pos)
+{
+    Q_UNUSED(pos)
+
+    static QList<QAction*> actionList;
+    if (actionList.count() < 1)
+    {
+        // Action: WICHAT_MAIN_MENU_GROUP_OPEN
+        QAction* action = new QAction(menuGroupOption);
+        action->setText("Open dialog");
+        action->setData(WICHAT_MAIN_MENU_GROUP_OPEN);
+        action->setIcon(QIcon(":/Icons/conversation.png"));
+        menuFriendOption->addAction(action);
+
+        // Action: WICHAT_MAIN_MENU_GROUP_REMOVE
+        action = new QAction(menuGroupOption);
+        action->setText("Remove this friend");
+        action->setData(WICHAT_MAIN_MENU_GROUP_REMOVE);
+        action->setIcon(QIcon(":/Icons/remove.png"));
+        menuFriendOption->addAction(action);
+
+        // Action: WICHAT_MAIN_MENU_GROUP_INFO
+        action = new QAction(menuGroupOption);
+        action->setText("View information");
+        action->setData(WICHAT_MAIN_MENU_GROUP_INFO);
+        action->setIcon(QIcon(":/Icons/information.png"));
+        menuFriendOption->addAction(action);
+
+        actionList = menuGroupOption->actions();
+    }
 
     menuFriendOption->popup(QCursor::pos());
 }

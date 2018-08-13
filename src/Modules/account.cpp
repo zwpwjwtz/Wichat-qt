@@ -5,6 +5,7 @@
 #define WICHAT_SERVER_PATH_ACCOUNT_LOGIN "/Account/log/login.php"
 #define WICHAT_SERVER_PATH_ACCOUNT_ACTION "/Account/acc/action.php"
 #define WICHAT_SERVER_PATH_ACCOUNT_FRIEND "/Account/acc/friend.php"
+#define WICHAT_SERVER_PATH_ACCOUNT_GROUP "/Account/acc/group.php"
 
 #define WICHAT_ACCOUNT_STATE_DEFAULT 0
 #define WICHAT_ACCOUNT_STATE_ONLINE 1
@@ -360,6 +361,24 @@ bool Account::queryFriendInfo(QString ID, int& queryID)
     return true;
 }
 
+bool Account::getGroupList(int& queryID)
+{
+    Q_D(Account);
+
+    QByteArray bufferIn, bufferOut;
+    bufferIn.append(char(13)).append(char(qrand()));
+    if (d->server->sendData(bufferIn, bufferOut,
+                            RequestManager::RecordServer,
+                            d->serverObjectToPath(
+                               AccountPrivate::ServerObject::AccountGroup),
+                            false, &queryID)
+            == RequestManager::CannotConnect)
+    return false;
+
+    d->addRequest(queryID, AccountPrivate::RequestType::GetGroupList);
+    return true;
+}
+
 AccountPrivate::AccountPrivate(Account *parent, ServerConnection *server) :
     AbstractServicePrivate(parent, server){}
 
@@ -480,6 +499,13 @@ void AccountPrivate::dispatchQueryRespone(int requestID)
                     accountInfoList[i].offlineMsg = tempList[i];
                 }
                 emit q->queryFriendInfoFinished(requestID, accountInfoList);
+                break;
+            }
+            case AccountPrivate::RequestType::GetGroupList:
+            {
+                QList<Account::GroupListEntry> idList;
+                parseGroupList(data, idList);
+                emit q->getGroupListFinished(requestID, idList);
                 break;
             }
             default:
@@ -687,6 +713,32 @@ void AccountPrivate::parseAccountList(QByteArray& data,
     }
 }
 
+void AccountPrivate::parseGroupList(QByteArray& data,
+                                    QList<Account::GroupListEntry>& list)
+{
+    int p1, p2, p3, pE;
+    Account::GroupListEntry group;
+
+    list.clear();
+    p1 = data.indexOf("<IDList>");
+    pE = data.indexOf("</IDList>", p1);
+    if (p1 >= 0 && pE >= 0)
+    {
+        p3 = p2 = p1;
+        while (true)
+        {
+            p1 = data.indexOf("<ID", p1 + 1);
+            p2 = data.indexOf(">", p1 + 1);
+            p3 = data.indexOf("</ID>", p2 + 1);
+            if (p1 < 0 || p1 < 0 || p1 < 0 || p1 > pE)
+                break;
+
+            group.ID = QString(data.mid(p2 + 1, p3 - p2 - 1)).trimmed();
+            list.append(group);
+        }
+    }
+}
+
 Account::OnlineState AccountPrivate::intToOnlineState(int var)
 {
     switch (var)
@@ -708,14 +760,17 @@ QString AccountPrivate::serverObjectToPath(ServerObject objectID)
 {
     switch (objectID)
     {
-        case AccountPrivate::ServerObject::AccountLogin:
+        case ServerObject::AccountLogin:
             return WICHAT_SERVER_PATH_ACCOUNT_LOGIN;
             break;
-        case AccountPrivate::ServerObject::AccountAction:
+        case ServerObject::AccountAction:
             return WICHAT_SERVER_PATH_ACCOUNT_ACTION;
             break;
-        case AccountPrivate::ServerObject::FriendAction:
+        case ServerObject::FriendAction:
             return WICHAT_SERVER_PATH_ACCOUNT_FRIEND;
+            break;
+        case ServerObject::AccountGroup:
+            return WICHAT_SERVER_PATH_ACCOUNT_GROUP;
             break;
         default:
             return "";

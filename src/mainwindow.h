@@ -9,6 +9,7 @@
 
 #include "Modules/account.h"
 #include "Modules/conversation.h"
+#include "Modules/group.h"
 #include "Modules/usersession.h"
 #include "Modules/peersession.h"
 #include "Modules/notification.h"
@@ -50,8 +51,8 @@ private:
     typedef Account::OnlineState OnlineState;
     typedef Account::AccountListEntry AccountListEntry;
     typedef Account::AccountInfoEntry AccountInfoEntry;
-    typedef Conversation::MessageEntry MessageEntry;
-    typedef Conversation::MessageListEntry MessageListEntry;
+    typedef AbstractChat::MessageEntry MessageEntry;
+    typedef AbstractChat::MessageListEntry MessageListEntry;
 
     enum TaskType
     {
@@ -68,13 +69,26 @@ private:
         taskRebuildConnection = 10,
         taskConversationLogin = 11,
         taskUpdateFriendInfo = 12,
-        taskRefreshFriendList = 13
+        taskRefreshFriendList = 13,
+        taskUpdateGroupList = 14,
+        taskRefreshGroupList = 15,
+    };
+    enum SessionType
+    {
+        LocalDialog = 1,
+        FriendChat = 2,
+        GroupChat = 3
     };
 
     struct FriendInfoEntry
     {
         QString remarks;
         Account::OnlineState state;
+    };
+    struct GroupInfoEntry
+    {
+        QString remarks;
+        int memberCount;
     };
 
     Ui::MainWindow *ui;
@@ -89,6 +103,7 @@ private:
     QMenu* menuTextAlign;
     QMenu* menuSendOption;
     QMenu* menuFriendOption;
+    QMenu* menuGroupOption;
     QMenu* menuSysTray;
     QSystemTrayIcon* sysTrayIcon;
     QActionGroup* groupTextAlign;
@@ -98,15 +113,18 @@ private:
     QList<QTextEdit*> editorList;
 
     QStandardItemModel listFriendModel;
+    QStandardItemModel listGroupModel;
     QTimer timer;
     QString userID;
     QString lastConversation;
     QString lastFilePath;
     QString lastImageFilter;
+    QDateTime lastGroupMsgTime;
     QQueue<TaskType> taskList;
     QQueue<QString> brokenConnectionList;
     QMap<int, QString> queryList;
     QMap<QString, FriendInfoEntry> friendInfoList;
+    QMap<QString, GroupInfoEntry> groupInfoList;
     UserSession userSessionList;
     PeerSession peerSessionList;
     Notification noteList;
@@ -120,15 +138,18 @@ private:
     void doTask();
     void applyFont();
     void applyUserSettings();
-    int getSessionIndex(QString ID);
-    int getSessionTabIndex(QString ID);
-    void loadSession(QString ID, bool setTabActive = true);
-    void loadSessionContent(QString ID);
-    void syncSessionContent(QString ID, bool closeSession = false);
-    void addTab(QString ID);
+    int getSessionIndex(QString sessionID);
+    int getSessionTabIndex(QString sessionID);
+    SessionType getSessionType(QString sessionID);
+    QString getIDBySessionID(QString sessionID);
+    QString getSessionIDByID(QString ID, SessionType type);
+    void loadSession(QString sessionID, bool setTabActive = true);
+    void loadSessionContent(QString sessionID);
+    void syncSessionContent(QString sessionID, bool closeSession = false);
+    void addTab(QString sessionID);
     void loadTab();
-    void highlightSession(QString ID, bool highlight);
-    void removeTab(QString ID);
+    void highlightSession(QString sessionID, bool highlight);
+    void removeTab(QString sessionID);
     void changeSession();
     void changeState(Account::OnlineState state);
     void updateState();
@@ -136,10 +157,12 @@ private:
     void updateSysTrayMenu();
     void updateFriendList();
     void updateFriendInfo();
-    QString getStateImagePath(QString ID);
+    QString getStateImagePath(QString sessionID);
     bool isFriend(QString ID);
     bool refreshFriendList();
     void showFriendInfo(const AccountInfoEntry& info);
+    void updateGroupList();
+    bool refreshGroupList();
     void conversationLogin();
     void getMessageList();
     bool sendMessage(QString content, QString sessionID);
@@ -168,17 +191,21 @@ private slots:
                                  QList<AccountInfoEntry> infoList);
     void onFriendRequest(QString ID);
     void onFriendRemoved(QString ID);
+    void onUpdateGroupListFinished(int queryID,
+                                   QList<Account::GroupListEntry>& groups);
     void onConversationQueryError(int queryID,
-                                  Conversation::QueryError errCode);
+                                  AbstractChat::QueryError errCode);
     void onConnectionBroken(QString ID);
     void onConversationVerifyFinished(int queryID,
-                                      Conversation::VerifyError errorCode);
+                                      AbstractChat::VerifyError errorCode);
     void onResetSessionFinished(int queryID, bool successful);
     void onSendMessageFinished(int queryID, bool successful);
     void onGetMessageListFinished(int queryID,
-                                  QList<Conversation::MessageListEntry>& msgList);
+                                  QList<AbstractChat::MessageListEntry>& msgList);
+    void onGetGroupMessageListFinished(int queryID,
+                                  QList<AbstractChat::MessageListEntry>& msgList);
     void onReceiveMessageFinished(int queryID,
-                                  QList<Conversation::MessageEntry>& messages);
+                                  QList<AbstractChat::MessageEntry>& messages);
 
     // Customized slots for UI events
     void onTimerTimeout();
@@ -198,6 +225,7 @@ private slots:
     void onTextAlignMenuClicked(QAction* action);
     void onSendOptionMenuClicked(QAction* action);
     void onListFriendMenuClicked(QAction* action);
+    void onListGroupMenuClicked(QAction* action);
     void onFriendRemarksChanged(QString ID, QString remarks);
     void onOfflineMsgChanged(QString ID, QString offlineMsg);
 
@@ -214,6 +242,8 @@ private slots:
     void on_tabSession_currentChanged(int index);
     void on_listFriend_doubleClicked(const QModelIndex &index);
     void on_listFriend_customContextMenuRequested(const QPoint &pos);
+    void on_listGroup_doubleClicked(const QModelIndex &index);
+    void on_listGroup_customContextMenuRequested(const QPoint &pos);
     void on_buttonImage_clicked();
     void on_buttonFile_clicked();
     void on_textFriendSearch_textChanged(const QString &arg1);

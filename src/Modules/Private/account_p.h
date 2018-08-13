@@ -19,6 +19,7 @@ public:
         static const int AccountLogin = 1;
         static const int AccountAction = 2;
         static const int FriendAction = 3;
+        static const int AccountGroup = 4;
         inline ServerObject(const int& initValue){value = initValue;}
     };
 
@@ -37,6 +38,7 @@ public:
         static const int SetFriendRemarks = 9;
         static const int GetFriendInfo = 10;
         static const int Login = 11;
+        static const int GetGroupList = 12;
         inline RequestType(const int& initValue){value = initValue;}
     };
 
@@ -60,6 +62,8 @@ public:
     static void parseAccountList(QByteArray& data,
                                  QByteArray listType,
                                  QList<Account::AccountListEntry>& list);
+    static void parseGroupList(QByteArray& data,
+                               QList<Account::GroupListEntry>& list);
     static Account::OnlineState intToOnlineState(int var);
     static QString serverObjectToPath(ServerObject objectID);
 };

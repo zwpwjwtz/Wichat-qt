@@ -49,7 +49,7 @@ public:
     virtual bool resetSession();
     virtual bool verify(QByteArray sessionID, QByteArray sessionKey) = 0;
     virtual bool sendMessage(QString ID, QByteArray& content, int& queryID) = 0;
-    virtual bool getMessageList() = 0;
+    virtual bool getMessageList(int& queryID) = 0;
     virtual bool receiveMessage(QString ID, int& queryID) = 0;
 
 signals:

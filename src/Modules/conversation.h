@@ -21,7 +21,7 @@ public:
 
     bool verify(QByteArray sessionID, QByteArray sessionKey);
     bool sendMessage(QString ID, QByteArray& content, int& queryID);
-    bool getMessageList();
+    bool getMessageList(int& queryID);
     bool receiveMessage(QString ID, int& queryID);
     bool fixBrokenConnection(QString ID, int& queryID);
 

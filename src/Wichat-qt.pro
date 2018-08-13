@@ -83,7 +83,8 @@ SOURCES += main.cpp\
     Modules/sessionmessagelist.cpp \
     aboutwindow.cpp \
     Modules/abstractservice.cpp \
-    Modules/abstractchat.cpp
+    Modules/abstractchat.cpp \
+    Modules/group.cpp
 
 HEADERS  += mainwindow.h \
     loginwindow.h \
@@ -131,7 +132,9 @@ HEADERS  += mainwindow.h \
     Modules/Private/abstractservice_p.h \
     Modules/abstractenum.h \
     Modules/Private/abstracchat_p.h \
-    Modules/abstractchat.h
+    Modules/abstractchat.h \
+    Modules/group.h \
+    Modules/Private/group_p.h
 
 FORMS    += mainwindow.ui \
     loginwindow.ui \

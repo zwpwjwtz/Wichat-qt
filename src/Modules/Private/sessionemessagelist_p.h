@@ -16,6 +16,8 @@ public:
     QList<int> messageIDList;
     QList<SessionMessageList::MessageEntry> messageList;
 
+    static SessionMessageList::MessageEntry emptyMessage;
+
     SessionMessageListPrivate(SessionMessageList* parent);
     int getAvailableID();
 };

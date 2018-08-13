@@ -102,6 +102,24 @@ SessionMessageList::getMessageByTime(QDateTime from, QDateTime to) const
     return tempList;
 }
 
+SessionMessageList::MessageEntry SessionMessageList::first()
+{
+    const Q_D(SessionMessageList);
+    if (d->messageList.count() > 0)
+        return d->messageList.first();
+    else
+        return d->emptyMessage;
+}
+
+SessionMessageList::MessageEntry SessionMessageList::last()
+{
+    const Q_D(SessionMessageList);
+    if (d->messageList.count() > 0)
+        return d->messageList.last();
+    else
+        return d->emptyMessage;
+}
+
 bool SessionMessageList::addMessage(MessageEntry& message)
 {
     Q_D(SessionMessageList);
@@ -189,9 +207,14 @@ QDataStream& operator>>(QDataStream& stream, SessionMessageList& list)
     return stream;
 }
 
+SessionMessageList::MessageEntry SessionMessageListPrivate::emptyMessage = {};
+
 SessionMessageListPrivate::SessionMessageListPrivate(SessionMessageList *parent)
 {
     this->q_ptr = parent;
+
+    emptyMessage.type = SessionMessageList::UnknownMessageType;
+    emptyMessage.time = QDateTime::fromMSecsSinceEpoch(0);
 }
 
 int SessionMessageListPrivate::getAvailableID()

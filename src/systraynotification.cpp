@@ -82,6 +82,10 @@ void SystrayNotification::addNote(const Notification::Note &note)
             item = new QStandardItem(QIcon(":/Icons/conversation.png"),
                                      note.source);
             break;
+        case Notification::NoteEvent::GotGroupMsg:
+            item = new QStandardItem(QIcon(":/Icons/group.png"),
+                                     note.source);
+            break;
         default:;
     }
     newRow.append(item);

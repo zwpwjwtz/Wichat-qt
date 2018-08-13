@@ -18,7 +18,8 @@ public:
     {
         TextMessage = 0,
         ImageAttachment = 1,
-        FileAttachment = 2
+        FileAttachment = 2,
+        UnknownMessageType = 255,
     };
 
     struct MessageEntry
@@ -41,6 +42,9 @@ public:
     QList<MessageEntry> getMessageBySource(QString source) const;
     QList<MessageEntry> getMessageByType(MessageType type) const;
     QList<MessageEntry> getMessageByTime(QDateTime from, QDateTime to) const;
+
+    MessageEntry first();
+    MessageEntry last();
 
     bool addMessage(MessageEntry &message);
     bool removeMessage(int messageID);
