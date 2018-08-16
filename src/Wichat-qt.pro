@@ -84,7 +84,8 @@ SOURCES += main.cpp\
     aboutwindow.cpp \
     Modules/abstractservice.cpp \
     Modules/abstractchat.cpp \
-    Modules/group.cpp
+    Modules/group.cpp \
+    groupinfodialog.cpp
 
 HEADERS  += mainwindow.h \
     loginwindow.h \
@@ -134,7 +135,8 @@ HEADERS  += mainwindow.h \
     Modules/Private/abstracchat_p.h \
     Modules/abstractchat.h \
     Modules/group.h \
-    Modules/Private/group_p.h
+    Modules/Private/group_p.h \
+    groupinfodialog.h
 
 FORMS    += mainwindow.ui \
     loginwindow.ui \
@@ -144,7 +146,8 @@ FORMS    += mainwindow.ui \
     emoticonchooser.ui \
     editablelabel.ui \
     preferencedialog.ui \
-    aboutwindow.ui
+    aboutwindow.ui \
+    groupinfodialog.ui
 
 RESOURCES += \
     icon.qrc \

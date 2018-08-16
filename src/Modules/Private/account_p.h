@@ -19,7 +19,8 @@ public:
         static const int AccountLogin = 1;
         static const int AccountAction = 2;
         static const int FriendAction = 3;
-        static const int AccountGroup = 4;
+        static const int GroupRelation = 4;
+        static const int GroupAction = 5;
         inline ServerObject(const int& initValue){value = initValue;}
     };
 
@@ -39,6 +40,16 @@ public:
         static const int GetFriendInfo = 10;
         static const int Login = 11;
         static const int GetGroupList = 12;
+        static const int JoinGroup = 13;
+        static const int QuitGroup = 14;
+        static const int AddGroupMember = 15;
+        static const int RemoveGroupMember = 16;
+        static const int GetGroupMember = 17;
+        static const int GetGroupName = 18;
+        static const int GetGroupInfo = 19;
+        static const int SetGroupName = 20;
+        static const int SetGroupDescription = 21;
+        static const int DeleteGroup = 22;
         inline RequestType(const int& initValue){value = initValue;}
     };
 

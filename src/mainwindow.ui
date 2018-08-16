@@ -593,7 +593,7 @@
           </widget>
          </item>
          <item>
-          <widget class="QTabWidget" name="tabWidget">
+          <widget class="QTabWidget" name="tabChatObjectList">
            <property name="currentIndex">
             <number>0</number>
            </property>

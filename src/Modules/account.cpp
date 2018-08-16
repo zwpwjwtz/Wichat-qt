@@ -5,7 +5,10 @@
 #define WICHAT_SERVER_PATH_ACCOUNT_LOGIN "/Account/log/login.php"
 #define WICHAT_SERVER_PATH_ACCOUNT_ACTION "/Account/acc/action.php"
 #define WICHAT_SERVER_PATH_ACCOUNT_FRIEND "/Account/acc/friend.php"
-#define WICHAT_SERVER_PATH_ACCOUNT_GROUP "/Account/acc/group.php"
+#define WICHAT_SERVER_PATH_GROUP_RELATION "/Account/group/relation.php"
+#define WICHAT_SERVER_PATH_GROUP_ACTION "/Account/group/action.php"
+
+#define WICHAT_SERVER_ACCOUNT_TIME_FORMAT "yyyy/MM/dd,HH:mm:ss"
 
 #define WICHAT_ACCOUNT_STATE_DEFAULT 0
 #define WICHAT_ACCOUNT_STATE_ONLINE 1
@@ -38,8 +41,24 @@
 #define WICHAT_ACCOUNT_FRIEND_OPTION_GETDATE 1
 #define WICHAT_ACCOUNT_FRIEND_OPTION_GETSTATE 2
 
+#define WICHAT_ACCOUNT_GROUP_ADD_MEMBER 1
+#define WICHAT_ACCOUNT_GROUP_DEL_MEMBER 2
+#define WICHAT_ACCOUNT_GROUP_GET_MEMBER 3
+#define WICHAT_ACCOUNT_GROUP_GET_NAME 4
+#define WICHAT_ACCOUNT_GROUP_GET_INFO 5
+#define WICHAT_ACCOUNT_GROUP_SET_NAME 6
+#define WICHAT_ACCOUNT_GROUP_SET_DESCRIP 7
+#define WICHAT_ACCOUNT_GROUP_DEL_GROUP 8
+
 #define WICHAT_ACCOUNT_RESPONSE_PASSWORD_OK 1
 #define WICHAT_ACCOUNT_RESPONSE_PASSWORD_INCORRECT 2
+#define WICHAT_ACCOUNT_RESPONSE_GROUP_OK 0
+#define WICHAT_ACCOUNT_RESPONSE_ACCOUNT_NOT_EXIST 3
+#define WICHAT_ACCOUNT_RESPONSE_GROUP_NOT_EXIST 4
+#define WICHAT_ACCOUNT_RESPONSE_GROUP_CANNOT_JOIN 5
+#define WICHAT_ACCOUNT_RESPONSE_GROUP_NOT_MEMEBER 6
+#define WICHAT_ACCOUNT_RESPONSE_GROUP_ALREADY_MEMEBER 7
+#define WICHAT_ACCOUNT_RESPONSE_GROUP_NO_PERMISSION 8
 
 
 Account::Account()
@@ -366,16 +385,216 @@ bool Account::getGroupList(int& queryID)
     Q_D(Account);
 
     QByteArray bufferIn, bufferOut;
-    bufferIn.append(char(13)).append(char(qrand()));
+    bufferIn.append(char(1)).append(char(qrand()));
     if (d->server->sendData(bufferIn, bufferOut,
                             RequestManager::RecordServer,
                             d->serverObjectToPath(
-                               AccountPrivate::ServerObject::AccountGroup),
+                               AccountPrivate::ServerObject::GroupRelation),
                             false, &queryID)
             == RequestManager::CannotConnect)
     return false;
 
     d->addRequest(queryID, AccountPrivate::RequestType::GetGroupList);
+    return true;
+}
+
+bool Account::joinGroup(QString groupID, int& queryID)
+{
+    Q_D(Account);
+
+    QByteArray bufferIn, bufferOut;
+    bufferIn.append(char(2)).append(char(qrand()));
+    bufferIn.append(d->formatID(groupID));
+    if (d->server->sendData(bufferIn, bufferOut,
+                            RequestManager::RecordServer,
+                            d->serverObjectToPath(
+                               AccountPrivate::ServerObject::GroupRelation),
+                            false, &queryID)
+            == RequestManager::CannotConnect)
+    return false;
+
+    d->addRequest(queryID, AccountPrivate::RequestType::JoinGroup);
+    return true;
+}
+
+bool Account::quitGroup(QString groupID, int& queryID)
+{
+    Q_D(Account);
+
+    QByteArray bufferIn, bufferOut;
+    bufferIn.append(char(3)).append(char(qrand()));
+    bufferIn.append(d->formatID(groupID));
+    if (d->server->sendData(bufferIn, bufferOut,
+                            RequestManager::RecordServer,
+                            d->serverObjectToPath(
+                               AccountPrivate::ServerObject::GroupRelation),
+                            false, &queryID)
+            == RequestManager::CannotConnect)
+    return false;
+
+    d->addRequest(queryID, AccountPrivate::RequestType::QuitGroup);
+    return true;
+}
+
+bool Account::addGroupMemeber(QString groupID, QString memberID, int& queryID)
+{
+    Q_D(Account);
+
+    QByteArray bufferIn, bufferOut;
+    bufferIn.append(char(1)).append(char(qrand()));
+    bufferIn.append(d->formatID(groupID));
+    bufferIn.append("<IDList><ID>")
+            .append(d->formatID(memberID))
+            .append("</ID></IDList>");
+    if (d->server->sendData(bufferIn, bufferOut,
+                            RequestManager::RecordServer,
+                            d->serverObjectToPath(
+                               AccountPrivate::ServerObject::GroupAction),
+                            false, &queryID)
+            == RequestManager::CannotConnect)
+    return false;
+
+    d->addRequest(queryID, AccountPrivate::RequestType::AddGroupMember);
+    return true;
+}
+
+bool Account::removeGroupMemeber(QString groupID, QString memberID,int& queryID)
+{
+    Q_D(Account);
+
+    QByteArray bufferIn, bufferOut;
+    bufferIn.append(char(2)).append(char(qrand()));
+    bufferIn.append(d->formatID(groupID));
+    bufferIn.append("<IDList><ID>")
+            .append(d->formatID(memberID))
+            .append("</ID></IDList>");
+    if (d->server->sendData(bufferIn, bufferOut,
+                            RequestManager::RecordServer,
+                            d->serverObjectToPath(
+                               AccountPrivate::ServerObject::GroupAction),
+                            false, &queryID)
+            == RequestManager::CannotConnect)
+    return false;
+
+    d->addRequest(queryID, AccountPrivate::RequestType::RemoveGroupMember);
+    return true;
+}
+
+bool Account::getGroupMemberList(QString groupID, int& queryID)
+{
+    Q_D(Account);
+
+    QByteArray bufferIn, bufferOut;
+    bufferIn.append(char(3)).append(char(qrand()));
+    bufferIn.append(d->formatID(groupID));
+    if (d->server->sendData(bufferIn, bufferOut,
+                            RequestManager::RecordServer,
+                            d->serverObjectToPath(
+                               AccountPrivate::ServerObject::GroupAction),
+                            false, &queryID)
+            == RequestManager::CannotConnect)
+    return false;
+
+    d->addRequest(queryID, AccountPrivate::RequestType::GetGroupMember);
+    return true;
+}
+
+bool Account::getGroupNames(QList<QString>& groupIDList, int& queryID)
+{
+    Q_D(Account);
+
+    QByteArray bufferIn, bufferOut;
+    bufferIn.append(char(4)).append(char(qrand()));
+    bufferIn.append(QByteArray(MaxIDLen, '0'));
+    bufferIn.append("<IDList>");
+    for (int i=0; i<groupIDList.count(); i++)
+        bufferIn.append("<ID>").append(groupIDList[i]).append("</ID>");
+    bufferIn.append("</IDList>");
+    if (d->server->sendData(bufferIn, bufferOut,
+                            RequestManager::RecordServer,
+                            d->serverObjectToPath(
+                               AccountPrivate::ServerObject::GroupAction),
+                            false, &queryID)
+            == RequestManager::CannotConnect)
+    return false;
+
+    d->addRequest(queryID, AccountPrivate::RequestType::GetGroupName);
+    return true;
+}
+
+bool Account::getGroupInfo(QString groupID, int& queryID)
+{
+    Q_D(Account);
+
+    QByteArray bufferIn, bufferOut;
+    bufferIn.append(char(5)).append(char(qrand()));
+    bufferIn.append(d->formatID(groupID));
+    if (d->server->sendData(bufferIn, bufferOut,
+                            RequestManager::RecordServer,
+                            d->serverObjectToPath(
+                               AccountPrivate::ServerObject::GroupAction),
+                            false, &queryID)
+            == RequestManager::CannotConnect)
+    return false;
+
+    d->addRequest(queryID, AccountPrivate::RequestType::GetGroupInfo);
+    return true;
+}
+
+bool Account::setGroupName(QString groupID, QString name, int& queryID)
+{
+    Q_D(Account);
+
+    QByteArray bufferIn, bufferOut;
+    bufferIn.append(char(6)).append(char(qrand()));
+    bufferIn.append(d->formatID(groupID)).append(name.toUtf8());
+    if (d->server->sendData(bufferIn, bufferOut,
+                            RequestManager::RecordServer,
+                            d->serverObjectToPath(
+                               AccountPrivate::ServerObject::GroupAction),
+                            false, &queryID)
+            == RequestManager::CannotConnect)
+    return false;
+
+    d->addRequest(queryID, AccountPrivate::RequestType::SetGroupName);
+    return true;
+}
+
+bool Account::setGroupDescription(QString groupID, QString text, int& queryID)
+{
+    Q_D(Account);
+
+    QByteArray bufferIn, bufferOut;
+    bufferIn.append(char(7)).append(char(qrand()));
+    bufferIn.append(d->formatID(groupID)).append(text.toUtf8());
+    if (d->server->sendData(bufferIn, bufferOut,
+                            RequestManager::RecordServer,
+                            d->serverObjectToPath(
+                               AccountPrivate::ServerObject::GroupAction),
+                            false, &queryID)
+            == RequestManager::CannotConnect)
+    return false;
+
+    d->addRequest(queryID, AccountPrivate::RequestType::SetGroupDescription);
+    return true;
+}
+
+bool Account::deleteGroup(QString groupID, int& queryID)
+{
+    Q_D(Account);
+
+    QByteArray bufferIn, bufferOut;
+    bufferIn.append(char(8)).append(char(qrand()));
+    bufferIn.append(d->formatID(groupID));
+    if (d->server->sendData(bufferIn, bufferOut,
+                            RequestManager::RecordServer,
+                            d->serverObjectToPath(
+                               AccountPrivate::ServerObject::GroupAction),
+                            false, &queryID)
+            == RequestManager::CannotConnect)
+    return false;
+
+    d->addRequest(queryID, AccountPrivate::RequestType::DeleteGroup);
     return true;
 }
 
@@ -388,7 +607,8 @@ void AccountPrivate::dispatchQueryRespone(int requestID)
 
     bool successful;
     QByteArray data;
-    QList<QByteArray> tempList;
+    static QList<QByteArray> tempList;
+    static QList<Account::AccountListEntry> idList;
 
     int requestIndex = getRequestIndexByID(requestID);
     RequestType requestType(requestList[requestIndex].type);
@@ -442,7 +662,6 @@ void AccountPrivate::dispatchQueryRespone(int requestID)
             }
             case AccountPrivate::RequestType::GetFriendList:
             {
-                QList<Account::AccountListEntry> idList;
                 parseAccountList(data, "b", idList);
                 for (int i=0; i<idList.count(); i++)
                     emit q->friendRemoved(idList[i].ID);
@@ -455,7 +674,6 @@ void AccountPrivate::dispatchQueryRespone(int requestID)
             }
             case AccountPrivate::RequestType::AddFriend:
             {
-                QList<Account::AccountListEntry> idList;
                 parseAccountList(data, "f", idList);
                 successful &= idList.isEmpty();
                 emit q->addFriendFinished(requestID, successful);
@@ -463,7 +681,6 @@ void AccountPrivate::dispatchQueryRespone(int requestID)
             }
             case AccountPrivate::RequestType::RemoveFriend:
             {
-                QList<Account::AccountListEntry> idList;
                 parseAccountList(data, "f", idList);
                 successful &= idList.isEmpty();
                 emit q->removeFriendFinished(requestID, successful);
@@ -503,9 +720,72 @@ void AccountPrivate::dispatchQueryRespone(int requestID)
             }
             case AccountPrivate::RequestType::GetGroupList:
             {
-                QList<Account::GroupListEntry> idList;
-                parseGroupList(data, idList);
-                emit q->getGroupListFinished(requestID, idList);
+                QList<Account::GroupListEntry> groupList;
+                parseGroupList(data, groupList);
+                emit q->getGroupListFinished(requestID, groupList);
+                break;
+            }
+            case AccountPrivate::RequestType::AddGroupMember:
+            {
+                parseAccountList(data, "f", idList);
+                successful &= idList.isEmpty();
+                emit q->addGroupMemeberFinished(requestID, successful);
+                break;
+            }
+            case AccountPrivate::RequestType::RemoveGroupMember:
+            {
+                parseAccountList(data, "f", idList);
+                successful &= idList.isEmpty();
+                emit q->removeGroupMemeberFinished(requestID, successful);
+                break;
+            }
+            case AccountPrivate::RequestType::GetGroupMember:
+            {
+                parseAccountList(data, "", idList);
+                emit q->getGroupMemberListFinished(requestID, idList);
+                break;
+            }
+            case AccountPrivate::RequestType::GetGroupName:
+            {
+                QList<QString> nameList;
+                parseMixedList(data, "NAME", tempList);
+                for (int i=0; i<tempList.count(); i++)
+                    nameList.push_back(tempList[i]);
+                emit q->getGroupNameFinished(requestID, nameList);
+                break;
+            }
+            case AccountPrivate::RequestType::GetGroupInfo:
+            {
+                Account::GroupInfoEntry groupInfo;
+                parseMixedList(data, "ID", tempList);
+                groupInfo.ID = tempList[0];
+                parseMixedList(data, "COUNT", tempList);
+                groupInfo.memberCount = tempList[0].toInt();
+                parseMixedList(data, "TIME", tempList);
+                groupInfo.creationTime = QDateTime::fromString(tempList[0],
+                                            WICHAT_SERVER_ACCOUNT_TIME_FORMAT);
+                parseMixedList(data, "NAME", tempList);
+                groupInfo.name = QString::fromUtf8(tempList[0]);
+                parseMixedList(data, "DESC", tempList);
+                groupInfo.description = QString::fromUtf8(tempList[0]);
+                parseMixedList(data, "ROLE", tempList);
+                groupInfo.role = Account::GroupMemberRole(tempList[0].toInt());
+                emit q->getGroupInfoFinished(requestID, groupInfo);
+                break;
+            }
+            case AccountPrivate::RequestType::SetGroupName:
+            {
+                emit q->setGroupNameFinished(requestID, successful);
+                break;
+            }
+            case AccountPrivate::RequestType::SetGroupDescription:
+            {
+                emit q->setGroupDescriptionFinished(requestID, successful);
+                break;
+            }
+            case AccountPrivate::RequestType::DeleteGroup:
+            {
+                emit q->deleteGroupFinished(requestID, successful);
                 break;
             }
             default:
@@ -769,8 +1049,11 @@ QString AccountPrivate::serverObjectToPath(ServerObject objectID)
         case ServerObject::FriendAction:
             return WICHAT_SERVER_PATH_ACCOUNT_FRIEND;
             break;
-        case ServerObject::AccountGroup:
-            return WICHAT_SERVER_PATH_ACCOUNT_GROUP;
+        case ServerObject::GroupRelation:
+            return WICHAT_SERVER_PATH_GROUP_RELATION;
+            break;
+        case ServerObject::GroupAction:
+            return WICHAT_SERVER_PATH_GROUP_ACTION;
             break;
         default:
             return "";

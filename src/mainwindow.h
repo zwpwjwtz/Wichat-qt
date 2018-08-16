@@ -23,6 +23,7 @@ class QTextEdit;
 class QActionGroup;
 class AboutWindow;
 class AccountInfoDialog;
+class GroupInfoDialog;
 class SystrayNotification;
 class EmoticonChooser;
 
@@ -39,6 +40,7 @@ public:
     ~MainWindow();
     void init();
     void setID(QString ID);
+    void showAccountInfo(QString ID);
 
 protected:
     void changeEvent(QEvent* event);
@@ -72,6 +74,7 @@ private:
         taskRefreshFriendList = 13,
         taskUpdateGroupList = 14,
         taskRefreshGroupList = 15,
+        taskUpdateGroupInfo = 16
     };
     enum SessionType
     {
@@ -87,13 +90,13 @@ private:
     };
     struct GroupInfoEntry
     {
-        QString remarks;
-        int memberCount;
+        QString name;
     };
 
     Ui::MainWindow *ui;
     AboutWindow* aboutDialog;
     AccountInfoDialog* accountInfo;
+    GroupInfoDialog* groupInfo;
     SystrayNotification* sysTrayNoteList;
     EmoticonChooser* emoticonList;
     QPushButton* buttonTabClose;
@@ -163,6 +166,8 @@ private:
     void showFriendInfo(const AccountInfoEntry& info);
     void updateGroupList();
     bool refreshGroupList();
+    void updateGroupInfo();
+    void showGroupInfo(const Account::GroupInfoEntry& info);
     void conversationLogin();
     void getMessageList();
     bool sendMessage(QString content, QString sessionID);
@@ -172,6 +177,8 @@ private:
     QString addSenderInfo(const QString& content, QString ID);
     QString renderMessage(const SessionMessageList::MessageEntry& message,
                           bool fullHTML = false);
+
+public:
     static QString extractHTMLTag(const QString& rawHTML, QString tagName);
     static QString stateToImagePath(int stateNumber, bool displayHide = false);
     static QString getFileNameFromPath(QString filePath);
@@ -193,6 +200,10 @@ private slots:
     void onFriendRemoved(QString ID);
     void onUpdateGroupListFinished(int queryID,
                                    QList<Account::GroupListEntry>& groups);
+    void onJoinGroup(int queryID, bool successful);
+    void onQuitGroup(int queryID, bool successful);
+    void onGetGroupNames(int queryID, QList<QString>& names);
+    void onGetGroupInfoFinished(int queryID, Account::GroupInfoEntry& info);
     void onConversationQueryError(int queryID,
                                   AbstractChat::QueryError errCode);
     void onConnectionBroken(QString ID);

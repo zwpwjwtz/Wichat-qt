@@ -1,4 +1,4 @@
-#include <QMessageBox>
+﻿#include <QMessageBox>
 #include <QCloseEvent>
 #include <QKeyEvent>
 #include <QStackedLayout>
@@ -16,6 +16,7 @@
 #include "ui_mainwindow.h"
 #include "aboutwindow.h"
 #include "accountinfodialog.h"
+#include "groupinfodialog.h"
 #include "preferencedialog.h"
 #include "systraynotification.h"
 #include "emoticonchooser.h"
@@ -60,7 +61,7 @@
 #define WICHAT_MAIN_MENU_APP_ABOUT 4
 #define WICHAT_MAIN_MENU_APP_QUIT 5
 #define WICHAT_MAIN_MENU_GROUP_OPEN 6
-#define WICHAT_MAIN_MENU_GROUP_REMOVE 7
+#define   WICHAT_MAIN_MENU_GROUP_QUIT 7
 #define WICHAT_MAIN_MENU_GROUP_INFO 8
 
 #define WICHAT_MAIN_FILE_FILTER_ALL "All (*.*)(*.*)"
@@ -230,6 +231,10 @@ MainWindow::MainWindow(QWidget *parent) :
             this,
             SLOT(onUpdateGroupListFinished(int,QList<Account::GroupListEntry>&)));
 
+    connect(&globalAccount,
+            SIGNAL(getGroupInfoFinished(int,Account::GroupInfoEntry&)),
+            this,
+            SLOT(onGetGroupInfoFinished(int,Account::GroupInfoEntry&)));
     connect(&globalConversation,
             SIGNAL(queryError(int, AbstractChat::QueryError)),
             this,
@@ -331,6 +336,7 @@ MainWindow::MainWindow(QWidget *parent) :
 
     aboutDialog = nullptr;
     accountInfo = nullptr;
+    groupInfo = nullptr;
     dialogColor = nullptr;
     menuApp = nullptr;
     menuFontStyle = nullptr;
@@ -409,6 +415,23 @@ void MainWindow::setID(QString ID)
     userID = ID;
 }
 
+void MainWindow::showAccountInfo(QString ID)
+{
+    if (ID == userID)
+    {
+        // An info entry for own account
+        Account::AccountInfoEntry info;
+        info.ID = globalAccount.ID();
+        info.offlineMsg = globalAccount.offlineMsg();
+        showFriendInfo(info);
+    }
+    else
+    {
+        int queryID;
+        globalAccount.queryFriendInfo(ID, queryID);
+    }
+}
+
 void MainWindow::changeEvent(QEvent* event)
 {
     if (event->type() == QEvent::WindowStateChange)
@@ -445,6 +468,8 @@ void MainWindow::closeEvent(QCloseEvent* event)
         aboutDialog->close();
     if (accountInfo)
         accountInfo->close();
+    if (groupInfo)
+        groupInfo->close();
     sysTrayIcon->hide();
     sysTrayNoteList->close();
     emoticonList->hide();
@@ -548,6 +573,9 @@ void MainWindow::doTask()
             break;
         case taskRefreshGroupList:
             refreshGroupList();
+            break;
+        case taskUpdateGroupInfo:
+            updateGroupInfo();
             break;
         default:;
     }
@@ -1100,12 +1128,12 @@ bool MainWindow::refreshGroupList()
         groupInfo = groupInfoList[groupIDList[i]];
 
         row.clear();
-        if (groupInfo.remarks.isEmpty())
+        if (groupInfo.name.isEmpty())
             row.append(new QStandardItem(QIcon(iconPath), groupIDList[i]));
         else
             row.append(new QStandardItem(QIcon(iconPath),
                                          QString("%1(%2)")
-                                         .arg(groupInfo.remarks)
+                                         .arg(groupInfo.name)
                                          .arg(groupIDList[i])));
         row.append(new QStandardItem(iconPath));
         row.append(new QStandardItem(groupIDList[i]));
@@ -1116,13 +1144,33 @@ bool MainWindow::refreshGroupList()
         if (index >= 0)
         {
             ui->tabSession->setTabIcon(index, QIcon(iconPath));
-            if (groupInfo.remarks.isEmpty())
+            if (groupInfo.name.isEmpty())
                 ui->tabSession->setTabText(index, groupIDList[i]);
             else
-                ui->tabSession->setTabText(index, groupInfo.remarks);
+                ui->tabSession->setTabText(index, groupInfo.name);
         }
     }
     return true;
+}
+
+void MainWindow::updateGroupInfo()
+{
+    int queryID;
+    QList<QString> groupIDList(groupInfoList.keys());
+    globalAccount.getGroupNames(groupIDList, queryID);
+}
+
+void MainWindow::showGroupInfo(const Account::GroupInfoEntry &info)
+{
+    if (!groupInfo)
+        groupInfo = new GroupInfoDialog;
+    groupInfo->groupID = info.ID;
+    groupInfo->memberCount = info.memberCount;
+    groupInfo->creationTime = info.creationTime;
+    groupInfo->userRole = info.role;
+    groupInfo->name = info.name;
+    groupInfo->description = info.description;
+    groupInfo->show();
 }
 
 void MainWindow::conversationLogin()
@@ -1589,7 +1637,7 @@ void MainWindow::onUpdateFriendRemarksFinished(int queryID,
             // Exception: friend info list updated after query was sent
             // Try to resend this query
             addTask(taskUpdateFriendInfo);
-            break;
+            return;
         }
         friendInfoList[friendIDList[i]].remarks = remarks[i];
     }
@@ -1685,7 +1733,7 @@ void MainWindow::onUpdateGroupListFinished(int queryID,
     {
         if (groupIDList.indexOf(groups[i].ID) < 0)
         {
-            groupInfo.remarks.clear();
+            groupInfo.name.clear();
             groupInfoList.insert(groups[i].ID, groupInfo);
         }
     }
@@ -1693,6 +1741,56 @@ void MainWindow::onUpdateGroupListFinished(int queryID,
     globalGroup.setGroupList(groupInfoList.keys());
 
     addTask(taskRefreshGroupList);
+}
+
+void MainWindow::onJoinGroup(int queryID, bool successful)
+{
+    QString ID = queryList[queryID];
+    if (successful)
+        QMessageBox::information(this, "Group join request sent",
+                                 QString("Your join request has been sent.\n"
+                                         "Please wait respose from the"
+                                         "group administrator.").arg(ID));
+    else
+        QMessageBox::warning(this, "Joining group failed",
+                             QString("Unable to join group %1.").arg(ID));
+}
+
+void MainWindow::onQuitGroup(int queryID, bool successful)
+{
+    QString ID = queryList[queryID];
+    if (ID.isEmpty())
+        return;
+    if (!successful)
+        QMessageBox::warning(this, "Quiting group failed",
+                             QString("Unable to quit group %1. Please contact "
+                                     "administrator for help.").arg(ID));
+}
+
+void MainWindow::onGetGroupNames(int queryID, QList<QString>& names)
+{
+    Q_UNUSED(queryID)
+
+    QList<QString> groupIDList = groupInfoList.keys();
+    for (int i=0; i<groupIDList.count(); i++)
+    {
+        if (i >= names.count())
+        {
+            // Exception: group info list updated after query was sent
+            // Try to resend this query
+            addTask(taskUpdateGroupInfo);
+            return;
+        }
+        groupInfoList[groupIDList[i]].name = names[i];
+    }
+    addTask(taskRefreshGroupList);
+}
+
+void MainWindow::onGetGroupInfoFinished(int queryID,
+                                        Account::GroupInfoEntry& info)
+{
+    Q_UNUSED(queryID)
+    showGroupInfo(info);
 }
 
 void MainWindow::onConversationQueryError(int queryID,
@@ -2107,19 +2205,7 @@ void MainWindow::onListFriendMenuClicked(QAction *action)
     }
     case WICHAT_MAIN_MENU_FRIEND_INFO:
     {
-        if (firstID == userID)
-        {
-            // An info entry for own account
-            Account::AccountInfoEntry info;
-            info.ID = globalAccount.ID();
-            info.offlineMsg = globalAccount.offlineMsg();
-            showFriendInfo(info);
-        }
-        else
-        {
-            int queryID;
-            globalAccount.queryFriendInfo(firstID, queryID);
-        }
+        showAccountInfo(firstID);
         break;
     }
     default:;
@@ -2142,7 +2228,7 @@ void MainWindow::onListGroupMenuClicked(QAction *action)
             on_listGroup_doubleClicked(index[0]);
             break;
         }
-        case WICHAT_MAIN_MENU_GROUP_REMOVE:
+        case   WICHAT_MAIN_MENU_GROUP_QUIT:
         {
             if (QMessageBox::information(this, "Quit a group",
                                          QString("Do you really want to quit "
@@ -2151,25 +2237,14 @@ void MainWindow::onListGroupMenuClicked(QAction *action)
                             != QMessageBox::Yes)
                 return;
             int queryID;
-            globalAccount.removeFriend(firstID, queryID);
+            globalAccount.quitGroup(firstID, queryID);
             queryList[queryID] = firstID;
             break;
         }
         case WICHAT_MAIN_MENU_GROUP_INFO:
         {
-            if (firstID == userID)
-            {
-                // An info entry for own account
-                Account::AccountInfoEntry info;
-                info.ID = globalAccount.ID();
-                info.offlineMsg = globalAccount.offlineMsg();
-                showFriendInfo(info);
-            }
-            else
-            {
-                int queryID;
-                globalAccount.queryFriendInfo(firstID, queryID);
-            }
+            int queryID;
+            globalAccount.getGroupInfo(firstID, queryID);
             break;
         }
         default:;
@@ -2477,26 +2552,26 @@ void MainWindow::on_listGroup_customContextMenuRequested(const QPoint &pos)
         action->setText("Open dialog");
         action->setData(WICHAT_MAIN_MENU_GROUP_OPEN);
         action->setIcon(QIcon(":/Icons/conversation.png"));
-        menuFriendOption->addAction(action);
+        menuGroupOption->addAction(action);
 
-        // Action: WICHAT_MAIN_MENU_GROUP_REMOVE
+        // Action:   WICHAT_MAIN_MENU_GROUP_QUIT
         action = new QAction(menuGroupOption);
-        action->setText("Remove this friend");
-        action->setData(WICHAT_MAIN_MENU_GROUP_REMOVE);
-        action->setIcon(QIcon(":/Icons/remove.png"));
-        menuFriendOption->addAction(action);
+        action->setText("Quit this group");
+        action->setData(  WICHAT_MAIN_MENU_GROUP_QUIT);
+        action->setIcon(QIcon(":/Icons/exit.png"));
+        menuGroupOption->addAction(action);
 
         // Action: WICHAT_MAIN_MENU_GROUP_INFO
         action = new QAction(menuGroupOption);
         action->setText("View information");
         action->setData(WICHAT_MAIN_MENU_GROUP_INFO);
         action->setIcon(QIcon(":/Icons/information.png"));
-        menuFriendOption->addAction(action);
+        menuGroupOption->addAction(action);
 
         actionList = menuGroupOption->actions();
     }
 
-    menuFriendOption->popup(QCursor::pos());
+    menuGroupOption->popup(QCursor::pos());
 }
 
 void MainWindow::on_buttonImage_clicked()
@@ -2562,6 +2637,8 @@ void MainWindow::on_buttonFriendAdd_clicked()
         return;
 
     int queryID;
+    if (ui->tabChatObjectList->currentIndex() == 0)
+    {
     if (QMessageBox::question(this, "Add friend",
                               QString("Do you want to add %1 as friend?")
                               .arg(ID),
@@ -2570,6 +2647,19 @@ void MainWindow::on_buttonFriendAdd_clicked()
     {
         globalAccount.addFriend(ID, queryID);
         queryList[queryID] = ID;
+    }
+    }
+    else
+    {
+        if (QMessageBox::question(this, "Join group",
+                                  QString("Do you want to join group %1?")
+                                  .arg(ID),
+                                  QMessageBox::Yes | QMessageBox::No)
+                == QMessageBox::Yes)
+        {
+            globalAccount.joinGroup(ID, queryID);
+            queryList[queryID] = ID;
+        }
     }
 }
 
