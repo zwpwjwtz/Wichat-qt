@@ -21,17 +21,11 @@
 #include "systraynotification.h"
 #include "emoticonchooser.h"
 #include "global_objects.h"
+#include "imageresource.h"
 #include "Modules/account.h"
 #include "Modules/conversation.h"
 #include "Modules/group.h"
 #include "Modules/wichatconfig.h"
-
-#define WICHAT_MAIN_FRILIST_FIELD_ICON 0
-#define WICHAT_MAIN_FRILIST_FIELD_ICONPATH 1
-#define WICHAT_MAIN_FRILIST_FIELD_ID 2
-#define WICHAT_MAIN_GRPLIST_FIELD_ICON 0
-#define WICHAT_MAIN_GRPLIST_FIELD_ICONPATH 1
-#define WICHAT_MAIN_GRPLIST_FIELD_ID 2
 
 #define WICHAT_MAIN_FONT_STYLE_BOLD "bold"
 #define WICHAT_MAIN_FONT_STYLE_ITALIC "italic"
@@ -54,15 +48,9 @@
 #define WICHAT_MAIN_RESOURCE_DIR_2 "/app/share"
 #endif
 
-#define WICHAT_MAIN_MENU_FRIEND_OPEN 0
-#define WICHAT_MAIN_MENU_FRIEND_REMOVE 1
-#define WICHAT_MAIN_MENU_FRIEND_INFO 2
 #define WICHAT_MAIN_MENU_APP_PREFERENCE 3
 #define WICHAT_MAIN_MENU_APP_ABOUT 4
 #define WICHAT_MAIN_MENU_APP_QUIT 5
-#define WICHAT_MAIN_MENU_GROUP_OPEN 6
-#define   WICHAT_MAIN_MENU_GROUP_QUIT 7
-#define WICHAT_MAIN_MENU_GROUP_INFO 8
 
 #define WICHAT_MAIN_FILE_FILTER_ALL "All (*.*)(*.*)"
 #define WICHAT_MAIN_FILE_FILTER_IMAGE "Image file (*.gif *.jpg *.png)(*.gif *.jpg *.png)"
@@ -74,7 +62,7 @@
 
 #define WICHAT_MAIN_TIMER_GET_FRIENDLIST 30
 #define WICHAT_MAIN_TIMER_GET_FRIENDINFO 60
-#define WICHAT_MAIN_TIMER_GET_GROUPLIST 300
+#define WICHAT_MAIN_TIMER_GET_GROUPLIST 120
 #define WICHAT_MAIN_TIMER_GET_MSG 10
 #ifdef QT_DEBUG
 #define WICHAT_MAIN_TIMER_SHOW_NOTE 10
@@ -161,16 +149,13 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->frameMsg->hide();
     ui->frameTextGroup->setLayout(new QStackedLayout);
     ui->frameTextGroup->layout()->setMargin(0);
-    ui->listFriend->setModel(&listFriendModel);
-    ui->listGroup->setModel(&listGroupModel);
     for (int i=0; i<4; i++)
-        ui->comboState->addItem(QIcon(stateToImagePath(int(Wichat_stateList[i]),
-                                                       true)),
+        ui->comboState->addItem(QIcon(ImageResource::stateToImagePath(
+                                                    int(Wichat_stateList[i]),
+                                                    true)),
                                 Wichat_stateToString(Wichat_stateList[i]),
                                 int(Wichat_stateList[i]));
 
-    menuFriendOption = new QMenu(ui->listFriend);
-    menuGroupOption = new QMenu(ui->listGroup);
     menuSysTray = new QMenu();
     sysTrayIcon = new QSystemTrayIcon(this);
     sysTrayIcon->setContextMenu(menuSysTray);
@@ -183,41 +168,15 @@ MainWindow::MainWindow(QWidget *parent) :
     buttonTabClose->setIconSize(QSize(16, 16));
     buttonTabClose->resize(20, 20);
     tabBarSession = ui->tabSession->findChild<QTabBar*>();
-    listFriendModel.setColumnCount(3);
-    listGroupModel.setColumnCount(3);
 
     connect(&globalAccount,
             SIGNAL(resetSessionFinished(int, bool)),
             this,
             SLOT(onChangeSessionFinished(int, bool)));
     connect(&globalAccount,
-            SIGNAL(setStateFinished(int, bool, OnlineState)),
+            SIGNAL(setStateFinished(int, bool, Account::OnlineState)),
             this,
-            SLOT(onChangeStateFinished(int,bool, OnlineState)));
-    connect(&globalAccount,
-            SIGNAL(queryFriendListFinished(int,
-                                           QList<AccountListEntry>)),
-            this,
-            SLOT(onUpdateFriendListFinished(int,
-                                            QList<AccountListEntry>)));
-    connect(&globalAccount,
-            SIGNAL(queryFriendRemarksFinished(int, QList<QString>)),
-            this,
-            SLOT(onUpdateFriendRemarksFinished(int,QList<QString>)));
-    connect(&globalAccount,
-            SIGNAL(addFriendFinished(int, bool)),
-            this,
-            SLOT(onAddFriendFinished(int, bool)));
-    connect(&globalAccount,
-            SIGNAL(removeFriendFinished(int, bool)),
-            this,
-            SLOT(onRemoveFriendFinished(int, bool)));
-    connect(&globalAccount,
-            SIGNAL(queryFriendInfoFinished(int,
-                                           QList<AccountInfoEntry>)),
-            this,
-            SLOT(onGetFriendInfoFinished(int,
-                                         QList<AccountInfoEntry>)));
+            SLOT(onChangeStateFinished(int,bool, Account::OnlineState)));
     connect(&globalAccount,
             SIGNAL(friendRequest(QString)),
             this,
@@ -226,15 +185,6 @@ MainWindow::MainWindow(QWidget *parent) :
             SIGNAL(friendRemoved(QString)),
             this,
             SLOT(onFriendRemoved(QString)));
-    connect(&globalAccount,
-            SIGNAL(getGroupListFinished(int,QList<Account::GroupListEntry>&)),
-            this,
-            SLOT(onUpdateGroupListFinished(int,QList<Account::GroupListEntry>&)));
-
-    connect(&globalAccount,
-            SIGNAL(getGroupInfoFinished(int,Account::GroupInfoEntry&)),
-            this,
-            SLOT(onGetGroupInfoFinished(int,Account::GroupInfoEntry&)));
     connect(&globalConversation,
             SIGNAL(queryError(int, AbstractChat::QueryError)),
             this,
@@ -293,18 +243,26 @@ MainWindow::MainWindow(QWidget *parent) :
                                           QList<AbstractChat::MessageEntry>&)),
             this,
             SLOT(onReceiveMessageFinished(int, QList<AbstractChat::MessageEntry>&)));
+    connect(ui->listFriend,
+            SIGNAL(listUpdated()),
+            this,
+            SLOT(onListFriendUpdated()));
+    connect(ui->listFriend,
+            SIGNAL(entryClicked(QString)),
+            this,
+            SLOT(onListFriendEntryClicked(QString)));
+    connect(ui->listGroup,
+            SIGNAL(listUpdated()),
+            this,
+            SLOT(onListGroupUpdated()));
+    connect(ui->listGroup,
+            SIGNAL(entryClicked(QString)),
+            this,
+            SLOT(onListGroupEntryClicked(QString)));
     connect(buttonTabClose,
             SIGNAL(clicked(bool)),
             this,
             SLOT(onSessionTabClose(bool)));
-    connect(menuFriendOption,
-            SIGNAL(triggered(QAction*)),
-            this,
-            SLOT(onListFriendMenuClicked(QAction*)));
-    connect(menuGroupOption,
-            SIGNAL(triggered(QAction*)),
-            this,
-            SLOT(onListGroupMenuClicked(QAction*)));
     connect(sysTrayIcon,
             SIGNAL(activated(QSystemTrayIcon::ActivationReason)),
             this,
@@ -335,8 +293,6 @@ MainWindow::MainWindow(QWidget *parent) :
     tabBarSession->installEventFilter(this);
 
     aboutDialog = nullptr;
-    accountInfo = nullptr;
-    groupInfo = nullptr;
     dialogColor = nullptr;
     menuApp = nullptr;
     menuFontStyle = nullptr;
@@ -401,6 +357,9 @@ void MainWindow::init()
 
     applyUserSettings();
 
+    ui->listFriend->bindService(&globalAccount);
+    ui->listGroup->bindService(&globalAccount);
+
     resizeEvent(0); // Trigger resizing manually
     sysTrayIcon->show();
 
@@ -417,19 +376,12 @@ void MainWindow::setID(QString ID)
 
 void MainWindow::showAccountInfo(QString ID)
 {
-    if (ID == userID)
-    {
-        // An info entry for own account
-        Account::AccountInfoEntry info;
-        info.ID = globalAccount.ID();
-        info.offlineMsg = globalAccount.offlineMsg();
-        showFriendInfo(info);
-    }
-    else
-    {
-        int queryID;
-        globalAccount.queryFriendInfo(ID, queryID);
-    }
+    ui->listFriend->showAccountInfo(ID);
+}
+
+void MainWindow::showGroupInfo(QString groupID)
+{
+    ui->listGroup->showGroupInfo(groupID);
 }
 
 void MainWindow::changeEvent(QEvent* event)
@@ -459,17 +411,13 @@ void MainWindow::closeEvent(QCloseEvent* event)
     changeState(Account::OnlineState::Offline);
     QEventLoop loop(this);
     connect(&globalAccount,
-            SIGNAL(setStateFinished(int,bool,OnlineState)),
+            SIGNAL(setStateFinished(int,bool,Account::OnlineState)),
             &loop,
             SLOT(quit()));
     loop.exec();
 
     if (aboutDialog)
         aboutDialog->close();
-    if (accountInfo)
-        accountInfo->close();
-    if (groupInfo)
-        groupInfo->close();
     sysTrayIcon->hide();
     sysTrayNoteList->close();
     emoticonList->hide();
@@ -541,7 +489,7 @@ void MainWindow::doTask()
             showNotification();
             break;
         case taskUpdateFriendList:
-            updateFriendList();
+            ui->listFriend->updateList();
             break;
         case taskUpdateAll:
             addTask(taskUpdateState);
@@ -563,19 +511,13 @@ void MainWindow::doTask()
             conversationLogin();
             break;
         case taskUpdateFriendInfo:
-            updateFriendInfo();
-            break;
-        case taskRefreshFriendList:
-            refreshFriendList();
+            ui->listFriend->updateEntryInfo();
             break;
         case taskUpdateGroupList:
-            updateGroupList();
-            break;
-        case taskRefreshGroupList:
-            refreshGroupList();
+            ui->listGroup->updateList();
             break;
         case taskUpdateGroupInfo:
-            updateGroupInfo();
+            ui->listGroup->updateEntryInfo();
             break;
         default:;
     }
@@ -821,7 +763,9 @@ void MainWindow::addTab(QString sessionID)
             this,
             SLOT(onBrowserLinkClicked(const QUrl&)));
 
-    QString tabText = friendInfoList.value(sessionID).remarks;
+    QString tabText;
+    if (getSessionType(sessionID) == FriendChat)
+        tabText = ui->listFriend->getFriendRemark(getIDBySessionID(sessionID));
     if (tabText.isEmpty())
         tabText = getIDBySessionID(sessionID);
     ui->tabSession->addTab(newBrowser,
@@ -907,21 +851,13 @@ void MainWindow::changeState(Account::OnlineState state)
 void MainWindow::updateState()
 {
     ui->tabSession->setTabIcon(getSessionTabIndex(userID),
-                               QIcon(stateToImagePath(
+                               QIcon(ImageResource::stateToImagePath(
                                             int(globalAccount.state()), true)));
-    sysTrayIcon->setIcon(QIcon(stateToImagePath(
+    sysTrayIcon->setIcon(QIcon(ImageResource::stateToImagePath(
                                    int(globalAccount.state()), true)));
-    for (int i=0; i<listFriendModel.rowCount(); i++)
-    {
-        if (listFriendModel.item(i, WICHAT_MAIN_FRILIST_FIELD_ID)
-                            ->text() == userID)
-        {
-            listFriendModel.item(i, WICHAT_MAIN_FRILIST_FIELD_ICON)
-                    ->setIcon(QIcon(stateToImagePath(
-                                            int(globalAccount.state()), true)));
-            break;
-        }
-    }
+    ui->listFriend->setAccountIconPath(userID,
+                                       ImageResource::stateToImagePath(
+                                            int(globalAccount.state()), true));
 }
 
 void MainWindow::updateCaption()
@@ -957,7 +893,8 @@ void MainWindow::updateSysTrayMenu()
         {
             action = new QAction(menuSysTray);
             action->installEventFilter(this);
-            action->setIcon(QIcon(stateToImagePath(int(Wichat_stateList[i]),
+            action->setIcon(QIcon(ImageResource::stateToImagePath(
+                                                   int(Wichat_stateList[i]),
                                                    true)));
             action->setText(Wichat_stateToString(Wichat_stateList[i]));
             action->setData(int(Wichat_stateList[i]));
@@ -975,203 +912,32 @@ void MainWindow::updateSysTrayMenu()
     }
 }
 
-void MainWindow::updateFriendList()
-{
-    int queryID;
-    globalAccount.queryFriendList(queryID);
-}
-
-void MainWindow::updateFriendInfo()
-{
-    int queryID;
-    globalAccount.queryFriendRemarks(friendInfoList.keys(), queryID);
-}
-
 QString MainWindow::getStateImagePath(QString sessionID)
 {
     QString image;
     if (getIDBySessionID(sessionID) == userID)
-        image = stateToImagePath(int(globalAccount.state()), true);
+        image = ImageResource::stateToImagePath(int(globalAccount.state()),
+                                                true);
     else switch (getSessionType(sessionID))
     {
         case LocalDialog:
-            image = stateToImagePath(int(Account::OnlineState::Online));
+            image = ImageResource::stateToImagePath(
+                                        int(Account::OnlineState::Online));
             break;
         case GroupChat:
-            image = ":/Icons/group.png";
+            image = ImageResource::getGroupImagePath();
             break;
         case FriendChat:
-        for (int i=0; i<listFriendModel.rowCount(); i++)
-        {
-            if (listFriendModel.item(i, WICHAT_MAIN_FRILIST_FIELD_ID)
-                                ->text() == sessionID)
-            {
-                image = listFriendModel.item(i,
-                                             WICHAT_MAIN_FRILIST_FIELD_ICONPATH)
-                                        ->text();
-                break;
-            }
-        }
+            image = ui->listFriend->getAccountImagePath(
+                                                getIDBySessionID(sessionID));
+            break;
         default:
-            image = stateToImagePath(int(Account::OnlineState::Offline));
+            image = ImageResource::stateToImagePath(
+                                        int(Account::OnlineState::Offline));
     }
     return image;
 }
 
-bool MainWindow::isFriend(QString ID)
-{
-    bool found = false;
-    for (int i=0; i<listFriendModel.rowCount(); i++)
-    {
-        if (listFriendModel.item(i, WICHAT_MAIN_FRILIST_FIELD_ID)->text() == ID)
-        {
-            found = true;
-            break;
-        }
-    }
-    return found;
-}
-
-bool MainWindow::refreshFriendList()
-{
-    if (!(ui->textFriendSearch->text().isEmpty()))
-        return false;
-
-    listFriendModel.removeRows(0, listFriendModel.rowCount());
-
-    QList<QStandardItem*> row;
-    QString iconPath;
-
-    // Add an entry for current user
-    iconPath = stateToImagePath(int(globalAccount.state()), true);
-    row.append(new QStandardItem(QIcon(iconPath), userID));
-    row.append(new QStandardItem(iconPath));
-    row.append(new QStandardItem(userID));
-    listFriendModel.appendRow(row);
-
-    FriendInfoEntry friendInfo;
-    QList<QString> friendIDList = friendInfoList.keys();
-    for (int i=0; i<friendIDList.count(); i++)
-    {
-        friendInfo = friendInfoList[friendIDList[i]];
-        iconPath = stateToImagePath(int(friendInfo.state));
-
-        row.clear();
-        if (friendInfo.remarks.isEmpty())
-            row.append(new QStandardItem(QIcon(iconPath), friendIDList[i]));
-        else
-            row.append(new QStandardItem(QIcon(iconPath),
-                                         QString("%1(%2)")
-                                         .arg(friendInfo.remarks)
-                                         .arg(friendIDList[i])));
-        row.append(new QStandardItem(iconPath));
-        row.append(new QStandardItem(friendIDList[i]));
-        listFriendModel.appendRow(row);
-
-        // Update icons in tab
-        int index = getSessionTabIndex(friendIDList[i]);
-        if (index >= 0)
-        {
-            ui->tabSession->setTabIcon(index, QIcon(iconPath));
-            if (friendInfo.remarks.isEmpty())
-                ui->tabSession->setTabText(index, friendIDList[i]);
-            else
-                ui->tabSession->setTabText(index, friendInfo.remarks);
-        }
-    }
-    return true;
-}
-
-void MainWindow::showFriendInfo(const AccountInfoEntry &info)
-{
-    if (!accountInfo)
-    {
-        accountInfo = new AccountInfoDialog;
-        connect(accountInfo,
-                SIGNAL(remarksChanged(QString,QString)),
-                this,
-                SLOT(onFriendRemarksChanged(QString, QString)));
-        connect(accountInfo,
-                SIGNAL(offlineMsgChanged(QString, QString)),
-                this,
-                SLOT(onOfflineMsgChanged(QString, QString)));
-    }
-    accountInfo->ID = info.ID;
-    accountInfo->remarks = friendInfoList.value(info.ID).remarks;
-    accountInfo->remarksVisible = (info.ID != userID);
-    accountInfo->remarksReadOnly = false;
-    accountInfo->offlineMsg = info.offlineMsg;
-    accountInfo->offlineMsgReadOnly = (info.ID != userID);
-    accountInfo->show();
-}
-
-void MainWindow::updateGroupList()
-{
-    int queryID;
-    globalAccount.getGroupList(queryID);
-}
-
-bool MainWindow::refreshGroupList()
-{
-    if (!(ui->textFriendSearch->text().isEmpty()))
-        return false;
-
-    listGroupModel.removeRows(0, listGroupModel.rowCount());
-
-    QList<QStandardItem*> row;
-    QString iconPath(":/Icons/group.png");
-
-    GroupInfoEntry groupInfo;
-    QList<QString> groupIDList = groupInfoList.keys();
-    for (int i=0; i<groupIDList.count(); i++)
-    {
-        groupInfo = groupInfoList[groupIDList[i]];
-
-        row.clear();
-        if (groupInfo.name.isEmpty())
-            row.append(new QStandardItem(QIcon(iconPath), groupIDList[i]));
-        else
-            row.append(new QStandardItem(QIcon(iconPath),
-                                         QString("%1(%2)")
-                                         .arg(groupInfo.name)
-                                         .arg(groupIDList[i])));
-        row.append(new QStandardItem(iconPath));
-        row.append(new QStandardItem(groupIDList[i]));
-        listGroupModel.appendRow(row);
-
-        // Update icons in tab
-        int index = getSessionTabIndex(groupIDList[i]);
-        if (index >= 0)
-        {
-            ui->tabSession->setTabIcon(index, QIcon(iconPath));
-            if (groupInfo.name.isEmpty())
-                ui->tabSession->setTabText(index, groupIDList[i]);
-            else
-                ui->tabSession->setTabText(index, groupInfo.name);
-        }
-    }
-    return true;
-}
-
-void MainWindow::updateGroupInfo()
-{
-    int queryID;
-    QList<QString> groupIDList(groupInfoList.keys());
-    globalAccount.getGroupNames(groupIDList, queryID);
-}
-
-void MainWindow::showGroupInfo(const Account::GroupInfoEntry &info)
-{
-    if (!groupInfo)
-        groupInfo = new GroupInfoDialog;
-    groupInfo->groupID = info.ID;
-    groupInfo->memberCount = info.memberCount;
-    groupInfo->creationTime = info.creationTime;
-    groupInfo->userRole = info.role;
-    groupInfo->name = info.name;
-    groupInfo->description = info.description;
-    groupInfo->show();
-}
 
 void MainWindow::conversationLogin()
 {
@@ -1224,7 +990,7 @@ bool MainWindow::sendMessage(QString content, QString sessionID)
     bool successful;
     if (ID != userID)
     {
-        if (messageType == FriendChat && !isFriend(ID))
+        if (messageType == FriendChat && !ui->listFriend->hasMember(ID))
         {
             QMessageBox::warning(this, "Unable send message",
                                  QString("You are not friend to %1.\n"
@@ -1523,30 +1289,6 @@ QString MainWindow::extractHTMLTag(const QString& rawHTML, QString tagName)
         return "";
 }
 
-QString MainWindow::stateToImagePath(int stateNumber, bool displayHide)
-{
-    QString path = ":/Icons/";
-    switch (Account::OnlineState(stateNumber))
-    {
-        case Account::OnlineState::Online:
-            path.append("online");
-            break;
-        case Account::OnlineState::Busy:
-            path.append("busy");
-            break;
-        case Account::OnlineState::Hide:
-            if (displayHide)
-                path.append("invisible");
-            else
-                path.append("offline");
-            break;
-        case Account::OnlineState::Offline:
-        default:
-            path.append("offline");
-    }
-    path.append(".png");
-    return path;
-}
 
 QString MainWindow::getFileNameFromPath(QString filePath)
 {
@@ -1580,107 +1322,6 @@ void MainWindow::onChangeStateFinished(int queryID,
         addTask(taskUpdateState);
 }
 
-void MainWindow::onUpdateFriendListFinished(int queryID,
-                                    QList<Account::AccountListEntry> friends)
-{
-    Q_UNUSED(queryID)
-
-    int i, j;
-    bool found;
-
-    // Remove non-existent entries
-    QList<QString> friendIDList = friendInfoList.keys();
-    for (i=0; i<friendIDList.count(); i++)
-    {
-        found = false;
-        for (j=0; j<friends.count(); j++)
-        {
-            if (friendIDList[i] == friends[j].ID)
-            {
-                found = true;
-                break;
-            }
-        }
-        if (!found)
-            friendInfoList.remove(friendIDList[i]);
-    }
-
-    // Update existing entries and create new entries
-    FriendInfoEntry friendInfo;
-    friendIDList = friendInfoList.keys();
-    for (i=0; i<friends.count(); i++)
-    {
-        if (friendIDList.indexOf(friends[i].ID) >= 0)
-        {
-            friendInfoList[friends[i].ID].state = friends[i].state;
-        }
-        else
-        {
-            friendInfo.state = friends[i].state;
-            friendInfo.remarks.clear();
-            friendInfoList.insert(friends[i].ID, friendInfo);
-        }
-    }
-    addTask(taskRefreshFriendList);
-}
-
-void MainWindow::onUpdateFriendRemarksFinished(int queryID,
-                                              QList<QString> remarks)
-{
-    Q_UNUSED(queryID)
-
-    QList<QString> friendIDList = friendInfoList.keys();
-    for (int i=0; i<friendIDList.count(); i++)
-    {
-        if (i >= remarks.count())
-        {
-            // Exception: friend info list updated after query was sent
-            // Try to resend this query
-            addTask(taskUpdateFriendInfo);
-            return;
-        }
-        friendInfoList[friendIDList[i]].remarks = remarks[i];
-    }
-    addTask(taskRefreshFriendList);
-}
-
-void MainWindow::onAddFriendFinished(int queryID, bool successful)
-{
-    QString ID = queryList[queryID];
-    if (ID.isEmpty())
-        return;
-    if (successful)
-        QMessageBox::information(this, "Friend request sent",
-                                 QString("Your friend request has been sent.\n"
-                                         "Please wait respose from %1.")
-                                 .arg(ID));
-    else
-        QMessageBox::warning(this, "Adding friend failed",
-                             QString("Cannot add %1 to your friend list.")
-                             .arg(ID));
-}
-
-void MainWindow::onRemoveFriendFinished(int queryID, bool successful)
-{
-    QString ID = queryList[queryID];
-    if (ID.isEmpty())
-        return;
-    if (!successful)
-        QMessageBox::warning(this, "Removing friend failed",
-                             QString("Cannot remove %1 from your friend list.")
-                             .arg(ID));
-}
-
-void MainWindow::onGetFriendInfoFinished(int queryID,
-                                     QList<Account::AccountInfoEntry> infoList)
-{
-    Q_UNUSED(queryID)
-    if (infoList.count() < 1)
-        return;
-
-    showFriendInfo(infoList[0]);
-}
-
 void MainWindow::onFriendRequest(QString ID)
 {
     Notification::Note note;
@@ -1699,98 +1340,6 @@ void MainWindow::onFriendRemoved(QString ID)
     note.destination = userID;
     note.type = Notification::FriendDelete;
     noteList.append(note);
-}
-
-void MainWindow::onUpdateGroupListFinished(int queryID,
-                                        QList<Account::GroupListEntry>& groups)
-{
-    Q_UNUSED(queryID)
-
-    int i, j;
-    bool found;
-
-    // Remove non-existent entries
-    QList<QString> groupIDList = groupInfoList.keys();
-    for (i=0; i<groupIDList.count(); i++)
-    {
-        found = false;
-        for (j=0; j<groups.count(); j++)
-        {
-            if (groupIDList[i] == groups[j].ID)
-            {
-                found = true;
-                break;
-            }
-        }
-        if (!found)
-            groupInfoList.remove(groupIDList[i]);
-    }
-
-    // Update existing entries and create new entries
-    GroupInfoEntry groupInfo;
-    groupIDList = groupInfoList.keys();
-    for (i=0; i<groups.count(); i++)
-    {
-        if (groupIDList.indexOf(groups[i].ID) < 0)
-        {
-            groupInfo.name.clear();
-            groupInfoList.insert(groups[i].ID, groupInfo);
-        }
-    }
-
-    globalGroup.setGroupList(groupInfoList.keys());
-
-    addTask(taskRefreshGroupList);
-}
-
-void MainWindow::onJoinGroup(int queryID, bool successful)
-{
-    QString ID = queryList[queryID];
-    if (successful)
-        QMessageBox::information(this, "Group join request sent",
-                                 QString("Your join request has been sent.\n"
-                                         "Please wait respose from the"
-                                         "group administrator.").arg(ID));
-    else
-        QMessageBox::warning(this, "Joining group failed",
-                             QString("Unable to join group %1.").arg(ID));
-}
-
-void MainWindow::onQuitGroup(int queryID, bool successful)
-{
-    QString ID = queryList[queryID];
-    if (ID.isEmpty())
-        return;
-    if (!successful)
-        QMessageBox::warning(this, "Quiting group failed",
-                             QString("Unable to quit group %1. Please contact "
-                                     "administrator for help.").arg(ID));
-}
-
-void MainWindow::onGetGroupNames(int queryID, QList<QString>& names)
-{
-    Q_UNUSED(queryID)
-
-    QList<QString> groupIDList = groupInfoList.keys();
-    for (int i=0; i<groupIDList.count(); i++)
-    {
-        if (i >= names.count())
-        {
-            // Exception: group info list updated after query was sent
-            // Try to resend this query
-            addTask(taskUpdateGroupInfo);
-            return;
-        }
-        groupInfoList[groupIDList[i]].name = names[i];
-    }
-    addTask(taskRefreshGroupList);
-}
-
-void MainWindow::onGetGroupInfoFinished(int queryID,
-                                        Account::GroupInfoEntry& info)
-{
-    Q_UNUSED(queryID)
-    showGroupInfo(info);
 }
 
 void MainWindow::onConversationQueryError(int queryID,
@@ -1997,6 +1546,68 @@ void MainWindow::onSessionTabClose(bool checked)
     updateCaption();
 }
 
+
+void MainWindow::onListFriendUpdated()
+{
+    // Update friend remarks and icons in session tab
+    int index;
+    QString ID, iconPath, remarks;
+    QList<QString> friendIDList = ui->listFriend->getAccountIDList();
+    for (int i=0; i<friendIDList.count(); i++)
+    {
+        ID = friendIDList[i];
+        index = getSessionTabIndex(getSessionIDByID(ID, FriendChat));
+        if (index >= 0)
+        {
+            iconPath = ui->listFriend->getAccountImagePath(ID);
+            ui->tabSession->setTabIcon(index, QIcon(iconPath));
+
+            remarks = ui->listFriend->getFriendRemark(ID);
+            if (remarks.isEmpty())
+                ui->tabSession->setTabText(index, ID);
+            else
+                ui->tabSession->setTabText(index, remarks);
+        }
+    }
+}
+
+void MainWindow::onListFriendEntryClicked(QString ID)
+{
+    if (ID == userID)
+        loadSession(getSessionIDByID(ID, LocalDialog));
+    else
+        loadSession(getSessionIDByID(ID, FriendChat));
+}
+
+void MainWindow::onListGroupEntryClicked(QString ID)
+{
+    loadSession(getSessionIDByID(ID, GroupChat));
+}
+
+void MainWindow::onListGroupUpdated()
+{
+    // Update group names and icons in session tab
+    int index;
+    QString ID, iconPath, groupName;
+    QList<QString> groupIDList = ui->listGroup->getGroupIDList();
+    for (int i=0; i<groupIDList.count(); i++)
+    {
+        ID = groupIDList[i];
+        index = getSessionTabIndex(getSessionIDByID(ID, GroupChat));
+        if (index >= 0)
+        {
+            iconPath = ui->listGroup->getGroupImagePath(ID);
+            ui->tabSession->setTabIcon(index, QIcon(iconPath));
+
+            groupName = ui->listGroup->getGroupName(ID);
+            if (groupName.isEmpty())
+                ui->tabSession->setTabText(index, ID);
+            else
+                ui->tabSession->setTabText(index, groupName);
+        }
+    }
+}
+
 void MainWindow::onSysTrayNoteClicked(const Notification::Note& note)
 {
     int queryID;
@@ -2171,98 +1782,6 @@ void MainWindow::onSendOptionMenuClicked(QAction* action)
     if (action->isChecked())
         keyCode = action->data().toInt();
     globalConfig.setPrefSendKey(userID, keyCode);
-}
-
-void MainWindow::onListFriendMenuClicked(QAction *action)
-{
-    QModelIndexList index = ui->listFriend->selectionModel()->selectedIndexes();
-    if (index.count() < 1)
-        return;
-    QString firstID = listFriendModel.item(index[0].row(),
-                                            WICHAT_MAIN_FRILIST_FIELD_ID)
-                                     ->text();
-
-    switch(action->data().toInt())
-    {
-    case WICHAT_MAIN_MENU_FRIEND_OPEN:
-    {
-        on_listFriend_doubleClicked(index[0]);
-        break;
-    }
-    case WICHAT_MAIN_MENU_FRIEND_REMOVE:
-    {
-        if (QMessageBox::information(this, "Remove a friend",
-                                     QString("Do you really want to remove %1 "
-                                             "from your friend list?")
-                                            .arg(firstID),
-                                     QMessageBox::Yes | QMessageBox::No)
-                        != QMessageBox::Yes)
-            return;
-        int queryID;
-        globalAccount.removeFriend(firstID, queryID);
-        queryList[queryID] = firstID;
-        break;
-    }
-    case WICHAT_MAIN_MENU_FRIEND_INFO:
-    {
-        showAccountInfo(firstID);
-        break;
-    }
-    default:;
-    }
-}
-
-void MainWindow::onListGroupMenuClicked(QAction *action)
-{
-    QModelIndexList index = ui->listGroup->selectionModel()->selectedIndexes();
-    if (index.count() < 1)
-        return;
-    QString firstID = listGroupModel.item(index[0].row(),
-                                          WICHAT_MAIN_GRPLIST_FIELD_ID)
-                                     ->text();
-
-    switch(action->data().toInt())
-    {
-        case WICHAT_MAIN_MENU_GROUP_OPEN:
-        {
-            on_listGroup_doubleClicked(index[0]);
-            break;
-        }
-        case   WICHAT_MAIN_MENU_GROUP_QUIT:
-        {
-            if (QMessageBox::information(this, "Quit a group",
-                                         QString("Do you really want to quit "
-                                                 "group %1 ?").arg(firstID),
-                                         QMessageBox::Yes | QMessageBox::No)
-                            != QMessageBox::Yes)
-                return;
-            int queryID;
-            globalAccount.quitGroup(firstID, queryID);
-            queryList[queryID] = firstID;
-            break;
-        }
-        case WICHAT_MAIN_MENU_GROUP_INFO:
-        {
-            int queryID;
-            globalAccount.getGroupInfo(firstID, queryID);
-            break;
-        }
-        default:;
-    }
-}
-
-void MainWindow::onFriendRemarksChanged(QString ID, QString remarks)
-{
-    int queryID;
-    globalAccount.setFriendRemarks(ID, remarks, queryID);
-}
-
-void MainWindow::onOfflineMsgChanged(QString ID, QString offlineMsg)
-{
-    int queryID;
-    if (ID == userID)
-        globalAccount.setOfflineMsg(offlineMsg, queryID);
-    updateCaption();
 }
 
 void MainWindow::on_buttonFont_clicked()
@@ -2468,7 +1987,6 @@ void MainWindow::on_tabSession_tabBarClicked(int index)
     onMouseHoverEnter(tabBarSession, nullptr);
 }
 
-
 void MainWindow::on_tabSession_currentChanged(int index)
 {
     if (index < 0)
@@ -2476,102 +1994,6 @@ void MainWindow::on_tabSession_currentChanged(int index)
 
     QString ID = ui->tabSession->widget(index)->property("ID").toString();
     loadSession(ID, false);
-}
-
-void MainWindow::on_listFriend_doubleClicked(const QModelIndex &index)
-{
-    QString ID = listFriendModel.item(index.row(),
-                                      WICHAT_MAIN_FRILIST_FIELD_ID)->text();
-    if (ID == userID)
-        loadSession(getSessionIDByID(ID, LocalDialog));
-    else
-        loadSession(getSessionIDByID(ID, FriendChat));
-}
-
-void MainWindow::on_listFriend_customContextMenuRequested(const QPoint &pos)
-{
-    Q_UNUSED(pos)
-
-    static QList<QAction*> actionList;
-    if (actionList.count() < 1)
-    {
-        // Action: WICHAT_MAIN_MENU_FRIEND_OPEN
-        QAction* action = new QAction(menuFriendOption);
-        action->setText("Open dialog");
-        action->setData(WICHAT_MAIN_MENU_FRIEND_OPEN);
-        action->setIcon(QIcon(":/Icons/conversation.png"));
-        menuFriendOption->addAction(action);
-
-        // Action: WICHAT_MAIN_MENU_FRIEND_REMOVE
-        action = new QAction(menuFriendOption);
-        action->setText("Remove this friend");
-        action->setData(WICHAT_MAIN_MENU_FRIEND_REMOVE);
-        action->setIcon(QIcon(":/Icons/remove.png"));
-        menuFriendOption->addAction(action);
-
-        // Action: WICHAT_MAIN_MENU_FRIEND_INFO
-        action = new QAction(menuFriendOption);
-        action->setText("View information");
-        action->setData(WICHAT_MAIN_MENU_FRIEND_INFO);
-        action->setIcon(QIcon(":/Icons/information.png"));
-        menuFriendOption->addAction(action);
-
-        actionList = menuFriendOption->actions();
-    }
-
-    QModelIndexList index = ui->listFriend->selectionModel()->selectedIndexes();
-    if (index.count() < 1)
-        return;
-    QString firstID = listFriendModel.item(index[0].row(),
-                                            WICHAT_MAIN_FRILIST_FIELD_ID)
-                                     ->text();
-    if (firstID == userID)
-        actionList[WICHAT_MAIN_MENU_FRIEND_REMOVE]->setVisible(false);
-    else
-        actionList[WICHAT_MAIN_MENU_FRIEND_REMOVE]->setVisible(true);
-
-    menuFriendOption->popup(QCursor::pos());
-}
-
-void MainWindow::on_listGroup_doubleClicked(const QModelIndex &index)
-{
-    QString ID = listGroupModel.item(index.row(),
-                                      WICHAT_MAIN_GRPLIST_FIELD_ID)->text();
-    loadSession(getSessionIDByID(ID, GroupChat));
-}
-
-void MainWindow::on_listGroup_customContextMenuRequested(const QPoint &pos)
-{
-    Q_UNUSED(pos)
-
-    static QList<QAction*> actionList;
-    if (actionList.count() < 1)
-    {
-        // Action: WICHAT_MAIN_MENU_GROUP_OPEN
-        QAction* action = new QAction(menuGroupOption);
-        action->setText("Open dialog");
-        action->setData(WICHAT_MAIN_MENU_GROUP_OPEN);
-        action->setIcon(QIcon(":/Icons/conversation.png"));
-        menuGroupOption->addAction(action);
-
-        // Action:   WICHAT_MAIN_MENU_GROUP_QUIT
-        action = new QAction(menuGroupOption);
-        action->setText("Quit this group");
-        action->setData(  WICHAT_MAIN_MENU_GROUP_QUIT);
-        action->setIcon(QIcon(":/Icons/exit.png"));
-        menuGroupOption->addAction(action);
-
-        // Action: WICHAT_MAIN_MENU_GROUP_INFO
-        action = new QAction(menuGroupOption);
-        action->setText("View information");
-        action->setData(WICHAT_MAIN_MENU_GROUP_INFO);
-        action->setIcon(QIcon(":/Icons/information.png"));
-        menuGroupOption->addAction(action);
-
-        actionList = menuGroupOption->actions();
-    }
-
-    menuGroupOption->popup(QCursor::pos());
 }
 
 void MainWindow::on_buttonImage_clicked()
@@ -2613,20 +2035,12 @@ void MainWindow::on_textFriendSearch_textChanged(const QString &arg1)
     if (arg1.isEmpty())
     {
         ui->labelFriendSearch->show();
-        for (int i=0; i<listFriendModel.rowCount(); i++)
-            ui->listFriend->setRowHidden(i ,false);
+        ui->listFriend->setSearchMode(false);
     }
     else
     {
         ui->labelFriendSearch->hide();
-        for (int i=0; i<listFriendModel.rowCount(); i++)
-        {
-            if (listFriendModel.item(i, WICHAT_MAIN_FRILIST_FIELD_ID)->text()
-                               .indexOf(arg1) >= 0)
-                ui->listFriend->setRowHidden(i, false);
-            else
-                ui->listFriend->setRowHidden(i, true);
-        }
+        ui->listFriend->search(arg1);
     }
 }
 

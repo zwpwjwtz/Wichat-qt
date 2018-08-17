@@ -621,29 +621,7 @@
               <number>0</number>
              </property>
              <item>
-              <widget class="QListView" name="listFriend">
-               <property name="contextMenuPolicy">
-                <enum>Qt::CustomContextMenu</enum>
-               </property>
-               <property name="horizontalScrollBarPolicy">
-                <enum>Qt::ScrollBarAlwaysOff</enum>
-               </property>
-               <property name="editTriggers">
-                <set>QAbstractItemView::NoEditTriggers</set>
-               </property>
-               <property name="selectionMode">
-                <enum>QAbstractItemView::ContiguousSelection</enum>
-               </property>
-               <property name="selectionBehavior">
-                <enum>QAbstractItemView::SelectRows</enum>
-               </property>
-               <property name="verticalScrollMode">
-                <enum>QAbstractItemView::ScrollPerPixel</enum>
-               </property>
-               <property name="horizontalScrollMode">
-                <enum>QAbstractItemView::ScrollPerPixel</enum>
-               </property>
-              </widget>
+              <widget class="FriendListWidget" name="listFriend" native="true"/>
              </item>
             </layout>
            </widget>
@@ -668,29 +646,7 @@
               <number>0</number>
              </property>
              <item>
-              <widget class="QListView" name="listGroup">
-               <property name="contextMenuPolicy">
-                <enum>Qt::CustomContextMenu</enum>
-               </property>
-               <property name="horizontalScrollBarPolicy">
-                <enum>Qt::ScrollBarAlwaysOff</enum>
-               </property>
-               <property name="editTriggers">
-                <set>QAbstractItemView::NoEditTriggers</set>
-               </property>
-               <property name="selectionMode">
-                <enum>QAbstractItemView::ContiguousSelection</enum>
-               </property>
-               <property name="selectionBehavior">
-                <enum>QAbstractItemView::SelectRows</enum>
-               </property>
-               <property name="verticalScrollMode">
-                <enum>QAbstractItemView::ScrollPerPixel</enum>
-               </property>
-               <property name="horizontalScrollMode">
-                <enum>QAbstractItemView::ScrollPerPixel</enum>
-               </property>
-              </widget>
+              <widget class="GroupListWidget" name="listGroup" native="true"/>
              </item>
             </layout>
            </widget>
@@ -830,6 +786,20 @@
   </widget>
  </widget>
  <layoutdefault spacing="6" margin="11"/>
+ <customwidgets>
+  <customwidget>
+   <class>FriendListWidget</class>
+   <extends>QWidget</extends>
+   <header location="global">friendlistwidget.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>GroupListWidget</class>
+   <extends>QWidget</extends>
+   <header location="global">grouplistwidget.h</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
  <resources>
   <include location="icon.qrc"/>
  </resources>

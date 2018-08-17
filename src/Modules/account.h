@@ -117,15 +117,19 @@ signals:
     void verifyFinished(VerifyError errorCode);
     void resetSessionFinished(int queryID, bool successful);
     void setPasswordFinished(int queryID, bool successful);
-    void setStateFinished(int queryID, bool successful, OnlineState newState);
+    void setStateFinished(int queryID,
+                          bool successful,
+                          Account::OnlineState newState);
     void setOfflineMsgFinished(int queryID, bool successful);
 
-    void queryFriendListFinished(int queryID, QList<AccountListEntry> friends);
+    void queryFriendListFinished(int queryID,
+                                 QList<Account::AccountListEntry> friends);
     void addFriendFinished(int queryID, bool successful);
     void removeFriendFinished(int queryID, bool successful);
     void queryFriendRemarksFinished(int queryID, QList<QString> remarks);
     void setFriendRemarksFinished(int queryID, bool successful);
-    void queryFriendInfoFinished(int queryID, QList<AccountInfoEntry> infos);
+    void queryFriendInfoFinished(int queryID,
+                                 QList<Account::AccountInfoEntry> infos);
     void friendRequest(QString ID);
     void friendRemoved(QString ID);
 

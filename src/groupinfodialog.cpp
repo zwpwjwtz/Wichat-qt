@@ -5,6 +5,7 @@
 #include "ui_groupinfodialog.h"
 #include "global_objects.h"
 #include "mainwindow.h"
+#include "imageresource.h"
 
 #define WICHAT_GROUPINFO_MEMBERLIST_FIELD_ICON 0
 #define WICHAT_GROUPINFO_MEMBERLIST_FIELD_ICONPATH 1
@@ -147,7 +148,7 @@ void GroupInfoDialog::onGetGroupMemberListFinished(int queryID,
         if (member.state == Account::OnlineState::Online ||
             member.state == Account::OnlineState::Busy)
             onlineCount++;
-        iconPath = globalMainWindow->stateToImagePath(int(member.state));
+        iconPath = ImageResource::stateToImagePath(int(member.state));
 
         row.clear();
         row.append(new QStandardItem(QIcon(iconPath), member.ID));

@@ -2,7 +2,7 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
-#include <QStandardItemModel>
+#include <QMap>
 #include <QQueue>
 #include <QTimer>
 #include <QSystemTrayIcon>
@@ -41,6 +41,7 @@ public:
     void init();
     void setID(QString ID);
     void showAccountInfo(QString ID);
+    void showGroupInfo(QString groupID);
 
 protected:
     void changeEvent(QEvent* event);
@@ -50,12 +51,6 @@ protected:
     void showEvent(QShowEvent* event);
 
 private:
-    typedef Account::OnlineState OnlineState;
-    typedef Account::AccountListEntry AccountListEntry;
-    typedef Account::AccountInfoEntry AccountInfoEntry;
-    typedef AbstractChat::MessageEntry MessageEntry;
-    typedef AbstractChat::MessageListEntry MessageListEntry;
-
     enum TaskType
     {
         taskNone = 0,
@@ -83,20 +78,8 @@ private:
         GroupChat = 3
     };
 
-    struct FriendInfoEntry
-    {
-        QString remarks;
-        Account::OnlineState state;
-    };
-    struct GroupInfoEntry
-    {
-        QString name;
-    };
-
     Ui::MainWindow *ui;
     AboutWindow* aboutDialog;
-    AccountInfoDialog* accountInfo;
-    GroupInfoDialog* groupInfo;
     SystrayNotification* sysTrayNoteList;
     EmoticonChooser* emoticonList;
     QPushButton* buttonTabClose;
@@ -105,8 +88,6 @@ private:
     QMenu* menuFontStyle;
     QMenu* menuTextAlign;
     QMenu* menuSendOption;
-    QMenu* menuFriendOption;
-    QMenu* menuGroupOption;
     QMenu* menuSysTray;
     QSystemTrayIcon* sysTrayIcon;
     QActionGroup* groupTextAlign;
@@ -115,8 +96,6 @@ private:
     QList<QTextBrowser*> browserList;
     QList<QTextEdit*> editorList;
 
-    QStandardItemModel listFriendModel;
-    QStandardItemModel listGroupModel;
     QTimer timer;
     QString userID;
     QString lastConversation;
@@ -126,8 +105,6 @@ private:
     QQueue<TaskType> taskList;
     QQueue<QString> brokenConnectionList;
     QMap<int, QString> queryList;
-    QMap<QString, FriendInfoEntry> friendInfoList;
-    QMap<QString, GroupInfoEntry> groupInfoList;
     UserSession userSessionList;
     PeerSession peerSessionList;
     Notification noteList;
@@ -158,16 +135,7 @@ private:
     void updateState();
     void updateCaption();
     void updateSysTrayMenu();
-    void updateFriendList();
-    void updateFriendInfo();
     QString getStateImagePath(QString sessionID);
-    bool isFriend(QString ID);
-    bool refreshFriendList();
-    void showFriendInfo(const AccountInfoEntry& info);
-    void updateGroupList();
-    bool refreshGroupList();
-    void updateGroupInfo();
-    void showGroupInfo(const Account::GroupInfoEntry& info);
     void conversationLogin();
     void getMessageList();
     bool sendMessage(QString content, QString sessionID);
@@ -180,7 +148,6 @@ private:
 
 public:
     static QString extractHTMLTag(const QString& rawHTML, QString tagName);
-    static QString stateToImagePath(int stateNumber, bool displayHide = false);
     static QString getFileNameFromPath(QString filePath);
 
 private slots:
@@ -188,22 +155,10 @@ private slots:
     void onChangeSessionFinished(int queryID, bool successful);
     void onChangeStateFinished(int queryID,
                                bool successful,
-                               OnlineState newState);
-    void onUpdateFriendListFinished(int queryID,
-                                    QList<AccountListEntry> friends);
-    void onUpdateFriendRemarksFinished(int queryID, QList<QString> remarks);
-    void onAddFriendFinished(int queryID, bool successful);
-    void onRemoveFriendFinished(int queryID, bool successful);
-    void onGetFriendInfoFinished(int queryID,
-                                 QList<AccountInfoEntry> infoList);
+                               Account::OnlineState newState);
     void onFriendRequest(QString ID);
     void onFriendRemoved(QString ID);
-    void onUpdateGroupListFinished(int queryID,
-                                   QList<Account::GroupListEntry>& groups);
-    void onJoinGroup(int queryID, bool successful);
-    void onQuitGroup(int queryID, bool successful);
-    void onGetGroupNames(int queryID, QList<QString>& names);
-    void onGetGroupInfoFinished(int queryID, Account::GroupInfoEntry& info);
+
     void onConversationQueryError(int queryID,
                                   AbstractChat::QueryError errCode);
     void onConnectionBroken(QString ID);
@@ -225,6 +180,10 @@ private slots:
     void onMouseHoverLeave(QObject* watched, QHoverEvent* event);
     void onKeyRelease(QObject* watched, QKeyEvent* event);
     void onSessionTabClose(bool checked);
+    void onListFriendUpdated();
+    void onListFriendEntryClicked(QString ID);
+    void onListGroupUpdated();
+    void onListGroupEntryClicked(QString ID);
     void onSysTrayNoteClicked(const Notification::Note &note);
     void onSysTrayIconClicked(QSystemTrayIcon::ActivationReason reason);
     void onSysTrayMenuShowed();
@@ -235,10 +194,6 @@ private slots:
     void onBrowserLinkClicked(const QUrl& url);
     void onTextAlignMenuClicked(QAction* action);
     void onSendOptionMenuClicked(QAction* action);
-    void onListFriendMenuClicked(QAction* action);
-    void onListGroupMenuClicked(QAction* action);
-    void onFriendRemarksChanged(QString ID, QString remarks);
-    void onOfflineMsgChanged(QString ID, QString offlineMsg);
 
     // Auto-connected slots for UI events
     void on_buttonFont_clicked();
@@ -251,10 +206,6 @@ private slots:
     void on_buttonSendOpt_clicked();
     void on_tabSession_tabBarClicked(int index);
     void on_tabSession_currentChanged(int index);
-    void on_listFriend_doubleClicked(const QModelIndex &index);
-    void on_listFriend_customContextMenuRequested(const QPoint &pos);
-    void on_listGroup_doubleClicked(const QModelIndex &index);
-    void on_listGroup_customContextMenuRequested(const QPoint &pos);
     void on_buttonImage_clicked();
     void on_buttonFile_clicked();
     void on_textFriendSearch_textChanged(const QString &arg1);
