@@ -89,7 +89,9 @@ SOURCES += main.cpp\
     friendlistwidget.cpp \
     grouplistwidget.cpp \
     abstractlistwidget.cpp \
-    imageresource.cpp
+    imageresource.cpp \
+    sessionframewidget.cpp \
+    Modules/htmlhelper.cpp
 
 HEADERS  += mainwindow.h \
     loginwindow.h \
@@ -144,7 +146,9 @@ HEADERS  += mainwindow.h \
     friendlistwidget.h \
     grouplistwidget.h \
     abstractlistwidget.h \
-    imageresource.h
+    imageresource.h \
+    sessionframewidget.h \
+    Modules/htmlhelper.h
 
 FORMS    += mainwindow.ui \
     loginwindow.ui \
@@ -157,7 +161,8 @@ FORMS    += mainwindow.ui \
     aboutwindow.ui \
     groupinfodialog.ui \
     friendlistwidget.ui \
-    grouplistwidget.ui
+    grouplistwidget.ui \
+    sessionframewidget.ui
 
 RESOURCES += \
     icon.qrc \
