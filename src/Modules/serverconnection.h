@@ -6,6 +6,7 @@
 #define WICHAT_SERVER_ID_ROOT 0
 #define WICHAT_SERVER_ID_ACCOUNT 1
 #define WICHAT_SERVER_ID_RECORD 2
+#define WICHAT_SERVER_ID_WEB 3
 
 #define WICHAT_SERVER_RESPONSE_NONE 0
 #define WICHAT_SERVER_RESPONSE_SUCCESS 1
@@ -38,7 +39,8 @@ public:
 
     explicit ServerConnection();
     ~ServerConnection();
-    bool setRootServer(QString serverName, int port);
+    bool setRootServer(QString hostName, int port);
+    bool getServerInfo(int serverID, QString& hostName, int& port);
     ConnectionStatus init(bool refresh = false);
     ConnectionStatus sendRequest(int serverID,
                                  QString URL,

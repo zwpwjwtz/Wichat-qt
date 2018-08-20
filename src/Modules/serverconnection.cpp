@@ -3,6 +3,17 @@
 #include "serverconnection.h"
 #include "Private/serverconnection_p.h"
 
+#define WICHAT_CONNECTION_DNS_GET_ACC 1
+#define WICHAT_CONNECTION_DNS_GET_REC 2
+#define WICHAT_CONNECTION_DNS_GET_WEB 4
+
+#define WICHAT_CONNECTION_DNS_PARSE_OK 0
+#define WICHAT_CONNECTION_DNS_PARSE_NO_NETWORK 1
+#define WICHAT_CONNECTION_DNS_PARSE_NO_RESPONSE 2
+#define WICHAT_CONNECTION_DNS_PARSE_SERVER_ERROR 3
+#define WICHAT_CONNECTION_DNS_PARSE_VER_ERROR 4
+#define WICHAT_CONNECTION_DNS_PARSE_UNKOWN_ERROR -1
+
 #define WICHAT_CONNECTION_REQUEST_PROP_ID "request_id"
 #define WICHAT_CONNECTION_REQUEST_PROP_METHOD "request_method"
 #define WICHAT_CONNECTION_REQUEST_PROP_DATA "request_data"
@@ -19,14 +30,24 @@ ServerConnection::~ServerConnection()
     delete this->d_ptr;
 }
 
-bool ServerConnection::setRootServer(QString serverName, int port)
+bool ServerConnection::setRootServer(QString hostName, int port)
 {
     Q_D(ServerConnection);
-    if (serverName.isEmpty() || port < 0)
+    if (hostName.isEmpty() || port < 0)
         return false;
-    d->rootServer = serverName;
+    d->rootServer = hostName;
     d->rootServerPort = port;
     return true;
+}
+
+bool ServerConnection::getServerInfo(int serverID, QString &hostName, int &port)
+{
+    Q_D(ServerConnection);
+
+    ServerConnectionPrivate::ServerInfo server = d->selectServer(serverID);
+    hostName = server.hostName;
+    port = server.port;
+    return (!hostName.isEmpty());
 }
 
 ServerConnection::ConnectionStatus ServerConnection::init(bool refresh)
@@ -40,17 +61,21 @@ ServerConnection::ConnectionStatus ServerConnection::init(bool refresh)
 
     switch (d->getServerList())
     {
-        case 0:
+        case WICHAT_CONNECTION_DNS_PARSE_OK:
             d->hasInited = true;
             break;
-        case 1:
+        case WICHAT_CONNECTION_DNS_PARSE_NO_NETWORK:
             status = CannotConnect;
-        case 2:
+            break;
+        case WICHAT_CONNECTION_DNS_PARSE_SERVER_ERROR:
             status = ServerError;
-        case 3:
+            break;
+        case WICHAT_CONNECTION_DNS_PARSE_NO_RESPONSE:
             status = NotAvailable;
-        case 4:
+            break;
+        case WICHAT_CONNECTION_DNS_PARSE_VER_ERROR:
             status = VersionTooOld;
+            break;
         default:
             status = UnknownError;
     }
@@ -70,85 +95,44 @@ int ServerConnectionPrivate::getServerList()
 {
     int result = 0;
     int received;
-    QList<QByteArray> strList;
+    int parsedLength;
+    int pos;
     QByteArray iBuffer, oBuffer;
 
-    iBuffer.clear();
     iBuffer = QueryHeader;
-    iBuffer.append(WICHAT_CLIENT_DEVICE).append(QueryGetAcc);
+    iBuffer.append(WICHAT_CLIENT_DEVICE)
+           .append(WICHAT_CONNECTION_DNS_GET_ACC
+                   | WICHAT_CONNECTION_DNS_GET_REC
+                   | WICHAT_CONNECTION_DNS_GET_WEB);
 
     received = httpRequest(rootServer, rootServerPort,
                               "/Root/query/index.php", "POST",
                               iBuffer,
                               oBuffer);
     if (received < 1)
-        return 1;
-    switch (oBuffer[ResponseHeaderLen])
-    {
-        case WICHAT_SERVER_RESPONSE_NONE:
-        case WICHAT_SERVER_RESPONSE_BUSY:
-            result = 2;
-            break;
-        case WICHAT_SERVER_RESPONSE_SUCCESS:
-            if (int(oBuffer[ResponseHeaderLen + 1]) < 1)
-            {
-                result = 3;
-                break;
-            }
-            strList = oBuffer.mid(ResponseHeaderLen + 2).split('\0');
-            if (strList.count() > 0)
-            {
-                for (int i=0; i<strList.count(); i++)
-                    AccServerList.push_back(strList[i]);
-            }
-            else
-                result = 3;
-            break;
-        case WICHAT_SERVER_RESPONSE_DEVICE_UNSUPPORTED:
-            result = 4;
-            break;
-        default:
-            result = -1;
-    }
-    if (result != 0)
+        return WICHAT_CONNECTION_DNS_PARSE_NO_RESPONSE;
+    else if (oBuffer.left(ResponseHeaderLen) != ResponseHeader)
+        return WICHAT_CONNECTION_DNS_PARSE_SERVER_ERROR;
+    else
+        pos = ResponseHeaderLen;
+
+    result = parseDNSResponse(oBuffer.mid(pos),
+                              AccServerList,
+                              parsedLength);
+    if (result != WICHAT_CONNECTION_DNS_PARSE_OK)
         return result;
+    pos += parsedLength;
 
-    iBuffer[QueryHeaderLen + 1] = QueryGetRec;
-    received = httpRequest(rootServer, rootServerPort,
-                           "/Root/query/index.php", MethodPost,
-                           iBuffer,
-                           oBuffer);
-    if (received < 1)
-        return 1;
-    switch(oBuffer[ResponseHeaderLen])
-    {
-        case WICHAT_SERVER_RESPONSE_NONE:
-        case WICHAT_SERVER_RESPONSE_INVALID:
-            result = 2;
-            break;
-        case WICHAT_SERVER_RESPONSE_SUCCESS:
-            if (int(oBuffer[ResponseHeaderLen + 1]) < 1)
-            {
-                result = 3;
-                break;
-            }
-            strList = oBuffer.mid(ResponseHeaderLen + 2).split('\0');
-            if (strList.count() > 0)
-            {
-                for (int i=0; i<strList.count(); i++)
-                    RecServerList.push_back(strList[i]);
-            }
-            else
-                result = 3;
-            break;
-        case WICHAT_SERVER_RESPONSE_BUSY:
-        case WICHAT_SERVER_RESPONSE_IN_MAINTANANCE:
-            result = 3;
-            break;
-        default:
-            result = -1;
-    }
+    result = parseDNSResponse(oBuffer.mid(pos),
+                              RecServerList,
+                              parsedLength);
+    if (result != WICHAT_CONNECTION_DNS_PARSE_OK)
+        return result;
+    pos += parsedLength;
 
+    result = parseDNSResponse(oBuffer.mid(pos),
+                              WebServerList,
+                              parsedLength);
     return result;
 }
 
@@ -161,8 +145,8 @@ ServerConnection::sendRequest(int serverID,
     Q_D(ServerConnection);
 
     QByteArray iBuffer;
-    QString server = d->selectServer(serverID);
-    if (server.isEmpty())
+    ServerConnectionPrivate::ServerInfo server = d->selectServer(serverID);
+    if (server.hostName.isEmpty())
         return CannotConnect;
 
     iBuffer = d->QueryHeader;
@@ -170,14 +154,14 @@ ServerConnection::sendRequest(int serverID,
 
     int received = 0;
 #ifdef QT_DEBUG
-    received = d->httpRequest(server, 80,
+    received = d->httpRequest(server.hostName, server.port,
                               URL, d->MethodPost,
                               iBuffer,
                               buffer);
 #else
     for (int i = 1; i < d->MaxRequestCount; i++)
     {
-        received = d->httpRequest(server, 80,
+        received = d->httpRequest(server.hostName, 80,
                                   URL, d->MethodPost,
                                   iBuffer,
                                   buffer);
@@ -203,14 +187,14 @@ bool ServerConnection::sendAsyncRequest(int serverID,
     Q_D(ServerConnection);
 
     QByteArray iBuffer;
-    QString server = d->selectServer(serverID);
-    if (server.isEmpty())
+    ServerConnectionPrivate::ServerInfo server = d->selectServer(serverID);
+    if (server.hostName.isEmpty())
         return false;
 
     iBuffer = d->QueryHeader;
     iBuffer.append(content);
 
-    requestID = d->httpRequest(server, 80,
+    requestID = d->httpRequest(server.hostName, server.port,
                                URL, d->MethodPost,
                                iBuffer,
                                iBuffer,
@@ -266,22 +250,32 @@ ServerConnectionPrivate::ServerConnectionPrivate(ServerConnection* parent)
             SLOT(onHttpRequestFinished(QNetworkReply*)));
 }
 
-QString ServerConnectionPrivate::selectServer(int serverID)
+ServerConnectionPrivate::ServerInfo
+ServerConnectionPrivate::selectServer(int serverID)
 {
     Q_Q(ServerConnection);
 
-    QString server;
+    ServerInfo server;
+    server.port = 0;
     if (q->init() != ServerConnection::ConnectionStatus::Ok)
         return server;
     switch (serverID)
     {
+        case WICHAT_SERVER_ID_ROOT:
+            server.hostName = rootServer;
+            server.port = rootServerPort;
+            break;
         case WICHAT_SERVER_ID_ACCOUNT:
-            if (AccServerList.isEmpty()) return "";
-            server = AccServerList[0].trimmed();
+            if (!AccServerList.isEmpty())
+                server = AccServerList[0];
             break;
         case WICHAT_SERVER_ID_RECORD:
-            if (RecServerList.isEmpty()) return "";
-            server = RecServerList[0].trimmed();
+            if (!RecServerList.isEmpty())
+                server = RecServerList[0];
+            break;
+        case WICHAT_SERVER_ID_WEB:
+            if (!WebServerList.isEmpty())
+                server = WebServerList[0];
             break;
         default:;
     }
@@ -419,6 +413,67 @@ QNetworkReply* ServerConnectionPrivate::dealHttpRedirect(QNetworkReply* reply,
         return newReply;
     }
     return reply;
+}
+
+int ServerConnectionPrivate::parseDNSResponse(const QByteArray& rawData,
+                                              QList<ServerInfo>& serverList,
+                                              int& parsedLength)
+{
+    int result;
+    int serverCount;
+    bool parseIntOK;
+    QList<QByteArray> strList;
+    ServerInfo server;
+
+    parsedLength = 0;
+    serverList.clear();
+    switch (rawData[0])
+    {
+        case WICHAT_SERVER_RESPONSE_NONE:
+        case WICHAT_SERVER_RESPONSE_BUSY:
+            result = WICHAT_CONNECTION_DNS_PARSE_NO_RESPONSE;
+            break;
+        case WICHAT_SERVER_RESPONSE_SUCCESS:
+            serverCount = int(rawData[1]);
+            if (serverCount < 1)
+            {
+                result = WICHAT_CONNECTION_DNS_PARSE_SERVER_ERROR;
+                break;
+            }
+            strList = rawData.mid(2).split('\0');
+            parsedLength += 2;
+            for (int i=0; i<strList.count(); i++)
+            {
+                // Parse the first field: host name
+                server.hostName = strList[i].trimmed();
+                parsedLength += strList[i].length() + 1;
+                if (server.hostName.isEmpty())
+                    break;
+
+                // Parse the second field: port
+                if (i + 1 < strList.count())
+                {
+                    i++;
+                    server.port = strList[i].toInt(&parseIntOK);
+                    parsedLength += strList[i].length() + 1;
+                    if (!parseIntOK)
+                        server.port = 80;
+                }
+
+                serverList.push_back(server);
+                serverCount--;
+                if (serverCount <= 0)
+                    break;
+            }
+            result = WICHAT_CONNECTION_DNS_PARSE_OK;
+            break;
+        case WICHAT_SERVER_RESPONSE_DEVICE_UNSUPPORTED:
+            result = WICHAT_CONNECTION_DNS_PARSE_VER_ERROR;
+            break;
+        default:
+            result = WICHAT_CONNECTION_DNS_PARSE_UNKOWN_ERROR;
+    }
+    return result;
 }
 
 void ServerConnectionPrivate::onHttpRequestFinished(QNetworkReply* reply)

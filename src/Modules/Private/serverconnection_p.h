@@ -30,23 +30,28 @@ public:
 
     const char* QueryHeader = "WiChatCQ";
     const int QueryHeaderLen = 8;
-    const int QueryGetAcc = 1;
-    const int QueryGetRec = 2;
     const char* ResponseHeader = "WiChatSR";
     const int ResponseHeaderLen = 8;
+
+    struct ServerInfo
+    {
+        QString hostName;
+        int port;
+    };
 
     QNetworkAccessManager network;
     QString rootServer;
     int rootServerPort;
-    QList<QString> AccServerList;
-    QList<QString> RecServerList;
+    QList<ServerInfo> AccServerList;
+    QList<ServerInfo> RecServerList;
+    QList<ServerInfo> WebServerList;
     QList<int> requestIdList;
     QList<QNetworkReply*> reponseList;
     bool hasInited = false;
 
     ServerConnectionPrivate(ServerConnection* parent);
     int getServerList();
-    QString selectServer(int serverID);
+    ServerInfo selectServer(int serverID);
     int httpRequest(QString strHostName,
                     int intPort,
                     QString strUrl,
@@ -61,6 +66,9 @@ protected:
                                     QString method,
                                     QByteArray& data,
                                     bool synchronous = true);
+    static int parseDNSResponse(const QByteArray& rawData,
+                                QList<ServerInfo>& serverList,
+                                int& parsedLength);
 
 protected slots:
     void onHttpRequestFinished(QNetworkReply* reply);
