@@ -186,7 +186,7 @@ QString FriendListWidget::getFriendRemark(QString ID)
 
 QString FriendListWidget::getAccountImagePath(QString ID)
 {
-    Account::OnlineState state = infoList.value(ID).state;
+    OnlineState state = infoList.value(ID).state;
     if (accountService && accountService->ID() == ID)
         return ImageResource::stateToImagePath(int(state), true);
     else

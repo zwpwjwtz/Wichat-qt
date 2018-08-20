@@ -145,8 +145,8 @@ void GroupInfoDialog::onGetGroupMemberListFinished(int queryID,
     for (int i=0; i<members.count(); i++)
     {
         member = members[i];
-        if (member.state == Account::OnlineState::Online ||
-            member.state == Account::OnlineState::Busy)
+        if (member.state == OnlineState::Online ||
+            member.state == OnlineState::Busy)
             onlineCount++;
         iconPath = ImageResource::stateToImagePath(int(member.state));
 

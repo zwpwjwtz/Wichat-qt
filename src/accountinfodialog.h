@@ -2,7 +2,7 @@
 #define ACCOUNTINFODIALOG_H
 
 #include <QDialog>
-#include "Modules/account.h"
+#include "Modules/onlinestate.h"
 #include "editablelabel.h"
 
 
@@ -19,7 +19,7 @@ public:
     ~AccountInfoDialog();
 
     QString ID;
-    Account::OnlineState state;
+    OnlineState state;
     QString remarks;
     bool remarksVisible;
     bool remarksReadOnly;

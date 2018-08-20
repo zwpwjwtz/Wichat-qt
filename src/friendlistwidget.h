@@ -20,7 +20,7 @@ public:
     struct FriendInfoEntry
     {
         QString remarks;
-        Account::OnlineState state;
+        OnlineState state;
     };
 
     explicit FriendListWidget(QWidget* parent = 0);

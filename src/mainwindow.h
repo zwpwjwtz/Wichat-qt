@@ -77,7 +77,7 @@ private:
     void addTask(TaskType task);
     void doTask();
     void changeSession();
-    void changeState(Account::OnlineState state);
+    void changeState(OnlineState state);
     void updateState();
     void updateCaption();
     void updateSysTrayMenu();
@@ -91,7 +91,7 @@ private slots:
     void onChangeSessionFinished(int queryID, bool successful);
     void onChangeStateFinished(int queryID,
                                bool successful,
-                               Account::OnlineState newState);
+                               OnlineState newState);
     void onFriendRequest(QString ID);
     void onFriendRemoved(QString ID);    
 
@@ -112,7 +112,7 @@ private slots:
     void on_textFriendSearch_textChanged(const QString &arg1);
     void on_buttonFriendAdd_clicked();
     void on_buttonWichat_clicked();
-    void on_comboState_currentIndexChanged(int index);
+    void on_comboState_activated(int index);
 };
 
 #endif // MAINWINDOW_H

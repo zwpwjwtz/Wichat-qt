@@ -29,34 +29,13 @@
 #define WICHAT_MAIN_TIMER_SHOW_NOTE 2
 #endif
 
-Account::OnlineState Wichat_stateList[4] = {
-        Account::OnlineState::Online,
-        Account::OnlineState::Busy,
-        Account::OnlineState::Hide,
-        Account::OnlineState::Offline
+
+OnlineState Wichat_Main_stateList[4] = {
+    OnlineState::Online,
+    OnlineState::Busy,
+    OnlineState::Hide,
+    OnlineState::Offline
 };
-
-QString Wichat_stateToString(Account::OnlineState state)
-{
-    QString stateString;
-
-    switch (state)
-    {
-        case Account::OnlineState::Busy:
-            stateString = "Busy";
-            break;
-        case Account::OnlineState::Hide:
-            stateString = "Hide";
-            break;
-        case Account::OnlineState::Online:
-            stateString = "Online";
-            break;
-        case Account::OnlineState::Offline:
-        default:
-            stateString = "Offline";
-    }
-    return stateString;
-}
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -66,10 +45,10 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->labelFriendSearch->setAttribute(Qt::WA_TransparentForMouseEvents);
     for (int i=0; i<4; i++)
         ui->comboState->addItem(QIcon(ImageResource::stateToImagePath(
-                                                    int(Wichat_stateList[i]),
+                                                    Wichat_Main_stateList[i],
                                                     true)),
-                                Wichat_stateToString(Wichat_stateList[i]),
-                                int(Wichat_stateList[i]));
+                                Wichat_Main_stateList[i].toString(),
+                                Wichat_Main_stateList[i].value);
 
     menuSysTray = new QMenu();
     sysTrayIcon = new QSystemTrayIcon(this);
@@ -81,9 +60,9 @@ MainWindow::MainWindow(QWidget *parent) :
             this,
             SLOT(onChangeSessionFinished(int, bool)));
     connect(&globalAccount,
-            SIGNAL(setStateFinished(int, bool, Account::OnlineState)),
+            SIGNAL(setStateFinished(int, bool, OnlineState)),
             this,
-            SLOT(onChangeStateFinished(int,bool, Account::OnlineState)));
+            SLOT(onChangeStateFinished(int,bool, OnlineState)));
     connect(&globalAccount,
             SIGNAL(friendRequest(QString)),
             this,
@@ -211,10 +190,10 @@ void MainWindow::closeEvent(QCloseEvent* event)
     }
 
     // Log out before exit
-    changeState(Account::OnlineState::Offline);
+    changeState(OnlineState::Offline);
     QEventLoop loop(this);
     connect(&globalAccount,
-            SIGNAL(setStateFinished(int,bool,Account::OnlineState)),
+            SIGNAL(setStateFinished(int,bool,OnlineState)),
             &loop,
             SLOT(quit()));
     loop.exec();
@@ -259,6 +238,7 @@ void MainWindow::doTask()
             break;
         case taskUpdateState:
             updateState();
+            updateCaption();
             break;
         case taskShowNotification:
             showNotification();
@@ -298,7 +278,7 @@ void MainWindow::changeSession()
     globalAccount.resetSession(queryID);
 }
 
-void MainWindow::changeState(Account::OnlineState state)
+void MainWindow::changeState(OnlineState state)
 {
     int queryID;
     globalAccount.setState(state, queryID);
@@ -306,15 +286,22 @@ void MainWindow::changeState(Account::OnlineState state)
 
 void MainWindow::updateState()
 {
+    int currentState = globalAccount.state();
+
     ui->frameSession->setTabIconPath(
             ui->frameSession->getSessionIDByID(userID,
                                             SessionFrameWidget::LocalDialog),
-            ImageResource::stateToImagePath(int(globalAccount.state()), true));
-    sysTrayIcon->setIcon(QIcon(ImageResource::stateToImagePath(
-                                   int(globalAccount.state()), true)));
+            ImageResource::stateToImagePath(currentState, true));
+    sysTrayIcon->setIcon(QIcon(ImageResource::stateToImagePath(currentState,
+                                                               true)));
     ui->listFriend->setAccountIconPath(userID,
                                        ImageResource::stateToImagePath(
-                                            int(globalAccount.state()), true));
+                                                        currentState, true));
+    for (int i=0; i<ui->comboState->count(); i++)
+    {
+        if (ui->comboState->itemData(i).toInt() == currentState)
+            ui->comboState->setCurrentIndex(i);
+    }
 }
 
 void MainWindow::updateCaption()
@@ -327,7 +314,7 @@ void MainWindow::updateCaption()
         || currentSession.isEmpty())
     {
         title.append('[')
-             .append(Wichat_stateToString(globalAccount.state()))
+             .append(globalAccount.state().toString())
              .append(']');
         if (!globalAccount.offlineMsg().isEmpty())
             title.append('-').append(globalAccount.offlineMsg());
@@ -361,10 +348,10 @@ void MainWindow::updateSysTrayMenu()
             action = new QAction(menuSysTray);
             action->installEventFilter(this);
             action->setIcon(QIcon(ImageResource::stateToImagePath(
-                                                   int(Wichat_stateList[i]),
-                                                   true)));
-            action->setText(Wichat_stateToString(Wichat_stateList[i]));
-            action->setData(int(Wichat_stateList[i]));
+                                                int(Wichat_Main_stateList[i]),
+                                                true)));
+            action->setText(Wichat_Main_stateList[i].toString());
+            action->setData(Wichat_Main_stateList[i].value);
             menuSysTray->addAction(action);
         }
 
@@ -449,7 +436,7 @@ void MainWindow::onChangeSessionFinished(int queryID, bool successful)
 
 void MainWindow::onChangeStateFinished(int queryID,
                                        bool successful,
-                                       Account::OnlineState newState)
+                                       OnlineState newState)
 {
     Q_UNUSED(queryID)
     Q_UNUSED(newState)
@@ -661,7 +648,7 @@ void MainWindow::onSysTrayMenuClicked(QAction* action)
         close();
     }
     else if (state > 0)
-        changeState(Account::OnlineState(action->data().toInt()));
+        changeState(OnlineState(action->data().toInt()));
 }
 
 void MainWindow::onAppMenuClicked(QAction* action)
@@ -776,10 +763,10 @@ void MainWindow::on_buttonWichat_clicked()
     menuApp->popup(QCursor::pos());
 }
 
-void MainWindow::on_comboState_currentIndexChanged(int index)
+void MainWindow::on_comboState_activated(int index)
 {
     bool ok;
     int state = ui->comboState->itemData(index).toInt(&ok);
     if (ok)
-        changeState(Account::OnlineState(state));
+        changeState(OnlineState(state));
 }

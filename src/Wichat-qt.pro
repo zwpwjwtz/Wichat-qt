@@ -148,7 +148,8 @@ HEADERS  += mainwindow.h \
     abstractlistwidget.h \
     imageresource.h \
     sessionframewidget.h \
-    Modules/htmlhelper.h
+    Modules/htmlhelper.h \
+    Modules/onlinestate.h
 
 FORMS    += mainwindow.ui \
     loginwindow.ui \

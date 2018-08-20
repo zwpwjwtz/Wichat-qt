@@ -114,7 +114,7 @@ bool Account::checkPassword(QString password)
     return true;
 }
 
-bool Account::verify(QString ID, QString password)
+bool Account::verify(QString ID, QString password, OnlineState loginState)
 {
     Q_D(Account);
     if (!checkID(ID))
@@ -124,6 +124,7 @@ bool Account::verify(QString ID, QString password)
 
     d->loginID = ID;
     d->loginPassword = d->encoder.getSHA256(password.toLatin1());
+    d->expectedState = loginState;
     return d->processLogin(0);
 }
 
@@ -187,7 +188,7 @@ bool Account::resetSession(int& queryID)
     return true;
 }
 
-Account::OnlineState Account::state()
+OnlineState Account::state()
 {
     Q_D(Account);
     return d->currentState;
@@ -210,6 +211,7 @@ bool Account::setState(OnlineState newState, int& queryID)
                             false, &queryID))
         return false;
 
+    d->expectedState = newState;
     d->addRequest(queryID, AccountPrivate::RequestType::SetState);
     return true;
 }
@@ -649,7 +651,9 @@ void AccountPrivate::dispatchQueryRespone(int requestID)
             case AccountPrivate::RequestType::SetState:
             {
                 if (successful)
-                    currentState = Account::OnlineState(data.at(0));
+                    currentState = OnlineState(data.at(0));
+                if (currentState != expectedState)
+                    successful = false;
                 emit q->setStateFinished(requestID,
                                          successful,
                                          currentState);
@@ -869,7 +873,7 @@ bool AccountPrivate::processLogin(int requestID)
     // Build login request
     bufferIn.clear();
     bufferIn.append(loginPassword.left(Account::KeyLen));
-    bufferIn.append(char(Account::OnlineState::Online));
+    bufferIn.append(char(expectedState));
     encoder.encrypt(Encryptor::AES, bufferIn, loginKey, bufferOut);
     bufferIn.clear();
     bufferIn.append(char(WICHAT_CLIENT_DEVICE)).append(char(2));
@@ -987,7 +991,7 @@ void AccountPrivate::parseAccountList(QByteArray& data,
                 accountState = data.at(pS + 2) - '0';
             else
                 accountState = 0;
-            account.state = Account::OnlineState(accountState);
+            account.state = OnlineState(accountState);
             list.append(account);
         }
     }
@@ -1019,20 +1023,20 @@ void AccountPrivate::parseGroupList(QByteArray& data,
     }
 }
 
-Account::OnlineState AccountPrivate::intToOnlineState(int var)
+OnlineState AccountPrivate::intToOnlineState(int var)
 {
     switch (var)
     {
         case WICHAT_ACCOUNT_STATE_ONLINE:
-            return Account::OnlineState::Online;
+            return OnlineState::Online;
         case WICHAT_ACCOUNT_STATE_OFFLINE:
-            return Account::OnlineState::Offline;
+            return OnlineState::Offline;
         case WICHAT_ACCOUNT_STATE_BUSY:
-            return Account::OnlineState::Busy;
+            return OnlineState::Busy;
         case WICHAT_ACCOUNT_STATE_HIDE:
-            return Account::OnlineState::Hide;
+            return OnlineState::Hide;
         default:
-            return Account::OnlineState::None;
+            return OnlineState::None;
     }
 }
 

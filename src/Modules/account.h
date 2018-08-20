@@ -1,8 +1,9 @@
 #ifndef ACCOUNT_H
 #define ACCOUNT_H
 
+#include <QDateTime>
 #include "abstractservice.h"
-#include "QDateTime"
+#include "onlinestate.h"
 
 
 class AccountPrivate;
@@ -29,14 +30,6 @@ public:
         NetworkError = 1,
         VersionNotSupported = 2,
         UnknownError = 255
-    };
-    enum class OnlineState
-    {
-        None = 0,
-        Online = 1,
-        Offline = 2,
-        Busy = 4,
-        Hide = 5,
     };
     enum class GroupMemberRole
     {
@@ -81,7 +74,7 @@ public:
     static bool checkID(QString ID);
     static bool checkPassword(QString password);
 
-    bool verify(QString ID, QString password);
+    bool verify(QString ID, QString password, OnlineState loginState);
     bool resetSession(int& queryID);
 
     QString ID();
@@ -119,7 +112,7 @@ signals:
     void setPasswordFinished(int queryID, bool successful);
     void setStateFinished(int queryID,
                           bool successful,
-                          Account::OnlineState newState);
+                          OnlineState newState);
     void setOfflineMsgFinished(int queryID, bool successful);
 
     void queryFriendListFinished(int queryID,

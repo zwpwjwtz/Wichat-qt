@@ -49,7 +49,7 @@
     <rect>
      <x>90</x>
      <y>250</y>
-     <width>211</width>
+     <width>231</width>
      <height>40</height>
     </rect>
    </property>
@@ -89,9 +89,9 @@
    <widget class="QLineEdit" name="textPassword">
     <property name="geometry">
      <rect>
-      <x>140</x>
+      <x>120</x>
       <y>70</y>
-      <width>221</width>
+      <width>201</width>
       <height>38</height>
      </rect>
     </property>
@@ -102,7 +102,7 @@
    <widget class="QLabel" name="labelAccount">
     <property name="geometry">
      <rect>
-      <x>30</x>
+      <x>20</x>
       <y>30</y>
       <width>101</width>
       <height>24</height>
@@ -115,7 +115,7 @@
    <widget class="QLabel" name="labelPassword">
     <property name="geometry">
      <rect>
-      <x>30</x>
+      <x>20</x>
       <y>80</y>
       <width>101</width>
       <height>24</height>
@@ -128,11 +128,46 @@
    <widget class="QLineEdit" name="textID">
     <property name="geometry">
      <rect>
-      <x>140</x>
+      <x>120</x>
       <y>20</y>
-      <width>221</width>
+      <width>201</width>
       <height>38</height>
      </rect>
+    </property>
+   </widget>
+   <widget class="QLabel" name="labelRegister">
+    <property name="geometry">
+     <rect>
+      <x>320</x>
+      <y>80</y>
+      <width>81</width>
+      <height>24</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; text-decoration: underline; color:#55aaff;&quot;&gt;Register&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+    </property>
+    <property name="alignment">
+     <set>Qt::AlignCenter</set>
+    </property>
+   </widget>
+   <widget class="QComboBox" name="comboLoginState">
+    <property name="geometry">
+     <rect>
+      <x>330</x>
+      <y>20</y>
+      <width>54</width>
+      <height>38</height>
+     </rect>
+    </property>
+    <property name="iconSize">
+     <size>
+      <width>24</width>
+      <height>24</height>
+     </size>
+    </property>
+    <property name="frame">
+     <bool>false</bool>
     </property>
    </widget>
   </widget>

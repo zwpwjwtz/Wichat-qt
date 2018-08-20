@@ -7,16 +7,29 @@
 #include "serverconfigdialog.h"
 #include "global_objects.h"
 #include "mainwindow.h"
+#include "imageresource.h"
 #include "Modules/wichatconfig.h"
 #include "Modules/serverconnection.h"
 #include "Modules/account.h"
 
+
+OnlineState Wichat_Login_stateList[3] = {
+        OnlineState::Online,
+        OnlineState::Busy,
+        OnlineState::Hide
+};
 
 LoginWindow::LoginWindow(QWidget *parent) :
     QWidget(parent),
     ui(new Ui::LoginWindow)
 {
     ui->setupUi(this);
+    for (int i=0; i<3; i++)
+        ui->comboLoginState->addItem(QIcon(ImageResource::stateToImagePath(
+                                                    Wichat_Login_stateList[i],
+                                                    true)),
+                                     "",
+                                     Wichat_Login_stateList[i].value);
 
     setFixedSize(width(), height());
     ui->textID->setText(globalConfig.lastID());
@@ -138,7 +151,8 @@ void LoginWindow::on_buttonLogin_clicked()
 
     loggingIn = true;
     showLoginProgress();
-    if (!globalAccount.verify(ui->textID->text(), ui->textPassword->text()))
+    if (!globalAccount.verify(ui->textID->text(), ui->textPassword->text(),
+                              ui->comboLoginState->currentData().toInt()))
     {
         // Assuming network problem
         onAccountVerifyFinished(Account::VerifyError::NetworkError);

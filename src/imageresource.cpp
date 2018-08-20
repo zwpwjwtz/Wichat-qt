@@ -1,5 +1,5 @@
 #include "imageresource.h"
-#include "Modules/account.h"
+#include "Modules/onlinestate.h"
 
 
 ImageResource::ImageResource()
@@ -9,21 +9,21 @@ ImageResource::ImageResource()
 QString ImageResource::stateToImagePath(int stateNumber, bool displayHide)
 {
     QString path = ":/Icons/";
-    switch (Account::OnlineState(stateNumber))
+    switch (stateNumber)
     {
-        case Account::OnlineState::Online:
+        case OnlineState::Online:
             path.append("online");
             break;
-        case Account::OnlineState::Busy:
+        case OnlineState::Busy:
             path.append("busy");
             break;
-        case Account::OnlineState::Hide:
+        case OnlineState::Hide:
             if (displayHide)
                 path.append("invisible");
             else
                 path.append("offline");
             break;
-        case Account::OnlineState::Offline:
+        case OnlineState::Offline:
         default:
             path.append("offline");
     }

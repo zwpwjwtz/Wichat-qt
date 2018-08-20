@@ -502,8 +502,8 @@ void SessionFrameWidget::getMessageList()
 bool SessionFrameWidget::sendMessage(QString content, QString sessionID)
 {
 #ifndef QT_DEBUG
-    if (account->state() == Account::OnlineState::None ||
-        account->state() == Account::OnlineState::Offline)
+    if (account->state() == OnlineState::None ||
+        account->state() == OnlineState::Offline)
     {
         QMessageBox::warning(this, "Please log in first",
                              "You are off-line now. "
@@ -698,7 +698,7 @@ QString SessionFrameWidget::getStateImagePath(QString sessionID)
     {
         case LocalDialog:
             image = ImageResource::stateToImagePath(
-                                        int(Account::OnlineState::Online));
+                                        int(OnlineState::Online));
             break;
         case GroupChat:
             image = groupList->getGroupImagePath(getIDBySessionID(sessionID));
@@ -708,7 +708,7 @@ QString SessionFrameWidget::getStateImagePath(QString sessionID)
             break;
         default:
             image = ImageResource::stateToImagePath(
-                                        int(Account::OnlineState::Offline));
+                                        int(OnlineState::Offline));
     }
     return image;
 }

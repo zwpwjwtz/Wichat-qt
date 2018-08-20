@@ -21,7 +21,7 @@ void AccountInfoDialog::showEvent(QShowEvent* event)
     Q_UNUSED(event)
     ui->labelID->setText(ID);
 
-    if (state == Account::OnlineState::Offline)
+    if (state == OnlineState::Offline)
         ui->labelOnlineState->setText("Not online");
     else
         ui->labelOnlineState->setText("Online");

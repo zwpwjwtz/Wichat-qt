@@ -61,7 +61,8 @@ public:
     QByteArray currentSession;
     QByteArray sessionKey;
     qint64 sessionValidTime;
-    Account::OnlineState currentState;
+    OnlineState currentState;
+    OnlineState expectedState;
     QString currentOfflineMsg;
 
     AccountPrivate(Account* parent = 0, ServerConnection* server = 0);
@@ -75,7 +76,7 @@ public:
                                  QList<Account::AccountListEntry>& list);
     static void parseGroupList(QByteArray& data,
                                QList<Account::GroupListEntry>& list);
-    static Account::OnlineState intToOnlineState(int var);
+    static OnlineState intToOnlineState(int var);
     static QString serverObjectToPath(ServerObject objectID);
 };
 
