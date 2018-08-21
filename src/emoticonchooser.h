@@ -22,6 +22,8 @@ public:
 
     void init();
     void setResourceDir(QString dirPath);
+    QString getImageNameFromCode(const QByteArray& emoticon);
+    QString getImagePathFromCode(const QByteArray& emoticon);
 
 signals:
     void emoticonClicked(const QByteArray& emoticon);
@@ -43,6 +45,7 @@ private:
     void collapseList();
 
     void loadImages();
+    QString getEmojiFileName(const QByteArray& code);
 
 private slots:
     void on_buttonExpand_clicked();

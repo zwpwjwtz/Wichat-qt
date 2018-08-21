@@ -105,6 +105,15 @@ void SessionFrameWidget::init()
     else
         hasInited = true;
 
+    QDir resourceDir(WICHAT_SESNFRAME_RESOURCE_DIR);
+#ifdef WICHAT_SESNFRAME_RESOURCE_DIR_2
+    if (!resourceDir.exists())
+        resourceDir.setPath(WICHAT_SESNFRAME_RESOURCE_DIR_2);
+#endif
+    if (!resourceDir.exists())
+        resourceDir = QCoreApplication::applicationDirPath();
+    emoticonList->setResourceDir(resourceDir.absolutePath());
+
     userSessionList.loadFromFile(config->userDirectory(userID));
     if (userSessionList.count() < 1)
         loadSession(userID, LocalDialog);
@@ -130,15 +139,6 @@ void SessionFrameWidget::init()
 
     friendChat->setPeerSession(peerSessionList);
     groupChat->setPeerSession(peerSessionList);
-
-    QDir resourceDir(WICHAT_SESNFRAME_RESOURCE_DIR);
-#ifdef WICHAT_SESNFRAME_RESOURCE_DIR_2
-    if (!resourceDir.exists())
-        resourceDir.setPath(WICHAT_SESNFRAME_RESOURCE_DIR_2);
-#endif
-    if (!resourceDir.exists())
-        resourceDir = QCoreApplication::applicationDirPath();
-    emoticonList->setResourceDir(resourceDir.absolutePath());
 
     applyUserSettings();
 }
@@ -758,6 +758,7 @@ void SessionFrameWidget::addTab(QString sessionID)
     newBrowser->setUserID(userID);
     newBrowser->setAvailable(false);
     newBrowser->setGeometry(ui->textBrowser->geometry());
+    newBrowser->bindEmoticonList(emoticonList);
     newEditor->setProperty("ID", sessionID);
     newEditor->setGeometry(ui->textEdit->geometry());
 
@@ -1083,12 +1084,14 @@ void SessionFrameWidget::onSessionTabClose(bool checked)
 
 void SessionFrameWidget::onEmoticonClicked(const QByteArray &emoticon)
 {
-    const uint* unicode = (const uint*)(emoticon.constData());
-    int unicodeLength = emoticon.length() / sizeof(uint) +
-                        (emoticon.length() % sizeof(uint) > 0);
-    editorList[getSessionIndex(lastConversation)]->insertHtml(
-                                            QString::fromUcs4(unicode,
-                                                              unicodeLength));
+    QImage image(emoticonList->getImagePathFromCode(emoticon));
+    QTextEdit* editor = editorList[getSessionIndex(lastConversation)];
+    QTextCursor cursor = editor->textCursor();
+    int lineHeight = config->prefFontSize(userID).toInt() * 2;
+    if (lineHeight < 10)
+        lineHeight = 10;
+    cursor.insertImage(image.scaledToHeight(lineHeight),
+                       emoticon.toHex().prepend("[emoji]").append("[/emoji]"));
 }
 
 void SessionFrameWidget::onFontStyleMenuClicked(QAction* action)
@@ -1287,8 +1290,15 @@ void SessionFrameWidget::on_comboTextSize_currentTextChanged(const QString &arg1
 
 void SessionFrameWidget::on_buttonSend_clicked()
 {
-    QString content;
+    QString content, newContent;
     int sessionIndex = getSessionIndex(lastConversation);
+
+    // Deal with emoticons
+    content = editorList[sessionIndex]->toHtml();
+    newContent = content.replace("<img src=\"[emoji]", "&lt;emoticon&gt;emoji:")
+                        .replace("[/emoji]\" />", "&lt;/emoticon&gt;");
+    editorList[sessionIndex]->setHtml(newContent);
+
     content = editorList[sessionIndex]->toPlainText();
     if (sendMessage(content, lastConversation))
         editorList[sessionIndex]->clear();

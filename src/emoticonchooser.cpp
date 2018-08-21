@@ -67,6 +67,24 @@ void EmoticonChooser::setResourceDir(QString dirPath)
     }
 }
 
+QString EmoticonChooser::getImageNameFromCode(const QByteArray &emoticon)
+{
+    return emojiList.getName(emoticon);
+}
+
+QString EmoticonChooser::getImagePathFromCode(const QByteArray &emoticon)
+{
+    QDir resourceDir(emojiResourceDir);
+    if (!resourceDir.exists())
+        return "";
+
+    QFile imageFile(resourceDir.filePath(getEmojiFileName(emoticon)));
+    if (imageFile.exists())
+        return imageFile.fileName();
+    else
+        return "";
+}
+
 void EmoticonChooser::showEvent(QShowEvent* event)
 {
     Q_UNUSED(event)
@@ -103,6 +121,7 @@ void EmoticonChooser::loadImages()
 {
     if (emojiList.count() < 1)
         return;
+
     QDir resourceDir(emojiResourceDir);
     if (!resourceDir.exists())
         return;
@@ -111,11 +130,9 @@ void EmoticonChooser::loadImages()
     listChooserModel.clear();
     listPreferredModel.clear();
 
-    int i, j, k;
+    int i, j;
     QList<QString> groups = emojiList.getGroupNames();
     QList<QByteArray> emojiCodeList;
-    QByteArray tempCode;
-    QString emojiFileName;
     QFile emojiFile;
     QStandardItem* emojiIcon;
     QList<QStandardItem*> emojiIconGroup;
@@ -128,17 +145,9 @@ void EmoticonChooser::loadImages()
         emojiCodeList = emojiList.getCodeByGroup(groups[i]);
         for (j=emojiCodeList.count() - 1; j>=0; j--)
         {
-            // Invert emoji hex unicode (because it is of little endian)
-            tempCode.clear();
-            for (k=emojiCodeList[j].length() - 1; k>=0; k--)
-                tempCode.append(emojiCodeList[j].at(k));
-
             // Get emoji file name from hex code, then trim leading zeros.
-            emojiFileName = tempCode.toHex()
-                            .append(WICHAT_EMOJI_RESOURCE_IMAGE_SUFFIX);
-            if (emojiFileName.at(0) == '0')
-                emojiFileName.remove(0, 1);
-            emojiFile.setFileName(resourceDir.filePath(emojiFileName));
+            emojiFile.setFileName(resourceDir.filePath(
+                                        getEmojiFileName(emojiCodeList[j])));
             if (!emojiFile.exists())
                 continue;
 
@@ -156,6 +165,20 @@ void EmoticonChooser::loadImages()
         }
     }
     currentGroup = 0;
+}
+
+QString EmoticonChooser::getEmojiFileName(const QByteArray &code)
+{
+
+    // Invert emoji hex unicode (because it is of little endian)
+    QByteArray tempCode;
+    for (int i=code.length()-1; i>=0; i--)
+        tempCode.append(code.at(i));
+
+    QString fileName = QString::fromUtf8(tempCode.toHex());
+    if (fileName.at(0) == '0')
+        fileName.remove(0, 1);
+    return fileName.append(WICHAT_EMOJI_RESOURCE_IMAGE_SUFFIX);;
 }
 
 void EmoticonChooser::on_buttonExpand_clicked()

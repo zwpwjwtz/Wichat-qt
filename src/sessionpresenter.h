@@ -7,6 +7,8 @@
 #define WICHAT_SESNFRAME_CONTENT_LOAD_STEP 10
 
 
+class EmoticonChooser;
+
 namespace Ui {
 class SessionPresenter;
 }
@@ -18,6 +20,7 @@ class SessionPresenter : public QWidget
 public:
     explicit SessionPresenter(QWidget *parent = 0);
     ~SessionPresenter();
+    void bindEmoticonList(EmoticonChooser* list);
 
     QString ID();
     void setID(QString ID);
@@ -40,16 +43,19 @@ signals:
 private:
     Ui::SessionPresenter *ui;
     const SessionMessageList* messageList;
+    EmoticonChooser* emoticonList;
     QString sessionID;
     QString userID;
     int loadedHeadID;
     int loadedTailID;
     bool isAvailable;
     bool isLoaded;
+    bool emoticonListBinded;
 
     void loadMore(bool olderMessages = true);
     QString renderMessage(const SessionMessageList::MessageEntry& message,
                           bool fullHTML = false);
+    QString fallbackStringFromCode(const QByteArray& emoticon);
     static QString getFileNameFromPath(QString filePath);
 
 private slots:

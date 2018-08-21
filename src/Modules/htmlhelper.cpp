@@ -23,6 +23,7 @@ QString HtmlHelper::getHTMLHeader(int docType)
                           ".s{color:#339966}"
                           ".r{color:#0066CC}.a{color:#000000}"
                           ".c{margin:0px 0px 15px 5px;width:350px;word-wrap:break-word}"
+                          ".emoji{height:1em;vertical-align:bottom}"
                           "</style></head><body>");
             break;
         default:

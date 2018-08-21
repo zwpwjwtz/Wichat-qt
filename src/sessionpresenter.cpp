@@ -4,6 +4,7 @@
 #include "sessionpresenter.h"
 #include "ui_sessionpresenter.h"
 #include "config_field.h"
+#include "emoticonchooser.h"
 #include "Modules/sessionmessagelist.h"
 #include "Modules/htmlhelper.h"
 
@@ -18,6 +19,7 @@ SessionPresenter::SessionPresenter(QWidget *parent) :
     ui->setupUi(this);
     isLoaded = false;
     isAvailable = true;
+    emoticonListBinded = false;
     loadedHeadID = -1;
     loadedTailID = -1;
 
@@ -31,6 +33,19 @@ SessionPresenter::~SessionPresenter()
 {
     delete ui;
 }
+
+void SessionPresenter::bindEmoticonList(EmoticonChooser* list)
+{
+    emoticonList = list;
+    if (emoticonList == nullptr)
+    {
+        emoticonListBinded = false;
+        return;
+    }
+    else
+        emoticonListBinded = true;
+}
+
 QString SessionPresenter::ID()
 {
     return sessionID;
@@ -195,18 +210,24 @@ QString SessionPresenter::renderMessage(
                        localTime.toString(WICHAT_SESSION_DATETIME_FORMAT));
 
     // Deal with emoticon
+    QByteArray emoticon;
     p2 = 0;
     while(true)
     {
-        p1 = result.indexOf("<emotion>", p2);
-        p2 = result.indexOf("</emotion>", p1);
+        p1 = result.indexOf("<emoticon>emoji:", p2);
+        p2 = result.indexOf("</emoticon>", p1 + 15);
         if (p1 < 0 || p2 < 0)
             break;
-        int emotionIndex = int(QString(result.mid(p1 + 9, p2 - p1 - 9))
-                                      .toInt());
-        // TODO: parse emoticon
 
-        result.replace(p1, p2 - p1, temp);
+        emoticon = QByteArray::fromHex(result.mid(p1 + 15, p2 - p1 - 15)
+                                             .toUtf8());
+        if (emoticonListBinded)
+            temp = QString("<img src=\"%1\" alt=\"%2\" class=\"emoji\" />")
+                    .arg(emoticonList->getImagePathFromCode(emoticon))
+                    .arg(emoticonList->getImageNameFromCode(emoticon));
+        else
+            temp = fallbackStringFromCode(emoticon);
+        result.replace(p1, p2 - p1 + 11, temp);
     }
 
     // Deal with image
@@ -264,6 +285,14 @@ QString SessionPresenter::renderMessage(
         result.append(HtmlHelper::getHTMLFooter(0));
     }
     return result;
+}
+
+QString SessionPresenter::fallbackStringFromCode(const QByteArray& emoticon)
+{
+    const uint* unicode = (const uint*)(emoticon.constData());
+    int unicodeLength = emoticon.length() / sizeof(uint) +
+                        (emoticon.length() % sizeof(uint) > 0);
+    return QString::fromUcs4(unicode, unicodeLength);
 }
 
 QString SessionPresenter::getFileNameFromPath(QString filePath)
