@@ -91,7 +91,8 @@ SOURCES += main.cpp\
     abstractlistwidget.cpp \
     imageresource.cpp \
     sessionframewidget.cpp \
-    Modules/htmlhelper.cpp
+    Modules/htmlhelper.cpp \
+    sessionpresenter.cpp
 
 HEADERS  += mainwindow.h \
     loginwindow.h \
@@ -149,7 +150,9 @@ HEADERS  += mainwindow.h \
     imageresource.h \
     sessionframewidget.h \
     Modules/htmlhelper.h \
-    Modules/onlinestate.h
+    Modules/onlinestate.h \
+    sessionpresenter.h \
+    config_field.h
 
 FORMS    += mainwindow.ui \
     loginwindow.ui \
@@ -163,7 +166,8 @@ FORMS    += mainwindow.ui \
     groupinfodialog.ui \
     friendlistwidget.ui \
     grouplistwidget.ui \
-    sessionframewidget.ui
+    sessionframewidget.ui \
+    sessionpresenter.ui
 
 RESOURCES += \
     icon.qrc \

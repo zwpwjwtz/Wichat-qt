@@ -4,39 +4,26 @@
 #include <QMessageBox>
 #include <QMenu>
 #include <QStackedLayout>
-#include <QTextBrowser>
 #include <QLineEdit>
 #include <QScrollBar>
 #include <QColorDialog>
 #include <QFileDialog>
 #include <QDateTime>
-#include <QImageReader>
 
 #include "sessionframewidget.h"
 #include "ui_sessionframewidget.h"
+#include "config_field.h"
 #include "emoticonchooser.h"
 #include "friendlistwidget.h"
 #include "grouplistwidget.h"
 #include "imageresource.h"
+#include "sessionpresenter.h"
 #include "Modules/wichatconfig.h"
 #include "Modules/account.h"
 #include "Modules/conversation.h"
 #include "Modules/group.h"
 #include "Modules/notification.h"
 #include "Modules/htmlhelper.h"
-
-#define WICHAT_SESNFRAME_FONT_STYLE_BOLD "bold"
-#define WICHAT_SESNFRAME_FONT_STYLE_ITALIC "italic"
-#define WICHAT_SESNFRAME_FONT_STYLE_UNDERLINE "underline"
-#define WICHAT_SESNFRAME_FONT_STYLE_STRIKEOUT "strikeout"
-#define WICHAT_SESNFRAME_FONT_STYLE_OVERLINE "overline"
-
-#define WICHAT_SESNFRAME_TEXT_ALIGN_LEFT "left"
-#define WICHAT_SESNFRAME_TEXT_ALIGN_CENTER "center"
-#define WICHAT_SESNFRAME_TEXT_ALIGN_RIGHT "right"
-
-#define WICHAT_SESNFRAME_EDITOR_SENDKEY_ENTER 0x01000004
-#define WICHAT_SESNFRAME_EDITOR_SENDKEY_CTRLENTER 0x01000004 + 0x04000000
 
 #ifdef Q_OS_WIN32
 #define WICHAT_SESNFRAME_RESOURCE_DIR "Resource"
@@ -52,8 +39,6 @@
 #define WICHAT_SESNFRAME_FILE_FILTER_GIF "GIF file (*.gif)(*.gif)"
 #define WICHAT_SESNFRAME_FILE_FILTER_JPG "JPEG file (*.jpg *.jpeg)(*.jpg *.jpeg)"
 #define WICHAT_SESNFRAME_FILE_FILTER_PNG "PNG file (*.png)(*.png)"
-
-#define WICHAT_SESNFRAME_TIME_FORMAT "yyyy-MM-dd hh:mm:ss"
 
 
 SessionFrameWidget::SessionFrameWidget(QWidget *parent) :
@@ -370,13 +355,9 @@ void SessionFrameWidget::loadSession(QString sessionID, bool setTabActive)
 
     // Load and activate the session
     index = getSessionIndex(sessionID);
-    if (!browserList[index]->property("Initialized").toBool())
+    if (!browserList[index]->available())
         return;
-    if (!browserList[index]->property("Loaded").toBool())
-    {
-        loadSessionContent(sessionID);
-        browserList[index]->setProperty("Loaded", true);
-    }
+    loadSessionContent(sessionID);
     ((QStackedLayout*)(ui->frameTextGroup->layout()))->setCurrentIndex(index);
     lastConversation = sessionID;
 }
@@ -453,7 +434,7 @@ int SessionFrameWidget::getSessionIndex(QString sessionID)
 {
     for (int i=0; i<browserList.count(); i++)
     {
-        if (browserList[i]->property("ID").toString() == sessionID)
+        if (browserList[i]->ID() == sessionID)
             return i;
     }
     return -1;
@@ -463,8 +444,8 @@ int SessionFrameWidget::getSessionTabIndex(QString sessionID)
 {
     for (int i=0; i<ui->tabSession->count(); i++)
     {
-        if (((QTextBrowser*)(ui->tabSession->widget(i)))
-                                    ->property("ID").toString() == sessionID)
+        if (((SessionPresenter*)(ui->tabSession->widget(i)))
+                                    ->ID() == sessionID)
             return i;
     }
     return -1;
@@ -566,7 +547,7 @@ bool SessionFrameWidget::sendMessage(QString content, QString sessionID)
     userSessionList.getSession(sessionID).messageList
                                          ->addMessage(sessionMessage);
 
-    browserList[sessionIndex]->append(renderMessage(sessionMessage, true));
+    browserList[sessionIndex]->refresh();
     return true;
 }
 
@@ -715,34 +696,35 @@ QString SessionFrameWidget::getStateImagePath(QString sessionID)
 
 void SessionFrameWidget::loadSessionContent(QString sessionID)
 {
+    int tabIndex;
+    for (tabIndex=0; tabIndex<browserList.count(); tabIndex++)
+    {
+        if (browserList[tabIndex]->ID() == sessionID)
+            break;
+    }
+    if (tabIndex >= browserList.count() || !browserList[tabIndex]->available())
+        return;
+
     UserSession::SessionData& session = userSessionList.getSession(sessionID);
     session.active = true;
 
-    // Load cached session content from session data
-    int tabIndex = getSessionIndex(sessionID);
-    QString buffer;
-    QList<SessionMessageList::MessageEntry> messages =
-                                    session.messageList->getAll();
-    buffer.append(HtmlHelper::getHTMLHeader(0));
-    for (int i=0; i<messages.count(); i++)
-        buffer.append(renderMessage(messages[i]));
-    buffer.append(HtmlHelper::getHTMLFooter(0));
-    browserList[tabIndex]->setHtml(buffer);
+    // Do not load a session more than once
+    if (browserList[tabIndex]->loaded())
+        return;
+    else
+        browserList[tabIndex]->load(*(session.messageList));
 
     // Load text input area from session data
-    buffer.clear();
-    buffer.append(session.input);
-    editorList[tabIndex]->setHtml(buffer);
+    editorList[tabIndex]->setHtml(QString::fromUtf8(session.input));
     applyFont();
 
     // Process possible events (redrawing etc.)
     QCoreApplication::processEvents();
 
-    // Scroll both area to the end
-    browserList[tabIndex]->verticalScrollBar()->setValue(
-                    browserList[tabIndex]->verticalScrollBar()->maximum());
+    // Scroll both area to their propre positions
+    browserList[tabIndex]->scrollToBottom();
     editorList[tabIndex]->verticalScrollBar()->setValue(
-                    editorList[tabIndex]->verticalScrollBar()->maximum());
+                    editorList[tabIndex]->verticalScrollBar()->minimum());
 }
 
 void SessionFrameWidget::syncSessionContent(QString sessionID, bool closeSession)
@@ -754,7 +736,7 @@ void SessionFrameWidget::syncSessionContent(QString sessionID, bool closeSession
         index = ui->tabSession->currentIndex();
         if (index < 0)
            return;
-        sessionID = browserList[index]->property("ID").toString();
+        sessionID = browserList[index]->ID();
     }
 
     index = getSessionIndex(sessionID);
@@ -769,13 +751,12 @@ void SessionFrameWidget::syncSessionContent(QString sessionID, bool closeSession
 
 void SessionFrameWidget::addTab(QString sessionID)
 {
-    QTextBrowser* newBrowser = new QTextBrowser;
+    SessionPresenter* newBrowser = new SessionPresenter;
     QTextEdit* newEditor = new QTextEdit;
 
-    newBrowser->setProperty("ID", sessionID);
-    newBrowser->setProperty("Initialized", false);
-    newBrowser->setProperty("Loaded", false);
-    newBrowser->setOpenLinks(false);
+    newBrowser->setID(sessionID);
+    newBrowser->setUserID(userID);
+    newBrowser->setAvailable(false);
     newBrowser->setGeometry(ui->textBrowser->geometry());
     newEditor->setProperty("ID", sessionID);
     newEditor->setGeometry(ui->textEdit->geometry());
@@ -784,9 +765,9 @@ void SessionFrameWidget::addTab(QString sessionID)
     editorList.push_back(newEditor);
 
     connect(newBrowser,
-            SIGNAL(anchorClicked(const QUrl&)),
+            SIGNAL(browserLinkClicked(QUrl, QString)),
             this,
-            SLOT(onBrowserLinkClicked(const QUrl&)));
+            SLOT(onBrowserLinkClicked(const QUrl&, QString)));
 
     QString tabText;
     if (sessionType(sessionID) == GroupChat)
@@ -801,7 +782,7 @@ void SessionFrameWidget::addTab(QString sessionID)
     ui->frameTextGroup->layout()->addWidget(newEditor);
     show();
 
-    newBrowser->setProperty("Initialized", true);
+    newBrowser->setAvailable(true);
 }
 
 // Initialize session tab with given session list
@@ -912,107 +893,6 @@ QString SessionFrameWidget::addSenderInfo(const QString& content, QString ID)
     return styleStringHeader.append(content).append(styleStringFooter);
 }
 
-QString SessionFrameWidget::renderMessage(
-                                const SessionMessageList::MessageEntry& message,
-                                bool fullHTML)
-{
-    int p1, p2;
-    QString temp;
-    QString header("<div class=%SENDER%><b>%ID%</b>&nbsp;&nbsp;%TIME%</div>");
-    QString result(message.content);
-
-    if (message.source == userID)
-        header.replace("%SENDER%", "s");
-    else
-        header.replace("%SENDER%", "r");
-    header.replace("%ID%", message.source);
-    header.replace("%TIME%",
-                   message.time.toString(WICHAT_SESNFRAME_TIME_FORMAT));
-
-    // Deal with emoticon
-    p2 = 0;
-    while(true)
-    {
-        p1 = result.indexOf("<emotion>", p2);
-        p2 = result.indexOf("</emotion>", p1);
-        if (p1 < 0 || p2 < 0)
-            break;
-        int emotionIndex = int(QString(result.mid(p1 + 9, p2 - p1 - 9))
-                                      .toInt());
-        // TODO: parse emoticon
-
-        result.replace(p1, p2 - p1, temp);
-    }
-
-    // Deal with image
-    p2 = 0;
-    while(true)
-    {
-        p1 = result.indexOf("<file><type>i</type><name>", p2);
-        p2 = result.indexOf("</name></file>", p1);
-        if (p1 < 0 || p2 < 0)
-            break;
-        QString fileName = result.mid(p1 + 26, p2 - p1 - 26);
-        QImageReader image(fileName);
-        int displayWidth = image.size().width();
-        if (displayWidth > ui->textBrowser->width())
-            displayWidth = ui->textBrowser->width() - 20;
-        temp = QString("<img src=\"")
-                    .append(fileName)
-                    .append("\" alt=Image width=%1 />")
-                    .arg(QString::number(displayWidth));
-
-        result.replace(p1, p2 - p1, temp);
-    }
-
-    // Deal with file
-    p2 = 0;
-    while(true)
-    {
-        p1 = result.indexOf("<file><type>f</type><name>", p2);
-        p2 = result.indexOf("</name></file>", p1);
-        if (p1 < 0 || p2 < 0)
-            break;
-        QString fileName = result.mid(p1 + 26, p2 - p1 - 26);
-
-        QString noteText;
-        if (message.source == userID)
-            noteText = QString("You sent file \"%1\" to him/her.")
-                              .arg(getFileNameFromPath(fileName));
-        else
-            noteText = QString("He/she sent file \"%1\" to you.")
-                              .arg(getFileNameFromPath(fileName));
-        temp = QString("<div style=\"width:300px;border:1px solid;\">"
-                          "<div style=\"float:right\">")
-                    .append(noteText)
-                    .append("<a href=\"")
-                    .append(fileName)
-                    .append("\" target=_blank>View the file</a></div></div>");
-
-        result.replace(p1, p2 - p1, temp);
-    }
-
-    result.prepend(header);
-    if (fullHTML)
-    {
-        result.prepend(HtmlHelper::getHTMLHeader(0));
-        result.append(HtmlHelper::getHTMLFooter(0));
-    }
-    return result;
-}
-
-QString SessionFrameWidget::getFileNameFromPath(QString filePath)
-{
-    char pathSep;
-    if (filePath.indexOf('/') >= 0)
-        pathSep  = '/';
-    else if (filePath.indexOf('\\') >= 0)
-        pathSep  = '\\';
-    else
-        return filePath;
-    return filePath.mid(filePath.lastIndexOf(pathSep) + 1);
-}
-
 void SessionFrameWidget::onConversationQueryError(int queryID,
                                           AbstractChat::QueryError errCode)
 {
@@ -1106,30 +986,26 @@ void SessionFrameWidget::onReceiveMessageFinished(int queryID,
         return;
     queryList.remove(queryID);
 
-    QString htmlBuffer;
     SessionMessageList::MessageEntry sessionMessage;
     SessionMessageList* messageList =
                             userSessionList.getSession(sourceID).messageList;
     for (int i=0; i<messages.count(); i++)
     {
         if (messages[i].source == userID)
+        {
+            messages.removeAt(i);
+            i--;
             continue;
+        }
         sessionMessage.source = messages[i].source;
         sessionMessage.time = messages[i].time;
         sessionMessage.type = SessionMessageList::TextMessage;
         sessionMessage.content = messages[i].content;
         messageList->addMessage(sessionMessage);
-
-        htmlBuffer.append(renderMessage(sessionMessage));
     }
-    if (!htmlBuffer.isEmpty())
-    {
-        htmlBuffer.prepend(HtmlHelper::getHTMLHeader(0));
-        htmlBuffer.append(HtmlHelper::getHTMLFooter(0));
-        browserList[getSessionIndex(sourceID)]->append(htmlBuffer);
-    }
+    if (messages.count() > 0)
+        browserList[getSessionIndex(sourceID)]->refresh();
 }
-
 
 void SessionFrameWidget::onMouseButtonRelease()
 {
@@ -1199,7 +1075,9 @@ void SessionFrameWidget::onSessionTabClose(bool checked)
     sessionTabBar->setTabButton(index,
                                            QTabBar::RightSide,
                                            nullptr);
-    removeTab(ui->tabSession->widget(index)->property("ID").toString());
+
+    SessionPresenter* browser = (SessionPresenter*)(ui->tabSession->widget(index));
+    removeTab(browser->ID());
 }
 
 
@@ -1234,8 +1112,9 @@ void SessionFrameWidget::onFontStyleMenuClicked(QAction* action)
     applyFont();
 }
 
-void SessionFrameWidget::onBrowserLinkClicked(const QUrl& url)
+void SessionFrameWidget::onBrowserLinkClicked(const QUrl& url, QString ID)
 {
+    Q_UNUSED(ID)
     QDesktopServices::openUrl(url);
 }
 
@@ -1469,7 +1348,8 @@ void SessionFrameWidget::on_tabSession_currentChanged(int index)
         return;
     }
 
-    QString ID = ui->tabSession->widget(index)->property("ID").toString();
+    SessionPresenter* browser = (SessionPresenter*)(ui->tabSession->widget(index));
+    QString ID = browser->ID();
     loadSession(ID, false);
     emit currentSessionChanged(ID);
 }

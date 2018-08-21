@@ -42,16 +42,11 @@ SessionMessageList::getMessageByID(int ID) const
 {
     const Q_D(SessionMessageList);
 
-    MessageEntry message;
-    for (int i=0; i<d->messageList.count(); i++)
-    {
-        if (d->messageList[i].ID == ID)
-        {
-            message = d->messageList[i];
-            break;
-        }
-    }
-    return message;
+    int index = d->messageIDList.indexOf(ID);
+    if (index < 0)
+        return SessionMessageListPrivate::emptyMessage;
+    else
+        return d->messageList[index];
 }
 
 QList<SessionMessageList::MessageEntry>
@@ -102,7 +97,35 @@ SessionMessageList::getMessageByTime(QDateTime from, QDateTime to) const
     return tempList;
 }
 
-SessionMessageList::MessageEntry SessionMessageList::first()
+QList<SessionMessageList::MessageEntry>
+SessionMessageList::getMessageByRange(int ID, int range) const
+{
+    const Q_D(SessionMessageList);
+
+    QList<SessionMessageList::MessageEntry> tempList;
+    int index = d->messageIDList.indexOf(ID);
+    if (index >= 0)
+    {
+        int start = index, stop = index + range;
+        if (stop < 0)
+            stop = 0;
+        else if (stop >= d->messageList.count())
+            stop = d->messageList.count();
+        if (start > stop)
+        {
+            start = stop;
+            stop = index + 1;
+        }
+        while (start < stop)
+        {
+            tempList.append(d->messageList[start]);
+            start++;
+        }
+    }
+    return tempList;
+}
+
+SessionMessageList::MessageEntry SessionMessageList::first() const
 {
     const Q_D(SessionMessageList);
     if (d->messageList.count() > 0)
@@ -111,7 +134,7 @@ SessionMessageList::MessageEntry SessionMessageList::first()
         return d->emptyMessage;
 }
 
-SessionMessageList::MessageEntry SessionMessageList::last()
+SessionMessageList::MessageEntry SessionMessageList::last() const
 {
     const Q_D(SessionMessageList);
     if (d->messageList.count() > 0)
@@ -213,6 +236,7 @@ SessionMessageListPrivate::SessionMessageListPrivate(SessionMessageList *parent)
 {
     this->q_ptr = parent;
 
+    emptyMessage.ID = -1;
     emptyMessage.type = SessionMessageList::UnknownMessageType;
     emptyMessage.time = QDateTime::fromMSecsSinceEpoch(0);
 }

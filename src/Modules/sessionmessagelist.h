@@ -36,15 +36,17 @@ public:
 
     int count();
     void clear();
+    bool exist(int ID);
+
+    MessageEntry first() const;
+    MessageEntry last() const;
 
     QList<MessageEntry> getAll() const;
     MessageEntry getMessageByID(int ID) const;
     QList<MessageEntry> getMessageBySource(QString source) const;
     QList<MessageEntry> getMessageByType(MessageType type) const;
     QList<MessageEntry> getMessageByTime(QDateTime from, QDateTime to) const;
-
-    MessageEntry first();
-    MessageEntry last();
+    QList<MessageEntry> getMessageByRange(int ID, int range) const;
 
     bool addMessage(MessageEntry &message);
     bool removeMessage(int messageID);

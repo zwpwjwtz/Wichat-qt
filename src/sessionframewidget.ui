@@ -58,11 +58,7 @@
         <number>0</number>
        </property>
        <item>
-        <widget class="QTextBrowser" name="textBrowser">
-         <property name="openLinks">
-          <bool>false</bool>
-         </property>
-        </widget>
+        <widget class="SessionPresenter" name="textBrowser" native="true"/>
        </item>
       </layout>
      </widget>
@@ -497,6 +493,14 @@
    </item>
   </layout>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>SessionPresenter</class>
+   <extends>QWidget</extends>
+   <header location="global">sessionpresenter.h</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
  <resources>
   <include location="icon.qrc"/>
  </resources>

@@ -15,7 +15,6 @@ class QColorDialog;
 class QMenu;
 class QPushButton;
 class QTabBar;
-class QTextBrowser;
 class QTextEdit;
 class WichatConfig;
 class Account;
@@ -25,6 +24,7 @@ class Notification;
 class EmoticonChooser;
 class FriendListWidget;
 class GroupListWidget;
+class SessionPresenter;
 
 namespace Ui {
 class SessionFrameWidget;
@@ -102,7 +102,7 @@ private:
     QActionGroup* groupTextAlign;
     QActionGroup* groupSendOption;
     QTabBar* sessionTabBar;
-    QList<QTextBrowser*> browserList;
+    QList<SessionPresenter*> browserList;
     QList<QTextEdit*> editorList;
 
     QString userID;
@@ -133,11 +133,7 @@ private:
     void addTab(QString sessionID);
     void loadTab();
     void removeTab(QString sessionID);
-
     QString addSenderInfo(const QString& content, QString ID);
-    QString renderMessage(const SessionMessageList::MessageEntry& message,
-                          bool fullHTML = false);
-    QString getFileNameFromPath(QString filePath);
 
 private slots:
     // Slots for asynchronous request
@@ -163,7 +159,7 @@ private slots:
     void onSessionTabClose(bool checked);
     void onEmoticonClicked(const QByteArray& emoticon);
     void onFontStyleMenuClicked(QAction* action);
-    void onBrowserLinkClicked(const QUrl& url);
+    void onBrowserLinkClicked(const QUrl& url, QString ID);
     void onTextAlignMenuClicked(QAction* action);
     void onSendOptionMenuClicked(QAction* action);
 
