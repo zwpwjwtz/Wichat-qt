@@ -19,6 +19,7 @@
 #define WICHAT_MAIN_MENU_APP_ABOUT 4
 #define WICHAT_MAIN_MENU_APP_QUIT 5
 
+#define WICHAT_MAIN_TIMER_WAIT_LOGOUT 3000
 #define WICHAT_MAIN_TIMER_GET_FRIENDLIST 30
 #define WICHAT_MAIN_TIMER_GET_FRIENDINFO 60
 #define WICHAT_MAIN_TIMER_GET_GROUPLIST 120
@@ -191,11 +192,18 @@ void MainWindow::closeEvent(QCloseEvent* event)
 
     // Log out before exit
     changeState(OnlineState::Offline);
+
+    // Wait for logout process to finish,
+    // but do not wait for too long
+    QTimer timer;
     QEventLoop loop(this);
     connect(&globalAccount,
             SIGNAL(setStateFinished(int,bool,OnlineState)),
             &loop,
             SLOT(quit()));
+    connect(&timer, SIGNAL(timeout()), &loop, SLOT(quit()));
+    timer.setSingleShot(true);
+    timer.start(WICHAT_MAIN_TIMER_WAIT_LOGOUT);
     loop.exec();
 
     if (aboutDialog)
