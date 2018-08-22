@@ -2,6 +2,7 @@
 #define SESSIONPRESENTER_H
 
 #include <QWidget>
+#include <QMenu>
 #include <Modules/sessionmessagelist.h>
 
 #define WICHAT_SESNFRAME_CONTENT_LOAD_STEP 10
@@ -37,15 +38,14 @@ public:
     void scrollToTop();
     void scrollToBottom();
 
-signals:
-    void browserLinkClicked(const QUrl& url, QString sessionID);
-
 private:
     Ui::SessionPresenter *ui;
     const SessionMessageList* messageList;
     EmoticonChooser* emoticonList;
+    QMenu* menuBrowser;
     QString sessionID;
     QString userID;
+    QString lastFilePath;
     int loadedHeadID;
     int loadedTailID;
     bool isAvailable;
@@ -60,7 +60,10 @@ private:
 
 private slots:
     void onBrowserPageScrolled(int pos);
+    void onBrowserMenuClicked(QAction* action);
+
     void on_textBrowser_anchorClicked(const QUrl &arg1);
+    void on_textBrowser_customContextMenuRequested(const QPoint &pos);
 };
 
 #endif // SESSIONPRESENTER_H

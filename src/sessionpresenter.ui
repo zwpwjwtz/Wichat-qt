@@ -31,6 +31,9 @@
    </property>
    <item>
     <widget class="QTextBrowser" name="textBrowser">
+     <property name="contextMenuPolicy">
+      <enum>Qt::CustomContextMenu</enum>
+     </property>
      <property name="openLinks">
       <bool>false</bool>
      </property>

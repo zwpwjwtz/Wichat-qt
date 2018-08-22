@@ -1,5 +1,4 @@
 #include <QDir>
-#include <QDesktopServices>
 #include <QKeyEvent>
 #include <QMessageBox>
 #include <QMenu>
@@ -765,11 +764,6 @@ void SessionFrameWidget::addTab(QString sessionID)
     browserList.push_back(newBrowser);
     editorList.push_back(newEditor);
 
-    connect(newBrowser,
-            SIGNAL(browserLinkClicked(QUrl, QString)),
-            this,
-            SLOT(onBrowserLinkClicked(const QUrl&, QString)));
-
     QString tabText;
     if (sessionType(sessionID) == GroupChat)
         tabText = groupList->getGroupName(getIDBySessionID(sessionID));
@@ -808,10 +802,6 @@ void SessionFrameWidget::removeTab(QString sessionID)
 
     // Actually close the tab
     int index = getSessionIndex(sessionID);
-    disconnect(browserList[index],
-               SIGNAL(anchorClicked(const QUrl&)),
-               this,
-               SLOT(onBrowserLinkClicked(const QUrl&)));
     browserList.removeAt(index);
     delete editorList[index];
     editorList.removeAt(index);
@@ -1113,12 +1103,6 @@ void SessionFrameWidget::onFontStyleMenuClicked(QAction* action)
     }
     config->setPrefFontStyle(userID, fontStyleArgs.join(","));
     applyFont();
-}
-
-void SessionFrameWidget::onBrowserLinkClicked(const QUrl& url, QString ID)
-{
-    Q_UNUSED(ID)
-    QDesktopServices::openUrl(url);
 }
 
 void SessionFrameWidget::onTextAlignMenuClicked(QAction* action)

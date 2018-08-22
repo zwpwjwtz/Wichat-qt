@@ -159,7 +159,6 @@ private slots:
     void onSessionTabClose(bool checked);
     void onEmoticonClicked(const QByteArray& emoticon);
     void onFontStyleMenuClicked(QAction* action);
-    void onBrowserLinkClicked(const QUrl& url, QString ID);
     void onTextAlignMenuClicked(QAction* action);
     void onSendOptionMenuClicked(QAction* action);
 

@@ -1,3 +1,5 @@
+#include <QDesktopServices>
+#include <QFileDialog>
 #include <QImageReader>
 #include <QScrollBar>
 
@@ -8,6 +10,9 @@
 #include "Modules/sessionmessagelist.h"
 #include "Modules/htmlhelper.h"
 
+#define WICHAT_SESSION_MENU_IMAGE_OPEN 1
+#define WICHAT_SESSION_MENU_IMAGE_SAVEAS 2
+
 #define WICHAT_SESSION_TIME_FORMAT "hh:mm:ss"
 #define WICHAT_SESSION_DATETIME_FORMAT "yyyy-MM-dd hh:mm:ss"
 
@@ -17,6 +22,8 @@ SessionPresenter::SessionPresenter(QWidget *parent) :
     ui(new Ui::SessionPresenter)
 {
     ui->setupUi(this);
+    menuBrowser = nullptr;
+
     isLoaded = false;
     isAvailable = true;
     emoticonListBinded = false;
@@ -315,7 +322,69 @@ void SessionPresenter::onBrowserPageScrolled(int pos)
         loadMore(pos <= 0);
 }
 
+void SessionPresenter::onBrowserMenuClicked(QAction* action)
+{
+    bool ok;
+    int actionIndex = action->data().toInt(&ok);
+    if (!ok)
+        return;
+
+    QTextCharFormat character = ui->textBrowser->textCursor().charFormat();
+    switch (actionIndex)
+    {
+        case WICHAT_SESSION_MENU_IMAGE_OPEN:
+            if (character.isImageFormat())
+                on_textBrowser_anchorClicked(character.toImageFormat().name());
+            break;
+        case WICHAT_SESSION_MENU_IMAGE_SAVEAS:
+            if (character.isImageFormat())
+            {
+                lastFilePath = character.toImageFormat().name();
+                QString path;
+                path = QFileDialog::getSaveFileName(this,
+                                                    "Save image file as",
+                                                    lastFilePath);
+                if (!path.isEmpty())
+                    QFile::copy(lastFilePath, path);
+            }
+            break;
+        default:;
+    }
+}
+
 void SessionPresenter::on_textBrowser_anchorClicked(const QUrl &arg1)
 {
-    emit browserLinkClicked(arg1, sessionID);
+    QDesktopServices::openUrl(arg1);
+}
+
+void SessionPresenter::on_textBrowser_customContextMenuRequested(const QPoint &pos)
+{
+    if (menuBrowser)
+    {
+        disconnect(menuBrowser);
+        delete menuBrowser;
+    }
+
+    menuBrowser = ui->textBrowser->createStandardContextMenu(pos);
+    //menuBrowser->setParent((QWidget*)(parent()));
+
+    QTextCursor cursor = ui->textBrowser->textCursor();
+    if (cursor.charFormat().isImageFormat())
+    {
+        QAction* newAction = new QAction(menuBrowser);
+        newAction->setText("View image");
+        newAction->setData(WICHAT_SESSION_MENU_IMAGE_OPEN);
+        menuBrowser->addAction(newAction);
+
+        newAction = new QAction(menuBrowser);
+        newAction->setText("Save image as");
+        newAction->setData(WICHAT_SESSION_MENU_IMAGE_SAVEAS);
+        menuBrowser->addAction(newAction);
+    }
+
+    connect(menuBrowser,
+            SIGNAL(triggered(QAction*)),
+            this,
+            SLOT(onBrowserMenuClicked(QAction*)));
+    menuBrowser->popup(pos);
 }
