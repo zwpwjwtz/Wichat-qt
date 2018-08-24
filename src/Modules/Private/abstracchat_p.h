@@ -24,7 +24,6 @@ public:
         QByteArray* data;
         QList<AbstractChat::MessageEntry>* messages;
         qint32 pos;
-        qint32 currentMessageLength;
         bool multiPart;
         int queryID;    // For high-level callbacks; constant
         int requestID;  // For low-level callbacks; variable

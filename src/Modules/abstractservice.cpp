@@ -99,7 +99,7 @@ void AbstractServicePrivate::parseMixedList(const QByteArray& data,
                 list.append(QByteArray());
         }
         if (parsedLength)
-            *parsedLength = pE - data.indexOf("<MList>") + 9;
+            *parsedLength = pE - data.indexOf("<MList>") + 8;
     }
     else
     {

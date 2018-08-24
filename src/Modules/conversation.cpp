@@ -118,7 +118,6 @@ bool Conversation::sendMessage(QString ID, QByteArray &content, int& queryID)
     transaction.data = bufferIn;
     transaction.messages = nullptr;
     transaction.pos = 0;
-    transaction.currentMessageLength = 0;
     transaction.queryID = d->getAvailableQueryID();
     d->sendingList.enqueue(transaction);
 
@@ -160,7 +159,6 @@ bool Conversation::receiveMessage(QString ID, int& queryID)
     transaction.data = nullptr;
     transaction.messages = new QList<MessageEntry>;
     transaction.pos = 0;
-    transaction.currentMessageLength = 0;
     transaction.multiPart = false;
     transaction.queryID = d->getAvailableQueryID();
     d->receivingList.enqueue(transaction);
@@ -251,11 +249,18 @@ void ConversationPrivate::dispatchQueryRespone(int requestID)
                     emit q->queryError(requestID, Conversation::QueryError::UnknownError);
                     break;
                 }
+                if (data[0] != char(WICHAT_SERVER_RESPONSE_RES_OK))
+                {
+                    emit q->queryError(requestID,
+                                       Conversation::QueryError::UnknownError);
+                    removeTransaction(transaction);
+                    break;
+                }
                 if (transaction->pos == 0)
                 {
                     // Store message ID assigned by server
                     transaction->messageID =
-                                    data.left(WICHAT_SERVER_RECORD_ID_LEN);
+                                    data.mid(1, WICHAT_SERVER_RECORD_ID_LEN);
                 }
                 if (transaction->pos + MaxMsgBlock <
                     transaction->data->length())
@@ -309,22 +314,24 @@ void ConversationPrivate::dispatchQueryRespone(int requestID)
                     break;
                 }
 
-                int i, pos;
+                int i, pos = 1;
+                int parsedLength;
                 int readLength;
                 QList<QByteArray> tempList;
-                parseMixedList(data, "SRC", tempList, &pos);
-                pos += 1;
+                parseMixedList(data, "SRC", tempList, &parsedLength);
+                pos += parsedLength;
                 if (tempList.length() > 0)
                 {
                     // Append the remaining content to the last record
                     // Create a empty record if necessary
                     if (transaction->messages->count() > 0)
                     {
-                        readLength = transaction->currentMessageLength -
+                        readLength = transaction->messages->last().length -
                                     transaction->messages->last()
                                                          .content.length();
                         transaction->messages->last().content.append(
                                                     data.mid(pos, readLength));
+                        transaction->pos += readLength;
                         pos += readLength;
                     }
 
@@ -338,12 +345,12 @@ void ConversationPrivate::dispatchQueryRespone(int requestID)
                     }
 
                     // Then parse records' time and length
-                    parseMixedList(data, "TIME", tempList, &pos);
+                    parseMixedList(data, "TIME", tempList, &parsedLength);
                     for (i=0; i<tempList.count(); i++)
                         newMessageList[i].time =
                                     QDateTime::fromString(QString(tempList[i]),
                                             WICHAT_SERVER_RECORD_TIME_FORMAT);
-                    parseMixedList(data, "LEN", tempList, &pos);
+                    parseMixedList(data, "LEN", tempList, &parsedLength);
                     for (i=0; i<tempList.count(); i++)
                         newMessageList[i].length = QString(tempList[i]).toInt();
 
@@ -355,20 +362,19 @@ void ConversationPrivate::dispatchQueryRespone(int requestID)
                         else
                             readLength = newMessageList[i].length;
                         newMessageList[i].content = data.mid(pos, readLength);
+                        transaction->pos += readLength;
                         pos += readLength;
-                        if (pos >= data.length())
-                            break;
                     }
                     transaction->messages->append(newMessageList);
                 }
                 else
                 {
                     // Simply append content to the last record
-                    transaction->messages->last().content.append(data.mid(pos));
-                    transaction->currentMessageLength += data.length() - pos;
-
+                    if (transaction->messages->count() > 0)
+                        transaction->messages->last().content.append(
+                                                                data.mid(pos));
+                    transaction->pos += data.length() - pos;
                 }
-                transaction->pos += data.length() - 1;
                 if (transaction->multiPart &&
                     data[0] != char(WICHAT_SERVER_RESPONSE_RES_EOF))
                 {
@@ -426,12 +432,12 @@ bool ConversationPrivate::processReplyData(RequestType type, QByteArray& data)
         return false;
     switch (type)
     {
+        case RequestType::SendMessage:
         case RequestType::ReceiveMessage:
             data.remove(0, 1);
             break;
         case RequestType::Verify:
         case RequestType::ResetSession:
-        case RequestType::SendMessage:
         case RequestType::GetMessageList:
         case RequestType::FixConnection:
             data.remove(0, 2);
