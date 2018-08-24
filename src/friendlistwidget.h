@@ -35,6 +35,7 @@ public:
     bool hasMember(QString ID);
     void setSearchMode(bool isSearching);
 
+    void addFriend(QString ID);
     void showAccountInfo(QString ID);
     void setAccountIconPath(QString ID, QString iconPath);
     QList<QString> getAccountIDList();

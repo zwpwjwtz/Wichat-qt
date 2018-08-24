@@ -2,7 +2,6 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
-#include <QMap>
 #include <QQueue>
 #include <QTimer>
 #include <QSystemTrayIcon>
@@ -72,7 +71,6 @@ private:
     QIcon currentSysTrayIcon;
     QString userID;
     QQueue<TaskType> taskList;
-    QMap<int, QString> queryList;
     Notification noteList;
     bool manualExit;
     bool sysTrayIconVisible;

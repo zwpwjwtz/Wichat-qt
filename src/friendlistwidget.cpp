@@ -112,7 +112,7 @@ bool FriendListWidget::search(QString text)
 
     for (int i=0; i<listModel.rowCount(); i++)
     {
-        if (listModel.item(i, WICHAT_FRILIST_LIST_FIELD_ID)
+        if (listModel.item(i, WICHAT_FRILIST_LIST_FIELD_ICON)
                      ->text().indexOf(text) >= 0)
             ui->listFriend->setRowHidden(i, false);
         else
@@ -133,10 +133,18 @@ bool FriendListWidget::hasMember(QString ID)
 
 void FriendListWidget::setSearchMode(bool isSearching)
 {
-    if (isSearching && !searchMode)
-        setListEntryVisible(false);
-    else if (searchMode)
-        setListEntryVisible(true);
+    if (isSearching ^ searchMode)
+    {
+        searchMode = isSearching;
+        setListEntryVisible(!searchMode);
+    }
+}
+
+void FriendListWidget::addFriend(QString ID)
+{
+    int queryID;
+    accountService->addFriend(ID, queryID);
+    queryList[queryID] = ID;
 }
 
 void FriendListWidget::showAccountInfo(QString ID)
@@ -337,6 +345,7 @@ void FriendListWidget::onUpdateFriendRemarksFinished(int queryID,
 void FriendListWidget::onAddFriendFinished(int queryID, bool successful)
 {
     QString ID = queryList[queryID];
+    queryList.remove(queryID);
     if (ID.isEmpty())
         return;
     if (successful)
@@ -353,6 +362,7 @@ void FriendListWidget::onAddFriendFinished(int queryID, bool successful)
 void FriendListWidget::onRemoveFriendFinished(int queryID, bool successful)
 {
     QString ID = queryList[queryID];
+    queryList.remove(queryID);
     if (ID.isEmpty())
         return;
     if (!successful)

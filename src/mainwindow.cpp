@@ -23,6 +23,7 @@
 #define WICHAT_MAIN_TIMER_GET_FRIENDLIST 30
 #define WICHAT_MAIN_TIMER_GET_FRIENDINFO 60
 #define WICHAT_MAIN_TIMER_GET_GROUPLIST 120
+#define WICHAT_MAIN_TIMER_GET_GROUPINFO 120
 #define WICHAT_MAIN_TIMER_GET_MSG 10
 #ifdef QT_DEBUG
 #define WICHAT_MAIN_TIMER_SHOW_NOTE 10
@@ -282,6 +283,7 @@ void MainWindow::doTask()
             addTask(taskUpdateFriendList);
             addTask(taskUpdateFriendInfo);
             addTask(taskUpdateGroupList);
+            addTask(taskUpdateGroupInfo);
             addTask(taskGetMsgList);
             break;
         case taskGetMsgList:
@@ -526,6 +528,8 @@ void MainWindow::onTimerTimeout()
         addTask(taskUpdateFriendInfo);
     if (count % WICHAT_MAIN_TIMER_GET_GROUPLIST == 10)
         addTask(taskUpdateGroupList);
+    if (count % WICHAT_MAIN_TIMER_GET_GROUPINFO == 15)
+        addTask(taskUpdateGroupInfo);
     if (count % WICHAT_MAIN_TIMER_GET_MSG == 0)
         addTask(taskGetMsgList);
     if (count % WICHAT_MAIN_TIMER_SHOW_NOTE == 0)
@@ -746,11 +750,17 @@ void MainWindow::on_textFriendSearch_textChanged(const QString &arg1)
     {
         ui->labelFriendSearch->show();
         ui->listFriend->setSearchMode(false);
+        ui->listGroup->setSearchMode(false);
+        ui->listFriend->refreshList();
+        ui->listGroup->refreshList();
     }
     else
     {
         ui->labelFriendSearch->hide();
+        ui->listFriend->setSearchMode(true);
+        ui->listGroup->setSearchMode(true);
         ui->listFriend->search(arg1);
+        ui->listGroup->search(arg1);
     }
 }
 
@@ -760,7 +770,6 @@ void MainWindow::on_buttonFriendAdd_clicked()
     if (ID.isEmpty())
         return;
 
-    int queryID;
     if (ui->tabChatObjectList->currentIndex() == 0)
     {
     if (QMessageBox::question(this, "Add friend",
@@ -768,10 +777,7 @@ void MainWindow::on_buttonFriendAdd_clicked()
                               .arg(ID),
                               QMessageBox::Yes | QMessageBox::No)
             == QMessageBox::Yes)
-    {
-        globalAccount.addFriend(ID, queryID);
-        queryList[queryID] = ID;
-    }
+        ui->listFriend->addFriend(ID);
     }
     else
     {
@@ -780,10 +786,7 @@ void MainWindow::on_buttonFriendAdd_clicked()
                                   .arg(ID),
                                   QMessageBox::Yes | QMessageBox::No)
                 == QMessageBox::Yes)
-        {
-            globalAccount.joinGroup(ID, queryID);
-            queryList[queryID] = ID;
-        }
+            ui->listGroup->joinGroup(ID);
     }
 }
 

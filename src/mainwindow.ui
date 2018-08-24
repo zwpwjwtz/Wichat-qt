@@ -248,7 +248,7 @@
                 </font>
                </property>
                <property name="text">
-                <string>&lt;span style=&quot; color:#a0a0a0;&quot;&gt;&lt;I&gt;Search / add friend...&lt;/I&gt;&lt;/span&gt;</string>
+                <string>&lt;span style=&quot; font-style:italic; color:#a0a0a0;&quot;&gt;Search / add friend or group...&lt;/span&gt;</string>
                </property>
               </widget>
               <widget class="QLineEdit" name="textFriendSearch">

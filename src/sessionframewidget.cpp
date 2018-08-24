@@ -952,11 +952,11 @@ void SessionFrameWidget::onResetSessionFinished(int queryID, bool successful)
 
 void SessionFrameWidget::onSendMessageFinished(int queryID, bool successful)
 {
+    QString destination = queryList.value(queryID).sessionID;
+    queryList.remove(queryID);
     if (successful)
         return;
 
-    QString destination = queryList.value(queryID).sessionID;
-    queryList.remove(queryID);
     if (!destination.isEmpty())
         QMessageBox::warning(this, "Failed to send message",
                              QString("Wichat failed to send message to %1.\n"
@@ -1003,9 +1003,9 @@ void SessionFrameWidget::onReceiveMessageFinished(int queryID,
                                     QList<AbstractChat::MessageEntry>& messages)
 {
     QString sourceID = queryList.value(queryID).sessionID;
+    queryList.remove(queryID);
     if (sourceID.isEmpty())
         return;
-    queryList.remove(queryID);
 
     SessionMessageList::MessageEntry sessionMessage;
     SessionMessageList* messageList =

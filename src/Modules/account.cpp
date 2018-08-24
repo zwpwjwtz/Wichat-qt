@@ -510,7 +510,9 @@ bool Account::getGroupNames(QList<QString>& groupIDList, int& queryID)
     bufferIn.append(QByteArray(MaxIDLen, '0'));
     bufferIn.append("<IDList>");
     for (int i=0; i<groupIDList.count(); i++)
-        bufferIn.append("<ID>").append(groupIDList[i]).append("</ID>");
+        bufferIn.append("<ID>")
+                .append(d->formatID(groupIDList[i]))
+                .append("</ID>");
     bufferIn.append("</IDList>");
     if (d->server->sendData(bufferIn, bufferOut,
                             RequestManager::RecordServer,

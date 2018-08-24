@@ -100,7 +100,7 @@ bool GroupListWidget::search(QString text)
 
     for (int i=0; i<listModel.rowCount(); i++)
     {
-        if (listModel.item(i, WICHAT_GRPLIST_LIST_FIELD_ID)
+        if (listModel.item(i, WICHAT_GRPLIST_LIST_FIELD_ICON)
                      ->text().indexOf(text) >= 0)
             ui->listGroup->setRowHidden(i, false);
         else
@@ -121,10 +121,18 @@ bool GroupListWidget::hasMember(QString ID)
 
 void GroupListWidget::setSearchMode(bool isSearching)
 {
-    if (isSearching && !searchMode)
-        setListEntryVisible(false);
-    else if (searchMode)
-        setListEntryVisible(true);
+    if (isSearching ^ searchMode)
+    {
+        searchMode = isSearching;
+        setListEntryVisible(!searchMode);
+    }
+}
+
+void GroupListWidget::joinGroup(QString ID)
+{
+    int queryID;
+    accountService->joinGroup(ID, queryID);
+    queryList[queryID] = ID;
 }
 
 void GroupListWidget::showGroupInfo(QString groupID)
@@ -240,6 +248,7 @@ void GroupListWidget::onUpdateGroupListFinished(int queryID,
 void GroupListWidget::onJoinGroupFinished(int queryID, bool successful)
 {
     QString ID = queryList[queryID];
+    queryList.remove(queryID);
     if (successful)
         QMessageBox::information(this, "Group join request sent",
                                  QString("Your join request has been sent.\n"
@@ -253,6 +262,7 @@ void GroupListWidget::onJoinGroupFinished(int queryID, bool successful)
 void GroupListWidget::onQuitGroupFinished(int queryID, bool successful)
 {
     QString ID = queryList[queryID];
+    queryList.remove(queryID);
     if (ID.isEmpty())
         return;
     if (!successful)

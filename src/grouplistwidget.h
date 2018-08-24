@@ -33,6 +33,8 @@ public:
 
     bool hasMember(QString ID);
     void setSearchMode(bool isSearching);
+
+    void joinGroup(QString ID);
     void showGroupInfo(QString groupID);
     QList<QString> getGroupIDList();
     QString getGroupName(QString ID);
