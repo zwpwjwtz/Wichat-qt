@@ -222,6 +222,13 @@
   <zorder>buttonSettings</zorder>
   <zorder>frameProgress</zorder>
  </widget>
+ <tabstops>
+  <tabstop>textID</tabstop>
+  <tabstop>textPassword</tabstop>
+  <tabstop>buttonLogin</tabstop>
+  <tabstop>buttonSettings</tabstop>
+  <tabstop>comboLoginState</tabstop>
+ </tabstops>
  <resources>
   <include location="icon.qrc"/>
  </resources>

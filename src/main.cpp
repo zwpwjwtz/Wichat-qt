@@ -21,6 +21,10 @@ int main(int argc, char *argv[])
     QTextCodec::setCodecForCStrings(QTextCodec::codecForLocale());
 #endif
 
+#ifdef Q_OS_WIN32
+    QCoreApplication::addLibraryPath(".");
+#endif
+
     QApplication a(argc, argv);
     LoginWindow w;
     w.show();

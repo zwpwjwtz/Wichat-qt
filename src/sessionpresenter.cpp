@@ -334,7 +334,8 @@ void SessionPresenter::onBrowserMenuClicked(QAction* action)
     {
         case WICHAT_SESSION_MENU_IMAGE_OPEN:
             if (character.isImageFormat())
-                on_textBrowser_anchorClicked(character.toImageFormat().name());
+                on_textBrowser_anchorClicked(
+                        QUrl::fromLocalFile(character.toImageFormat().name()));
             break;
         case WICHAT_SESSION_MENU_IMAGE_SAVEAS:
             if (character.isImageFormat())

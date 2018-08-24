@@ -290,9 +290,11 @@ int ServerConnectionPrivate::httpRequest(QString strHostName,
                                          QByteArray& byteReceive,
                                          bool boolSync)
 {
+#ifndef Q_OS_WIN32
 #ifndef IS_LOCAL_SERVER
     if (network.networkAccessible() == QNetworkAccessManager::NotAccessible)
         return -1;
+#endif
 #endif
 
     QUrl url;
@@ -306,6 +308,7 @@ int ServerConnectionPrivate::httpRequest(QString strHostName,
     QNetworkReply* reply;
     request.setUrl(url);
     request.setRawHeader("User-agent", BrowserAgent);
+    request.setRawHeader("Content-type", "application/octet-stream");
     if (strMethod == MethodPost)
         reply = network.post(request, bytePostData);
     else

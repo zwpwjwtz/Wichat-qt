@@ -2,6 +2,7 @@
 #include <QDesktopWidget>
 #include <QKeyEvent>
 #include <QMessageBox>
+#include <QUrl>
 
 #include "loginwindow.h"
 #include "ui_loginwindow.h"
@@ -159,7 +160,8 @@ void LoginWindow::on_buttonLogin_clicked()
     showLoginProgress();
     updateRootServer();
     if (!globalAccount.verify(ui->textID->text(), ui->textPassword->text(),
-                              ui->comboLoginState->currentData().toInt()))
+                              ui->comboLoginState->itemData(
+                                  ui->comboLoginState->currentIndex()).toInt()))
     {
         // Assuming network problem
         onAccountVerifyFinished(Account::VerifyError::NetworkError);
