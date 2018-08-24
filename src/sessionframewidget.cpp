@@ -535,7 +535,13 @@ bool SessionFrameWidget::sendMessage(QString content, QString sessionID)
             return false;
         }
         else
-            queryList[queryID] = sessionID;
+        {
+            QueryInfo query;
+            query.sessionID = sessionID;
+            query.type = QueryType::SendMessage;
+            query.cancellable = false;
+            queryList[queryID] = query;
+        }
     }
 
     SessionMessageList::MessageEntry sessionMessage;
@@ -567,7 +573,11 @@ bool SessionFrameWidget::receiveMessage(QString sessionID)
     else
         return false;
 
-    queryList[queryID] = sessionID;
+    QueryInfo query;
+    query.sessionID = sessionID;
+    query.type = QueryType::ReceiveMessage;
+    query.cancellable = true;
+    queryList[queryID] = query;
     return true;
 }
 
@@ -580,7 +590,27 @@ void SessionFrameWidget::fixBrokenConnection()
 
     conversationLogin();
     friendChat->fixBrokenConnection(ID, queryID);
-    queryList[queryID] = sessionID;
+
+    QueryInfo query;
+    query.sessionID = sessionID;
+    query.type = QueryType::FixConnection;
+    query.cancellable = false;
+    queryList[queryID] = query;
+}
+
+bool SessionFrameWidget::isInterruptable()
+{
+    bool interruptable = true;
+    QMap<int, QueryInfo>::ConstIterator i;
+    for (i=queryList.begin(); i!=queryList.end(); i++)
+    {
+        if (!(i->cancellable))
+        {
+            interruptable = false;
+            break;
+        }
+    }
+    return interruptable;
 }
 
 void SessionFrameWidget::closeEvent(QCloseEvent* event)
@@ -925,7 +955,7 @@ void SessionFrameWidget::onSendMessageFinished(int queryID, bool successful)
     if (successful)
         return;
 
-    QString destination = queryList.value(queryID);
+    QString destination = queryList.value(queryID).sessionID;
     queryList.remove(queryID);
     if (!destination.isEmpty())
         QMessageBox::warning(this, "Failed to send message",
@@ -972,7 +1002,7 @@ void SessionFrameWidget::onGetGroupMessageListFinished(int queryID,
 void SessionFrameWidget::onReceiveMessageFinished(int queryID,
                                     QList<AbstractChat::MessageEntry>& messages)
 {
-    QString sourceID = queryList.value(queryID);
+    QString sourceID = queryList.value(queryID).sessionID;
     if (sourceID.isEmpty())
         return;
     queryList.remove(queryID);

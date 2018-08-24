@@ -41,6 +41,19 @@ public:
         FriendChat = 2,
         GroupChat = 3
     };
+    enum class QueryType
+    {
+        SendMessage = 1,
+        ReceiveMessage = 2,
+        FixConnection = 3
+    };
+
+    struct QueryInfo
+    {
+        QueryType type;
+        QString sessionID;
+        bool cancellable;
+    };
 
     explicit SessionFrameWidget(QWidget* parent = 0);
     ~SessionFrameWidget();
@@ -63,15 +76,15 @@ public:
     QString getSessionIDByID(QString ID, SessionType type);
 
     QString getStateImagePath(QString sessionID);
-
     void setTabText(QString sessionID, QString text);
     void setTabIconPath(QString sessionID, QString iconPath);
+
     void conversationLogin();
     void getMessageList();
     bool sendMessage(QString content, QString sessionID);
     bool receiveMessage(QString sessionID);
-    void showNotification();
     void fixBrokenConnection();
+    bool isInterruptable();
 
 protected:
     void closeEvent(QCloseEvent* event);
@@ -110,7 +123,7 @@ private:
     QString lastFilePath;
     QString lastImageFilter;
     QDateTime lastGroupMsgTime;
-    QMap<int, QString> queryList;
+    QMap<int, QueryInfo> queryList;
     QQueue<QString> brokenConnectionList;
     UserSession userSessionList;
     PeerSession peerSessionList;

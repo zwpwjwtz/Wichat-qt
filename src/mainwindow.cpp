@@ -189,6 +189,21 @@ void MainWindow::closeEvent(QCloseEvent* event)
             return;
         }
     }
+    if (!ui->frameSession->isInterruptable())
+    {
+        if (QMessageBox::warning(this, "Exit WiChat",
+                                 "One or more messages is waiting to be sent. "
+                                 "Quitting now may lead to incomplete messages "
+                                 "on the other side. \n"
+                                 "Do you still want to quit WiChat?",
+                                 QMessageBox::Yes | QMessageBox::No,
+                                 QMessageBox::No)
+            != QMessageBox::Yes)
+        {
+            event->ignore();
+            return;
+        }
+    }
 
     // Log out before exit
     changeState(OnlineState::Offline);
