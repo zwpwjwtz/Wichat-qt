@@ -22,5 +22,6 @@
         <file>Icons/exit.png</file>
         <file>Icons/information.png</file>
         <file>Icons/group.png</file>
+        <file>Icons/blank.png</file>
     </qresource>
 </RCC>

@@ -54,7 +54,11 @@ MainWindow::MainWindow(QWidget *parent) :
     menuSysTray = new QMenu();
     sysTrayIcon = new QSystemTrayIcon(this);
     sysTrayIcon->setContextMenu(menuSysTray);
-    sysTrayNoteList = new SystrayNotification;
+    sysTrayNoteList = new SystrayNotification();
+    sysTrayNoteList->resize(250, 150);
+
+    timer.setInterval(1000);
+    iconFlashTimer.setInterval(800);
 
     connect(&globalAccount,
             SIGNAL(resetSessionFinished(int, bool)),
@@ -112,11 +116,15 @@ MainWindow::MainWindow(QWidget *parent) :
             SIGNAL(timeout()),
             this,
             SLOT(onTimerTimeout()));
+    connect(&iconFlashTimer,
+            SIGNAL(timeout()),
+            this,
+            SLOT(onIconFlashTimerTimeout()));
 
     aboutDialog = nullptr;
     menuApp = nullptr;
-    timer.setInterval(1000);
     manualExit = false;
+    sysTrayIconVisible = true;
     notificationState = 0;
 }
 
@@ -445,8 +453,25 @@ void MainWindow::showNotification()
         if (notificationState == 0)
         {
             sysTrayIcon->setIcon(QIcon(":/Icons/notification.png"));
+            setFlashIcon(true);
             notificationState = 1;
         }
+    }
+}
+
+void MainWindow::setFlashIcon(bool flashing)
+{
+    if (flashing)
+    {
+        currentSysTrayIcon = sysTrayIcon->icon();
+        blankIcon = QIcon(":/Icons/blank.png");
+        iconFlashTimer.start();
+    }
+    else
+    {
+        iconFlashTimer.stop();
+        sysTrayIconVisible = true;
+        sysTrayIcon->setIcon(currentSysTrayIcon);
     }
 }
 
@@ -507,6 +532,18 @@ void MainWindow::onTimerTimeout()
         addTask(taskShowNotification);
 
     doTask();
+}
+
+void MainWindow::onIconFlashTimerTimeout()
+{
+    if (notificationState == 1)
+    {
+        sysTrayIconVisible = !sysTrayIconVisible;
+        if (sysTrayIconVisible)
+            sysTrayIcon->setIcon(currentSysTrayIcon);
+        else
+            sysTrayIcon->setIcon(blankIcon);
+    }
 }
 
 void MainWindow::onListFriendUpdated()
@@ -619,6 +656,7 @@ void MainWindow::onSysTrayNoteClicked(const Notification::Note& note)
     if (sysTrayNoteList->countNote() < 1)
     {
         notificationState = 0;
+        setFlashIcon(false);
         sysTrayNoteList->hide();
         addTask(taskUpdateState);
     }

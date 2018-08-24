@@ -30,6 +30,7 @@ signals:
 
 protected:
     void focusOutEvent(QFocusEvent * event);
+    void resizeEvent(QResizeEvent* event);
 
 private:
     Ui::SystrayNotification *ui;

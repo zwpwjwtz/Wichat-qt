@@ -67,11 +67,15 @@ private:
     QMenu* menuSysTray;
 
     QTimer timer;
+    QTimer iconFlashTimer;
+    QIcon blankIcon;
+    QIcon currentSysTrayIcon;
     QString userID;
     QQueue<TaskType> taskList;
     QMap<int, QString> queryList;
     Notification noteList;
     bool manualExit;
+    bool sysTrayIconVisible;
     int notificationState;
 
     void addTask(TaskType task);
@@ -82,6 +86,7 @@ private:
     void updateCaption();
     void updateSysTrayMenu();
     void showNotification();
+    void setFlashIcon(bool flashing);
 
 public:
     static QString getFileNameFromPath(QString filePath);
@@ -97,6 +102,7 @@ private slots:
 
     // Customized slots for UI events
     void onTimerTimeout();
+    void onIconFlashTimerTimeout();
     void onListFriendUpdated();
     void onListFriendEntryClicked(QString ID);
     void onListGroupUpdated();

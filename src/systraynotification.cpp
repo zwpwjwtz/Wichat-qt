@@ -1,3 +1,4 @@
+#include <QResizeEvent>
 #include "systraynotification.h"
 #include "ui_systraynotification.h"
 
@@ -18,8 +19,6 @@ SystrayNotification::SystrayNotification(QWidget *parent) :
     ui->listNote->setColumnHidden(WICHAT_TRAYNOTE_NOTELIST_FIELD_ID, true);
     ui->listNote->setColumnHidden(WICHAT_TRAYNOTE_NOTELIST_FIELD_SOURCE, true);
     ui->listNote->setColumnHidden(WICHAT_TRAYNOTE_NOTELIST_FIELD_TYPE, true);
-    ui->listNote->setColumnWidth(WICHAT_TRAYNOTE_NOTELIST_FIELD_TEXT, 240);
-    ui->listNote->setColumnWidth(WICHAT_TRAYNOTE_NOTELIST_FIELD_COUNT, 30);
     ui->listNote->setStyleSheet("background-color: transparent;");
     setWindowFlags(Qt::Dialog | Qt::FramelessWindowHint);
 }
@@ -48,7 +47,7 @@ void SystrayNotification::addNote(const Notification::Note &note)
     {
         if (listNoteModel.item(i, WICHAT_TRAYNOTE_NOTELIST_FIELD_SOURCE)
                 ->text() == note.source &&
-            listNoteModel.item(i, WICHAT_TRAYNOTE_NOTELIST_FIELD_SOURCE)
+            listNoteModel.item(i, WICHAT_TRAYNOTE_NOTELIST_FIELD_TYPE)
                 ->text().toInt() == int(note.type))
         {
             // Add notification counter by 1
@@ -90,6 +89,7 @@ void SystrayNotification::addNote(const Notification::Note &note)
     }
     newRow.append(item);
     item = new QStandardItem("1");
+    item->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
     newRow.append(item);
 
     listNoteModel.appendRow(newRow);
@@ -138,6 +138,15 @@ void SystrayNotification::focusOutEvent(QFocusEvent *event)
 {
     Q_UNUSED(event)
     hide();
+}
+
+void SystrayNotification::resizeEvent(QResizeEvent *event)
+{
+    int width = event->size().width();
+    ui->listNote->setColumnWidth(WICHAT_TRAYNOTE_NOTELIST_FIELD_TEXT,
+                                 width * 0.8);
+    ui->listNote->setColumnWidth(WICHAT_TRAYNOTE_NOTELIST_FIELD_COUNT,
+                                 width * 0.2);
 }
 
 void SystrayNotification::adjustListSize()
