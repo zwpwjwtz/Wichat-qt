@@ -27,12 +27,13 @@ private:
     ServerConfigDialog* serverConfig;
     bool loggingIn;
     void showLoginProgress();
+    void updateRootServer();
 
 private slots:
     void onAccountVerifyFinished(VerifyError errorCode);
     void on_buttonLogin_clicked();
     void on_buttonSettings_clicked();
-
+    void on_labelRegister_linkActivated(const QString &link);
 };
 
 #endif // LOGINWINDOW_H

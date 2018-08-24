@@ -1,3 +1,4 @@
+#include <QDesktopServices>
 #include <QDesktopWidget>
 #include <QKeyEvent>
 #include <QMessageBox>
@@ -11,6 +12,8 @@
 #include "Modules/wichatconfig.h"
 #include "Modules/serverconnection.h"
 #include "Modules/account.h"
+
+#define WICHAT_LOGIN_PATH_REGSITER_WEB "/web/register"
 
 
 OnlineState Wichat_Login_stateList[3] = {
@@ -80,6 +83,14 @@ void LoginWindow::showLoginProgress()
     }
 }
 
+void LoginWindow::updateRootServer()
+{
+    QList<QString> rootServer = globalConfig.rootServer().split(',')
+                                                         .toVector().toList();
+    if (rootServer.count() >= 2)
+        globalConnection.setRootServer(rootServer[0], rootServer[1].toInt());
+}
+
 void LoginWindow::onAccountVerifyFinished(VerifyError errorCode)
 {
     if (!loggingIn)
@@ -144,13 +155,9 @@ void LoginWindow::on_buttonLogin_clicked()
 
     globalConfig.setLastID(ui->textID->text());
 
-    QList<QString> rootServer = globalConfig.rootServer().split(',')
-                                                         .toVector().toList();
-    if (rootServer.count() >= 2)
-        globalConnection.setRootServer(rootServer[0], rootServer[1].toInt());
-
     loggingIn = true;
     showLoginProgress();
+    updateRootServer();
     if (!globalAccount.verify(ui->textID->text(), ui->textPassword->text(),
                               ui->comboLoginState->currentData().toInt()))
     {
@@ -181,4 +188,31 @@ void LoginWindow::on_buttonSettings_clicked()
     rootServerInfo[0] = serverConfig->WichatRootServer;
     rootServerInfo[1] = QString::number(serverConfig->WichatRootServerPort);
     globalConfig.setRootServer(rootServerInfo.join(","));
+}
+
+void LoginWindow::on_labelRegister_linkActivated(const QString &link)
+{
+    Q_UNUSED(link)
+
+    ui->textState->setText("Fetching registration link...");
+    ui->frameInput->hide();
+    ui->frameProgress->show();
+    QCoreApplication::processEvents();
+    globalConnection.init();
+    ui->frameProgress->hide();
+    ui->frameInput->show();
+
+    QString hostName;
+    int hostPort;
+    updateRootServer();
+    if (globalConnection.getServerInfo(WICHAT_SERVER_ID_WEB,
+                                       hostName, hostPort))
+    {
+        QUrl registerLink;
+        registerLink.setScheme("http");
+        registerLink.setHost(hostName);
+        registerLink.setPort(hostPort);
+        registerLink.setPath(WICHAT_LOGIN_PATH_REGSITER_WEB);
+        QDesktopServices::openUrl(registerLink);
+    }
 }
