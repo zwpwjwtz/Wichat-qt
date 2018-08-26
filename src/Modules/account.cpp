@@ -389,7 +389,7 @@ bool Account::getGroupList(int& queryID)
     QByteArray bufferIn, bufferOut;
     bufferIn.append(char(1)).append(char(qrand()));
     if (d->server->sendData(bufferIn, bufferOut,
-                            RequestManager::RecordServer,
+                            RequestManager::AccountServer,
                             d->serverObjectToPath(
                                AccountPrivate::ServerObject::GroupRelation),
                             false, &queryID)
@@ -408,7 +408,7 @@ bool Account::joinGroup(QString groupID, int& queryID)
     bufferIn.append(char(2)).append(char(qrand()));
     bufferIn.append(d->formatID(groupID));
     if (d->server->sendData(bufferIn, bufferOut,
-                            RequestManager::RecordServer,
+                            RequestManager::AccountServer,
                             d->serverObjectToPath(
                                AccountPrivate::ServerObject::GroupRelation),
                             false, &queryID)
@@ -427,7 +427,7 @@ bool Account::quitGroup(QString groupID, int& queryID)
     bufferIn.append(char(3)).append(char(qrand()));
     bufferIn.append(d->formatID(groupID));
     if (d->server->sendData(bufferIn, bufferOut,
-                            RequestManager::RecordServer,
+                            RequestManager::AccountServer,
                             d->serverObjectToPath(
                                AccountPrivate::ServerObject::GroupRelation),
                             false, &queryID)
@@ -449,7 +449,7 @@ bool Account::addGroupMemeber(QString groupID, QString memberID, int& queryID)
             .append(d->formatID(memberID))
             .append("</ID></IDList>");
     if (d->server->sendData(bufferIn, bufferOut,
-                            RequestManager::RecordServer,
+                            RequestManager::AccountServer,
                             d->serverObjectToPath(
                                AccountPrivate::ServerObject::GroupAction),
                             false, &queryID)
@@ -471,7 +471,7 @@ bool Account::removeGroupMemeber(QString groupID, QString memberID,int& queryID)
             .append(d->formatID(memberID))
             .append("</ID></IDList>");
     if (d->server->sendData(bufferIn, bufferOut,
-                            RequestManager::RecordServer,
+                            RequestManager::AccountServer,
                             d->serverObjectToPath(
                                AccountPrivate::ServerObject::GroupAction),
                             false, &queryID)
@@ -490,7 +490,7 @@ bool Account::getGroupMemberList(QString groupID, int& queryID)
     bufferIn.append(char(3)).append(char(qrand()));
     bufferIn.append(d->formatID(groupID));
     if (d->server->sendData(bufferIn, bufferOut,
-                            RequestManager::RecordServer,
+                            RequestManager::AccountServer,
                             d->serverObjectToPath(
                                AccountPrivate::ServerObject::GroupAction),
                             false, &queryID)
@@ -515,7 +515,7 @@ bool Account::getGroupNames(QList<QString>& groupIDList, int& queryID)
                 .append("</ID>");
     bufferIn.append("</IDList>");
     if (d->server->sendData(bufferIn, bufferOut,
-                            RequestManager::RecordServer,
+                            RequestManager::AccountServer,
                             d->serverObjectToPath(
                                AccountPrivate::ServerObject::GroupAction),
                             false, &queryID)
@@ -534,7 +534,7 @@ bool Account::getGroupInfo(QString groupID, int& queryID)
     bufferIn.append(char(5)).append(char(qrand()));
     bufferIn.append(d->formatID(groupID));
     if (d->server->sendData(bufferIn, bufferOut,
-                            RequestManager::RecordServer,
+                            RequestManager::AccountServer,
                             d->serverObjectToPath(
                                AccountPrivate::ServerObject::GroupAction),
                             false, &queryID)
@@ -553,7 +553,7 @@ bool Account::setGroupName(QString groupID, QString name, int& queryID)
     bufferIn.append(char(6)).append(char(qrand()));
     bufferIn.append(d->formatID(groupID)).append(name.toUtf8());
     if (d->server->sendData(bufferIn, bufferOut,
-                            RequestManager::RecordServer,
+                            RequestManager::AccountServer,
                             d->serverObjectToPath(
                                AccountPrivate::ServerObject::GroupAction),
                             false, &queryID)
@@ -572,7 +572,7 @@ bool Account::setGroupDescription(QString groupID, QString text, int& queryID)
     bufferIn.append(char(7)).append(char(qrand()));
     bufferIn.append(d->formatID(groupID)).append(text.toUtf8());
     if (d->server->sendData(bufferIn, bufferOut,
-                            RequestManager::RecordServer,
+                            RequestManager::AccountServer,
                             d->serverObjectToPath(
                                AccountPrivate::ServerObject::GroupAction),
                             false, &queryID)
@@ -591,7 +591,7 @@ bool Account::deleteGroup(QString groupID, int& queryID)
     bufferIn.append(char(8)).append(char(qrand()));
     bufferIn.append(d->formatID(groupID));
     if (d->server->sendData(bufferIn, bufferOut,
-                            RequestManager::RecordServer,
+                            RequestManager::AccountServer,
                             d->serverObjectToPath(
                                AccountPrivate::ServerObject::GroupAction),
                             false, &queryID)
