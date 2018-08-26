@@ -1313,7 +1313,16 @@ void SessionFrameWidget::on_buttonSend_clicked()
                         .replace("[/emoji]\" />", "&lt;/emoticon&gt;");
     editorList[sessionIndex]->setHtml(newContent);
 
+    // Do not send empty content
     content = editorList[sessionIndex]->toPlainText();
+    if (content.trimmed().isEmpty())
+        return;
+
+    // Deal with whitespace characters
+    content.replace("\r\n", "<br />");
+    content.replace("\r", "<br />");
+    content.replace("\n", "<br />");
+
     if (sendMessage(content, lastConversation))
         editorList[sessionIndex]->clear();
 }
