@@ -347,9 +347,12 @@ void ConversationPrivate::dispatchQueryRespone(int requestID)
                     // Then parse records' time and length
                     parseMixedList(data, "TIME", tempList, &parsedLength);
                     for (i=0; i<tempList.count(); i++)
+                    {
                         newMessageList[i].time =
                                     QDateTime::fromString(QString(tempList[i]),
                                             WICHAT_SERVER_RECORD_TIME_FORMAT);
+                        newMessageList[i].time.setTimeSpec(Qt::UTC);
+                    }
                     parseMixedList(data, "LEN", tempList, &parsedLength);
                     for (i=0; i<tempList.count(); i++)
                         newMessageList[i].length = QString(tempList[i]).toInt();
