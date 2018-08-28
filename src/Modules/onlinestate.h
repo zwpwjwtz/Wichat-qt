@@ -18,11 +18,11 @@ public:
     {
         value = None;
     }
-    inline OnlineState(const int& initValue)
+    inline OnlineState(const int initValue)
     {
         value = initValue;
     }
-    inline int operator =(const int& a)
+    inline int operator =(const int a)
     {
         value = a;
         return value;

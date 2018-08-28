@@ -11,7 +11,7 @@ public:
     {
         value = 0;
     }
-    inline AbstractEnum(const int& initValue)
+    inline AbstractEnum(const int initValue)
     {
         // Attention: rewrite is needed when inherited
         value = initValue;
@@ -20,7 +20,7 @@ public:
     {
         return value == a.value;
     }
-    inline bool operator ==(const int& a)
+    inline bool operator ==(const int a)
     {
         return value == a;
     }
@@ -28,7 +28,7 @@ public:
     {
         return value;
     }
-    inline int operator =(const int& a)
+    inline int operator =(const int a)
     {
         // Attention: rewrite is needed when inherited
         value = a;

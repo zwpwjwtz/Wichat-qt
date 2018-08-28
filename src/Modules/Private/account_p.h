@@ -21,7 +21,7 @@ public:
         static const int FriendAction = 3;
         static const int GroupRelation = 4;
         static const int GroupAction = 5;
-        inline ServerObject(const int& initValue){value = initValue;}
+        inline ServerObject(const int initValue){value = initValue;}
     };
 
     class RequestType : public AbstractEnum
@@ -50,7 +50,7 @@ public:
         static const int SetGroupName = 20;
         static const int SetGroupDescription = 21;
         static const int DeleteGroup = 22;
-        inline RequestType(const int& initValue){value = initValue;}
+        inline RequestType(const int initValue){value = initValue;}
     };
 
     QString loginID;

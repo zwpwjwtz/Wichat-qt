@@ -17,7 +17,7 @@ public:
         static const int GroupLogin = 1;
         static const int GroupGet = 2;
         static const int GroupAction = 3;
-        inline ServerObject(const int& initValue){value = initValue;}
+        inline ServerObject(const int initValue){value = initValue;}
     };
     class RequestType : public AbstractEnum
     {
@@ -28,7 +28,7 @@ public:
         static const int SendMessage = 3;
         static const int GetMessageList = 4;
         static const int ReceiveMessage = 5;
-        inline RequestType(const int& initValue){value = initValue;}
+        inline RequestType(const int initValue){value = initValue;}
     };
     enum PrivateEventType
     {

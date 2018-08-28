@@ -21,7 +21,7 @@ public:
         static const int RecordLogin = 1;
         static const int RecordGet = 2;
         static const int RecordAction = 3;
-        inline ServerObject(const int& initValue){value = initValue;}
+        inline ServerObject(const int initValue){value = initValue;}
     };
     class RequestType : public AbstractEnum
     {
@@ -33,7 +33,7 @@ public:
         static const int GetMessageList = 4;
         static const int ReceiveMessage = 5;
         static const int FixConnection = 6;
-        inline RequestType(const int& initValue){value = initValue;}
+        inline RequestType(const int initValue){value = initValue;}
     };
     enum PrivateEventType
     {
