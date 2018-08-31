@@ -119,10 +119,11 @@ bool Group::sendMessage(QString ID, QByteArray &content, int& queryID)
     transaction.messages = nullptr;
     transaction.pos = 0;
     transaction.queryID = d->getAvailableQueryID();
+    queryID = transaction.queryID;
     d->sendingList.enqueue(transaction);
 
-    queryID = transaction.queryID;
-    d->processSendList();
+    if (d->sendingList.count() == 1)
+        d->processSendList();
     return true;
 }
 
@@ -186,10 +187,11 @@ bool Group::receiveMessage(QString ID, QDateTime& lastTime, int& queryID)
     transaction.pos = 0;
     transaction.multiPart = false;
     transaction.queryID = d->getAvailableQueryID();
+    queryID = transaction.queryID;
     d->receivingList.enqueue(transaction);
 
-    queryID = transaction.queryID;
-    d->processReceiveList();
+    if (d->receivingList.count() == 1)
+        d->processReceiveList();
     return true;
 }
 
@@ -246,33 +248,37 @@ void GroupPrivate::dispatchQueryRespone(int requestID)
                                         getTransactionByRequestID(requestID);
                 if (!transaction)
                 {
-                    emit q->queryError(requestID,
+                    emit q->queryError(0,
                                        Group::QueryError::UnknownError);
-                    break;
                 }
-                if (data[0] != char(WICHAT_SERVER_RESPONSE_RES_OK))
+                else if (data[0] != char(WICHAT_SERVER_RESPONSE_RES_OK))
                 {
-                    emit q->queryError(requestID,
+                    emit q->queryError(transaction->queryID,
                                        Group::QueryError::UnknownError);
                     removeTransaction(transaction);
-                    break;
                 }
-                if (transaction->pos == 0)
+                else
                 {
-                    // Store message ID assigned by server
-                    transaction->messageID =
-                                    data.mid(1, WICHAT_SERVER_RECORD_ID_LEN);
+                    if (transaction->pos == 0)
+                    {
+                        // Store message ID assigned by server
+                        transaction->messageID =
+                                        data.mid(1, WICHAT_SERVER_RECORD_ID_LEN);
+                    }
+                    if (transaction->pos + MaxMsgBlock <
+                        transaction->data->length())
+                    {
+                        // Continue to send the rest part of the message
+                        transaction->pos += MaxMsgBlock;
+                    }
+                    else
+                    {
+                        emit q->sendMessageFinished(transaction->queryID,
+                                                    successful);
+                        removeTransaction(transaction);
+                    }
                 }
-                if (transaction->pos + MaxMsgBlock <
-                    transaction->data->length())
-                {
-                    // Continue to send the rest part of the message
-                    transaction->pos += MaxMsgBlock;
-                    processSendList();
-                    break;
-                }
-                emit q->sendMessageFinished(transaction->queryID, successful);
-                removeTransaction(transaction);
+                processSendList();
                 break;
             }
             case GroupPrivate::RequestType::GetMessageList:
@@ -288,9 +294,8 @@ void GroupPrivate::dispatchQueryRespone(int requestID)
                                         getTransactionByRequestID(requestID);
                 if (!transaction)
                 {
-                    emit q->queryError(requestID,
-                                       Group::QueryError::UnknownError);
-                    removeTransaction(transaction);
+                    emit q->queryError(0, Group::QueryError::UnknownError);
+                    processReceiveList();
                     break;
                 }
                 if (data[0] == char(WICHAT_SERVER_RESPONSE_RES_SIZE_TOO_LARGE))
@@ -298,23 +303,22 @@ void GroupPrivate::dispatchQueryRespone(int requestID)
                     // Try to query resource with multiple request
                     if (transaction->multiPart)
                     {
-                        emit q->queryError(requestID,
+                        emit q->queryError(transaction->queryID,
                                            Group::QueryError::UnknownError);
                         removeTransaction(transaction);
                     }
                     else
-                    {
                         transaction->multiPart = true;
-                        processReceiveList();
-                    }
+                    processReceiveList();
                     break;
                 }
                 if (data[0] != char(WICHAT_SERVER_RESPONSE_RES_OK) &&
                     data[0] != char(WICHAT_SERVER_RESPONSE_RES_EOF))
                 {
-                    emit q->queryError(requestID,
+                    emit q->queryError(transaction->queryID,
                                        Group::QueryError::UnknownError);
                     removeTransaction(transaction);
+                    processReceiveList();
                     break;
                 }
 
@@ -382,33 +386,26 @@ void GroupPrivate::dispatchQueryRespone(int requestID)
                                                                 data.mid(pos));
                     transaction->pos += data.length() - pos;
                 }
-                if (transaction->multiPart &&
-                    data[0] != char(WICHAT_SERVER_RESPONSE_RES_EOF))
+                if (!transaction->multiPart ||
+                    data[0] == char(WICHAT_SERVER_RESPONSE_RES_EOF))
                 {
-                    // Continue to receive the rest part of the message
-                    processReceiveList();
-                    break;
+                    // Receiving finished.
+                    // TODO: End-to-end encryption
+
+                    QString cacheDir(userDir);
+                    cacheDir.append('/').append(WICHAT_SESSION_FILE_CACHE_DIR);
+                    for (i=0; i<transaction->messages->count(); i++)
+                    {
+                        dataUnxmlize((*transaction->messages)[i].content,
+                                     data,
+                                     cacheDir);
+                        (*transaction->messages)[i].content = data;
+                    }
+                    emit q->receiveMessageFinished(transaction->queryID,
+                                                *(transaction->messages));
+                    removeTransaction(transaction);
                 }
-                /*
-                 * TODO: End-to-end encryption
-                encoder.decrypt(Encryptor::Blowfish,
-                                   data,
-                                   sessionList->getSession(
-                                            transaction->target).receiversKey,
-                                   *transaction->data);
-                */
-                QString cacheDir(userDir);
-                cacheDir.append('/').append(WICHAT_SESSION_FILE_CACHE_DIR);
-                for (i=0; i<transaction->messages->count(); i++)
-                {
-                    dataUnxmlize((*transaction->messages)[i].content,
-                                 data,
-                                 cacheDir);
-                    (*transaction->messages)[i].content = data;
-                }
-                emit q->receiveMessageFinished(transaction->queryID,
-                                            *(transaction->messages));
-                removeTransaction(transaction);
+                processReceiveList();
                 break;
             }
             default:
