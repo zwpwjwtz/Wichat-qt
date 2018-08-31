@@ -95,6 +95,7 @@ void SystrayNotification::addNote(const Notification::Note &note)
     listNoteModel.appendRow(newRow);
     QApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
     adjustListSize();
+    emit listUpdated();
 }
 
 void SystrayNotification::removeNote(int noteID)
@@ -109,6 +110,7 @@ void SystrayNotification::removeNote(int noteID)
     }
     noteList.remove(noteID);
     adjustListSize();
+    emit listUpdated();
 }
 
 int SystrayNotification::removeNotes(Notification::NoteEvent noteType,
@@ -122,7 +124,7 @@ int SystrayNotification::removeNotes(Notification::NoteEvent noteType,
             continue;
         if (tempList[i].type == noteType)
         {
-            noteList.remove(tempList[i].ID);
+            removeNote(tempList[i].ID);
             removedCount++;
         }
     }

@@ -27,6 +27,7 @@ public:
 
 signals:
     void noteClicked(const Notification::Note& note);
+    void listUpdated();
 
 protected:
     void focusOutEvent(QFocusEvent * event);

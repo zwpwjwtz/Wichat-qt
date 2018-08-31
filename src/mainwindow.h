@@ -75,6 +75,7 @@ private:
     bool manualExit;
     bool sysTrayIconVisible;
     int notificationState;
+    int lastWindowState;
 
     void addTask(TaskType task);
     void doTask();
@@ -85,6 +86,7 @@ private:
     void updateSysTrayMenu();
     void showNotification();
     void setFlashIcon(bool flashing);
+    void restoreWindow();
 
 public:
     static QString getFileNameFromPath(QString filePath);
@@ -107,6 +109,7 @@ private slots:
     void onListGroupEntryClicked(QString ID);
     void onFrameSessionIDChanged(QString ID);
     void onSysTrayNoteClicked(const Notification::Note &note);
+    void onSysTrayNoteUpdated();
     void onSysTrayIconClicked(QSystemTrayIcon::ActivationReason reason);
     void onSysTrayMenuShowed();
     void onSysTrayMenuClicked(QAction* action);

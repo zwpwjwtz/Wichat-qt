@@ -21,6 +21,7 @@ void Notification::append(const Note& note)
 {
     Q_D(Notification);
     d->noteQueue.push_back(note);
+    emit newNote(note.ID);
 }
 
 const Notification::Note& Notification::peek(int noteID)
@@ -56,6 +57,7 @@ void Notification::remove(int noteID)
             break;
         }
     }
+    emit noteRemoved(noteID);
 }
 
 void Notification::clear()

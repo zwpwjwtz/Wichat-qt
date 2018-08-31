@@ -102,6 +102,10 @@ MainWindow::MainWindow(QWidget *parent) :
             this,
             SLOT(onSysTrayIconClicked(QSystemTrayIcon::ActivationReason)));
     connect(sysTrayNoteList,
+            SIGNAL(listUpdated()),
+            this,
+            SLOT(onSysTrayNoteUpdated()));
+    connect(sysTrayNoteList,
             SIGNAL(noteClicked(const Notification::Note&)),
             this,
             SLOT(onSysTrayNoteClicked(const Notification::Note&)));
@@ -180,8 +184,9 @@ void MainWindow::changeEvent(QEvent* event)
 {
     if (event->type() == QEvent::WindowStateChange)
     {
-        if (isMaximized())
-            updateCaption();
+        QWindowStateChangeEvent* e = (QWindowStateChangeEvent*)(event);
+        if (isMinimized() && e->oldState() != Qt::WindowMinimized)
+            lastWindowState = int(e->oldState());
     }
 }
 
@@ -434,7 +439,6 @@ void MainWindow::showNotification()
                     if (ui->frameSession->existSession(sessionID))
                     {
                         // Session exists, highlight it
-                        clearNote = false;
                         ui->frameSession->highlightSession(sessionID, true);
                     }
                     else // Otherwise, show notification only
@@ -446,18 +450,6 @@ void MainWindow::showNotification()
         }
         if (clearNote)
             noteList.remove(tempNoteList[i].ID);
-    }
-
-    if (sysTrayNoteList->countNote() > 0)
-    {
-        // Check static indicator to avoid unnecessary operations
-        // as this function is called frequently by timer
-        if (notificationState == 0)
-        {
-            sysTrayIcon->setIcon(QIcon(":/Icons/notification.png"));
-            setFlashIcon(true);
-            notificationState = 1;
-        }
     }
 }
 
@@ -475,6 +467,16 @@ void MainWindow::setFlashIcon(bool flashing)
         sysTrayIconVisible = true;
         sysTrayIcon->setIcon(currentSysTrayIcon);
     }
+}
+
+void MainWindow::restoreWindow()
+{
+    if (windowState() == Qt::WindowMinimized)
+    {
+        setWindowState(Qt::WindowStates(lastWindowState));
+    }
+    activateWindow(); // for Windows
+    raise();  // for MacOS
 }
 
 void MainWindow::onChangeSessionFinished(int queryID, bool successful)
@@ -580,11 +582,13 @@ void MainWindow::onListFriendEntryClicked(QString ID)
         ui->frameSession->loadSession(ID, SessionFrameWidget::LocalDialog);
     else
         ui->frameSession->loadSession(ID, SessionFrameWidget::FriendChat);
+    sysTrayNoteList->removeNotes(Notification::GotMsg, ID);
 }
 
 void MainWindow::onListGroupEntryClicked(QString ID)
 {
     ui->frameSession->loadSession(ID, SessionFrameWidget::GroupChat);
+    sysTrayNoteList->removeNotes(Notification::GotGroupMsg, ID);
 }
 
 void MainWindow::onListGroupUpdated()
@@ -645,24 +649,36 @@ void MainWindow::onSysTrayNoteClicked(const Notification::Note& note)
             ui->frameSession->loadSession(note.source,
                                           SessionFrameWidget::FriendChat,
                                           true);
-            setWindowState(Qt::WindowActive);
+            restoreWindow();
             break;
         case Notification::GotGroupMsg:
             ui->frameSession->loadSession(note.source,
                                           SessionFrameWidget::GroupChat,
                                           true);
-            setWindowState(Qt::WindowActive);
+            restoreWindow();
             break;
         default:;
     }
     sysTrayNoteList->removeNote(note.ID);
+}
 
+void MainWindow::onSysTrayNoteUpdated()
+{
     if (sysTrayNoteList->countNote() < 1)
     {
         notificationState = 0;
         setFlashIcon(false);
         sysTrayNoteList->hide();
         addTask(taskUpdateState);
+    }
+    else
+    {
+        if (notificationState == 0)
+        {
+            notificationState = 1;
+            sysTrayIcon->setIcon(QIcon(":/Icons/notification.png"));
+            setFlashIcon(true);
+        }
     }
 }
 

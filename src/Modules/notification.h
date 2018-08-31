@@ -43,8 +43,8 @@ public:
     int getNewID();
 
 signals:
-    void newNote();
-    void noteRemoved();
+    void newNote(int noteID);
+    void noteRemoved(int noteID);
 };
 
 #endif // NOTIFICATION_H

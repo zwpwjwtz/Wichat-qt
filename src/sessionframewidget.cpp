@@ -1002,9 +1002,10 @@ void SessionFrameWidget::onReceiveMessageFinished(int queryID,
 {
     QString sourceID = queryList.value(queryID).sessionID;
     queryList.remove(queryID);
-    if (sourceID.isEmpty())
+    if (sourceID.isEmpty() || messages.count() < 1)
         return;
 
+    QDateTime lastTime = messages.last().time;
     SessionMessageList::MessageEntry sessionMessage;
     SessionMessageList* messageList =
                             userSessionList.getSession(sourceID).messageList;
@@ -1022,6 +1023,8 @@ void SessionFrameWidget::onReceiveMessageFinished(int queryID,
         sessionMessage.content = messages[i].content;
         messageList->addMessage(sessionMessage);
     }
+    messageList->last().time = lastTime;
+
     if (messages.count() > 0 && getSessionIndex(sourceID) >= 0)
         browserList[getSessionIndex(sourceID)]->refresh();
 }
