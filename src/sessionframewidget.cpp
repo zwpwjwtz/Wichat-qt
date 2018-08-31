@@ -314,20 +314,16 @@ void SessionFrameWidget::loadSession(QString sessionID, bool setTabActive)
     // Clear possible notifications of in-coming messages
     if (notificationBinded)
     {
-        bool receivedMsg = false;
         QList<Notification::Note> notes = noteList->getAll();
         for (int i=0; i<notes.count(); i++)
         {
-            if (notes[i].source == sessionID &&
+            if (notes[i].source == getIDBySessionID(sessionID) &&
                 (notes[i].type == Notification::GotMsg ||
                  notes[i].type == Notification::GotGroupMsg))
             {
                 noteList->remove(notes[i].ID);
-                receivedMsg = true;
             }
         }
-        if (receivedMsg && sessionID != userID)
-            receiveMessage(sessionID);
     }
 
     // Change session tab index if necessary
@@ -980,6 +976,7 @@ void SessionFrameWidget::onGetMessageListFinished(int queryID,
         newNote.source = msgList[i].ID;
         newNote.ID = noteList->getNewID();
         noteList->append(newNote);
+        receiveMessage(getSessionIDByID(msgList[i].ID, FriendChat));
     }
 }
 
@@ -996,6 +993,7 @@ void SessionFrameWidget::onGetGroupMessageListFinished(int queryID,
         newNote.source = msgList[i].ID;
         newNote.ID = noteList->getNewID();
         noteList->append(newNote);
+        receiveMessage(getSessionIDByID(msgList[i].ID, GroupChat));
     }
 }
 
@@ -1024,7 +1022,7 @@ void SessionFrameWidget::onReceiveMessageFinished(int queryID,
         sessionMessage.content = messages[i].content;
         messageList->addMessage(sessionMessage);
     }
-    if (messages.count() > 0)
+    if (messages.count() > 0 && getSessionIndex(sourceID) >= 0)
         browserList[getSessionIndex(sourceID)]->refresh();
 }
 
