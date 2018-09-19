@@ -1,0 +1,11 @@
+# Contributors of Wichat-qt project
+
+This file lists the contributors and their contributions to this project:
+
+* [XLY](779517316@qq.com): Design of [WiChat icon](./src/Icons/Wichat.png).
+
+* Authors of [Oxygen Icons](https://github.com/KDE/oxygen-icons), [Breeze Icons](https://github.com/KDE/breeze-icons) and [Pidgin](https://bitbucket.org/pidgin/main): The icons in [Icons](./src/Icons) directory are collected from or derived from image resource belonging to these project. They are licensed under their own licences.
+
+* Authors of [Twitter Emoji](https://github.com/twitter/twemoji) project: The emoticons (graphic resources) is licensed under Attribution 4.0 International. The licence text can be found in file [LICENSE-GRAPHICS](./src/Emoticon/Twemoji/LICENSE-GRAPHICS).
+
+We thank for their great efforts in making software more OPEN and FREE! 
